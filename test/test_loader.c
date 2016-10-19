@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "elements.h"
+#include "loader.h"
 
 void test() {
     rage_ElementLoader el = rage_element_loader_new();
