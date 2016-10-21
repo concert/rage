@@ -4,17 +4,28 @@
 #include "events.h"
 
 typedef enum {
-    RAGE_PORT_AUDIO,
+    RAGE_PORT_STREAM,
     RAGE_PORT_EVENT
 } rage_PortType;
 
+typedef enum {
+    RAGE_STREAM_AUDIO
+} rage_StreamPortDef;
+
+typedef rage_TupleDef rage_EventPortDef;
+
 typedef struct port_desc {
-    char * name;
-    char * doc;
-    bool input;
+    bool is_input;
     rage_PortType type;
+    union {
+        rage_StreamPortDef stream_def;
+        rage_EventPortDef event_def;
+    };
     struct port_desc * next;
 } rage_PortDescription;
+
+rage_PortDescription * rage_port_description_copy(rage_PortDescription pd);
+void rage_port_description_free(rage_PortDescription * pdp);
 
 typedef union {
     float const * const samples;
@@ -25,3 +36,8 @@ typedef union {
     float * const samples;
     rage_EventFrame * const events;
 } rage_OutPort;
+
+typedef union {
+    rage_InPort in;
+    rage_OutPort out;
+} rage_Port;

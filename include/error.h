@@ -15,3 +15,4 @@
     type name = RAGE_SUCCESS_VALUE(e);
 
 typedef RAGE_OR_ERROR(void *) rage_Error;
+#define RAGE_OK RAGE_SUCCEED(rage_Error, NULL)
