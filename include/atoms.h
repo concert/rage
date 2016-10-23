@@ -2,9 +2,9 @@
 #include "macros.h"
 
 typedef enum {
-    RAGE_LIBERTY_MUST_PROVIDE,
+    RAGE_LIBERTY_CANNOT_PROVIDE,
     RAGE_LIBERTY_MAY_PROVIDE,
-    RAGE_LIBERTY_CANNOT_PROVIDE
+    RAGE_LIBERTY_MUST_PROVIDE
 } rage_Liberty;
 
 typedef struct {
@@ -53,5 +53,4 @@ typedef union {
     char * s;
 } rage_Atom;
 
-
-typedef RAGE_ARRAY(rage_Atom) rage_Tuple;
+typedef rage_Atom * rage_Tuple;
