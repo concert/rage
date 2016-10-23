@@ -63,7 +63,12 @@ int main() {
         .len = 3,
         .items = tps
     };
-    rage_Interpolator interpolator = rage_interpolator_new(td);
+    rage_InitialisedInterpolator ii = rage_interpolator_new(td);
+    if (RAGE_FAILED(ii)) {
+        printf("Interpolator init failed: %s", RAGE_FAILURE_VALUE(ii));
+        return 2;
+    }
+    rage_Interpolator interpolator = RAGE_SUCCESS_VALUE(ii);
     int rv = checks(interpolator, ts);
     rage_interpolator_free(interpolator);
     return rv;
