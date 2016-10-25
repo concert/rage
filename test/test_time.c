@@ -22,6 +22,35 @@ int test_time_delta() {
     return 0;
 }
 
+int test_time_after() {
+    rage_Time a = {.second = 2, .fraction = 200};
+    if (rage_time_after(a, a)) {
+        printf("same\n");
+        return 1;
+    }
+    rage_Time b = {.second = 1, .fraction = 100};
+    if (!rage_time_after(a, b)) {
+        printf("later\n");
+        return 1;
+    }
+    if (rage_time_after(b, a)) {
+        printf("earlier\n");
+        return 1;
+    }
+    a.second = 1;
+    if (!rage_time_after(a, b)) {
+        printf("later frac\n");
+        return 1;
+    }
+    if (rage_time_after(b, a)) {
+        printf("earlier frac\n");
+        return 1;
+    }
+    return 0;
+}
+
 int main() {
-    return test_time_delta();
+    int rv = test_time_delta();
+    rv += test_time_after();
+    return rv;
 }

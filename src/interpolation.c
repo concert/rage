@@ -46,7 +46,7 @@ rage_Tuple rage_interpolate(rage_Interpolator state, rage_Time time, rage_TimeSe
     rage_TimePoint const * end = NULL;
     unsigned i;
     for (i = 0; i < points.len; i++) {
-        if (rage_time_delta(points.items[i].time, time) > 0) {
+        if (rage_time_after(points.items[i].time, time)) {
             end = &(points.items[i]);
             break;
         }
