@@ -16,3 +16,4 @@
 
 typedef RAGE_OR_ERROR(void *) rage_Error;
 #define RAGE_OK RAGE_SUCCEED(rage_Error, NULL)
+#define RAGE_ERROR(msg) RAGE_FAIL(rage_Error, msg)
