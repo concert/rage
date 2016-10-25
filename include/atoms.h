@@ -1,4 +1,5 @@
 #pragma once
+#include "time.h"
 #include "macros.h"
 
 typedef enum {
@@ -7,21 +8,24 @@ typedef enum {
     RAGE_LIBERTY_MUST_PROVIDE
 } rage_Liberty;
 
-typedef struct {
-    RAGE_MAYBE(int) min;
-    RAGE_MAYBE(int) max;
-} rage_IntConstraints;
+#define RAGE_MINMAX(type) \
+    struct { \
+        RAGE_MAYBE(type) min; \
+        RAGE_MAYBE(type) max; \
+    }
 
-typedef struct {
-    RAGE_MAYBE(float) min;
-    RAGE_MAYBE(float) max;
-} rage_FloatConstraints;
+typedef RAGE_MINMAX(int) rage_IntConstraints;
+typedef RAGE_MINMAX(float) rage_FloatConstraints;
+typedef RAGE_MINMAX(rage_Time) rage_TimeConstraints;
+
+#undef RAGE_MINMAX
 
 typedef RAGE_MAYBE(char const *) rage_StringConstraints;
 
 typedef enum {
     RAGE_ATOM_INT,
     RAGE_ATOM_FLOAT,
+    RAGE_ATOM_TIME,
     RAGE_ATOM_STRING
 } rage_AtomType;
 
@@ -31,6 +35,7 @@ typedef struct {
     union {
         rage_IntConstraints i;
         rage_FloatConstraints f;
+        rage_TimeConstraints t;
         rage_StringConstraints s;
     } constraints;
 } rage_AtomDef;
@@ -50,6 +55,7 @@ typedef struct {
 typedef union {
     int i;
     float f;
+    rage_Time t;
     char * s;
 } rage_Atom;
 

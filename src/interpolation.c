@@ -26,7 +26,9 @@ rage_InitialisedInterpolator rage_interpolator_new(rage_TupleDef type) {
             case (RAGE_ATOM_INT):
                 state->interpolators[i] = rage_int_interpolate;
                 break;
+            case (RAGE_ATOM_TIME):
             case (RAGE_ATOM_STRING):
+                rage_interpolator_free(state);
                 RAGE_FAIL(rage_InitialisedInterpolator, "String interpolation is not supported");
         }
     }
