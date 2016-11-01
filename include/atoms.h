@@ -31,7 +31,7 @@ typedef enum {
 
 typedef struct {
     rage_AtomType type;
-    char * name;
+    char const * name;
     union {
         rage_IntConstraints i;
         rage_FloatConstraints f;
@@ -41,15 +41,15 @@ typedef struct {
 } rage_AtomDef;
 
 typedef struct {
-    char * name;
-    rage_AtomDef type;
+    char const * name;
+    rage_AtomDef const * type;
 } rage_FieldDef;
 
 typedef struct {
     char * name;
     char * description;
     rage_Liberty liberty;
-    RAGE_ARRAY(rage_FieldDef);
+    RAGE_ARRAY(rage_FieldDef const);
 } rage_TupleDef;
 
 typedef union {

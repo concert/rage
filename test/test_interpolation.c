@@ -29,11 +29,11 @@ int checks(rage_Interpolator interpolator, rage_TimeSeries ts) {
 }
 
 int main() {
+    rage_AtomDef const unconstrained_float = {
+        .type = RAGE_ATOM_FLOAT, .name = "float", .constraints = {}
+    };
     rage_FieldDef fields[] = {
-        {
-            .name = "f_field",
-            .type = {.type = RAGE_ATOM_FLOAT, .name = "float", .constraints = {}}
-        }
+        {.name = "f_field", .type = &unconstrained_float}
     };
     rage_TupleDef td = {
         .name = "Interpolation Test",

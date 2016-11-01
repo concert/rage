@@ -18,7 +18,7 @@ rage_InitialisedInterpolator rage_interpolator_new(rage_TupleDef type) {
     state->value = calloc(sizeof(rage_Atom), type.len);
     state->interpolators = calloc(sizeof(rage_AtomInterpolator *), type.len);
     for (unsigned i=0; i < type.len; i++) {
-        rage_AtomDef * atom_def = &(type.items[i].type);
+        rage_AtomDef const * atom_def = type.items[i].type;
         switch (atom_def->type) {
             case (RAGE_ATOM_FLOAT):
                 state->interpolators[i] = rage_float_interpolate;
