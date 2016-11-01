@@ -17,3 +17,6 @@ test('elements', test_loader)
 test('errors', test_errors)
 test('interpolation', test_interpolation)
 test('time', test_time)
+
+amp_sources = ['elements/amp/amp.c']
+amp = shared_library('amp', amp_sources, include_directories: inc, link_with: elem_utils)

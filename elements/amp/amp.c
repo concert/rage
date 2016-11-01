@@ -1,0 +1,84 @@
+#include <stdlib.h>
+// FIXME: this include should be "systemy"
+#include "element.h"
+
+static rage_AtomDef const n_channels = {
+    .type = RAGE_ATOM_INT,
+    .name = "n_channels",
+    .constraints = {.i = {.min = RAGE_JUST(1)}}
+};
+
+static rage_FieldDef const param_fields[] = {
+    {.name = "channels", .type = &n_channels}
+};
+
+rage_TupleDef const init_params = {
+    .name = "amp",
+    .description = "Amplifier",
+    .liberty = RAGE_LIBERTY_MUST_PROVIDE,
+    .len = 1,
+    .items = param_fields
+};
+
+static rage_AtomDef const gain_float = {
+    .type = RAGE_ATOM_FLOAT, .name = "gain",
+    .constraints = {.f = {.max = RAGE_JUST(5.0)}}
+};
+
+static rage_FieldDef const gain_fields[] = {
+    {.name = "gain", .type = &gain_float}
+};
+
+static rage_TupleDef const gain_def = {
+    .name = "gain",
+    .description = "Loudness",
+    .liberty = RAGE_LIBERTY_MAY_PROVIDE,
+    .len = 1,
+    .items = gain_fields
+};
+
+rage_PortDescription * elem_describe_ports(rage_Tuple params) {
+    rage_PortDescription * prev = NULL;
+    for (unsigned i=0; i<params[0].i; i++) {
+        // Too implicit that you get an audio output?
+        // Should there be an enum for port direction, so one can go in both?
+        prev = rage_port_description_copy((rage_PortDescription) {
+            .is_input = true,
+            .next = prev
+        });
+        prev = rage_port_description_copy((rage_PortDescription) {
+            .next = prev
+        });
+    }
+    return rage_port_description_copy((rage_PortDescription) {
+        .is_input = true,
+        .type = RAGE_PORT_EVENT,
+        .event_def = gain_def,
+        .next = prev
+    });
+}
+
+typedef struct {
+    unsigned n_channels;
+    float gain;
+} amp_data;
+
+void * elem_new(rage_Tuple params) {
+    amp_data * ad = malloc(sizeof(amp_data));
+    // Not sure I like way the indices tie up here
+    ad->n_channels = params[0].i;
+    return (void *) ad;
+}
+
+void elem_free(void * state) {
+    free(state);
+}
+
+
+rage_Error elem_process(
+        void * state, rage_Time time, unsigned nsamples, rage_Port * ports) {
+    if (ports[0].in.events->n_events) {
+        // We're getting away from LV2 here, good?
+    }
+    RAGE_OK
+}
