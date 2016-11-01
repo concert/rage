@@ -1,8 +1,19 @@
 #pragma once
 
+#include "atoms.h"
 #include "element.h"
 #include "error.h"
 #include "macros.h"
+
+typedef struct {
+    rage_TupleDef parameters;
+    // rage_ElementGetPorts get_ports;
+    rage_ElementStateNew state_new;
+    rage_ElementPrepare prepare;
+    rage_ElementRun run;
+    rage_ElementHalt halt;
+    rage_ElementStateFree state_free;
+} rage_ElementType;
 
 typedef enum {
     RAGE_ELEMENT_PHASE_INIT,
