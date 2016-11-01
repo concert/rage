@@ -8,26 +8,16 @@ typedef struct {
     char * buf;
 } StringBuffer;
 
-StringBuffer string_buffer_new() {
-    const unsigned buf_size = 80;
-    StringBuffer sb = {.size=buf_size, .buf=malloc(buf_size)};
-    return sb;
-}
-
-void string_buffer_free(StringBuffer sb) {
-    free(sb.buf);
-}
-
 int error_context(rage_Error (*f)(StringBuffer b)) {
-    StringBuffer sb = string_buffer_new();
+    const unsigned buf_size = 80;
+    char buf[buf_size];
+    StringBuffer sb = {.buf=buf, .size=buf_size};
     rage_Error e = f(sb);
-    int rval = 0;
     if (RAGE_FAILED(e)) {
         printf("%s\n", RAGE_FAILURE_VALUE(e));
-        rval = 1;
+        return 1;
     }
-    string_buffer_free(sb);
-    return rval;
+    return 0;
 }
 
 #define ASSERT_EQUAL(a, b, msg) \
