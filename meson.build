@@ -2,7 +2,7 @@ project('rage', 'c')
 inc = include_directories('include')
 add_global_arguments('-std=c11', '-Werror', language: 'c')
 src = ['src/loader.c', 'src/interpolation.c', 'src/time.c']
-librage = shared_library('rage', src, include_directories: inc)
+librage = static_library('rage', src, include_directories: inc)
 test_loader = executable('test_elements', 'test/test_loader.c', include_directories: inc, link_with: librage)
 test_errors = executable('test_errors', 'test/test_errors.c', include_directories: inc, link_with: librage)
 test_interpolation = executable('test_interpolation', 'test/test_interpolation.c', include_directories: inc, link_with: librage)
