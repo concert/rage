@@ -1,9 +1,13 @@
 project('rage', 'c')
+
+cc = meson.get_compiler('c')
+dyn_load = cc.find_library('dl')
+
 inc = include_directories('include')
 add_global_arguments('-std=c11', '-Werror', language: 'c')
 
 src = ['src/loader.c', 'src/interpolation.c', 'src/time.c']
-librage = static_library('rage', src, include_directories: inc)
+librage = static_library('rage', src, include_directories: inc, dependencies: [dyn_load])
 
 elem_utils = shared_library('elem_utils', ['src/ports.c'], include_directories: inc)
 test_eu = executable('test_eu', src=['test/test_ports.c'], include_directories: inc, link_with: elem_utils)
