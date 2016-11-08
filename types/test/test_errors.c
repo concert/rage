@@ -15,7 +15,7 @@ typedef RAGE_OR_ERROR(float) err_or_float;
 
 static err_or_float wrapper(bool does_fail) {
     err_or_int e = may_fail(does_fail);
-    RAGE_EXTRACT_VALUE(err_or_float, e, int, i)
+    RAGE_EXTRACT_VALUE(err_or_float, e, int i)
     RAGE_SUCCEED(err_or_float, i/2.0)
 }
 

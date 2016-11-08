@@ -38,12 +38,13 @@ rage_Error test() {
     rage_ElementLoader el = rage_element_loader_new();
     rage_ElementTypes element_type_names = rage_element_loader_list(el);
     for (unsigned i=0; i<element_type_names.len; i++) {
-        rage_ElementTypeLoadResult etr = rage_element_loader_load(
-            el, element_type_names.items[i]);
-        RAGE_EXTRACT_VALUE(rage_Error, etr, rage_ElementType *, et)
+        RAGE_EXTRACT_VALUE(
+            rage_Error,
+            rage_element_loader_load(el, element_type_names.items[i]),
+            rage_ElementType * et)
         rage_Tuple tup = generate_valid_tuple(et->parameters);
         rage_ElementNewResult elem_ = rage_element_new(et, tup);
-        RAGE_EXTRACT_VALUE(rage_Error, elem_, rage_Element *, elem)
+        RAGE_EXTRACT_VALUE(rage_Error, elem_, rage_Element * elem)
         rage_element_free(elem);
         free(tup);
         rage_element_loader_unload(el, et);
