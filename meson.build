@@ -1,26 +1,57 @@
 project('rage', 'c')
 
-cc = meson.get_compiler('c')
-dyn_load = cc.find_library('dl')
-
-inc = include_directories('include')
 add_global_arguments('-std=c11', '-Werror', language: 'c')
 
-elem_utils = shared_library('elem_utils', ['src/ports.c'], include_directories: inc)
-test_eu = executable('test_eu', src=['test/test_ports.c'], include_directories: inc, link_with: elem_utils)
-test('eu', test_eu)
+# Types
 
-src = ['src/loader.c', 'src/interpolation.c', 'src/time.c']
-librage = static_library('rage', src, include_directories: inc, dependencies: [dyn_load], link_with: elem_utils)
+types_inc = include_directories('types/include')
 
-test_loader = executable('test_elements', 'test/test_loader.c', include_directories: inc, link_with: librage)
-test_errors = executable('test_errors', 'test/test_errors.c', include_directories: inc, link_with: librage)
-test_interpolation = executable('test_interpolation', 'test/test_interpolation.c', include_directories: inc, link_with: librage)
-test_time = executable('test_time', 'test/test_time.c', include_directories: inc, link_with: librage)
-test('elements', test_loader)
+sources = [
+    'types/src/ports.c',
+    'types/src/interpolation.c',
+    'types/src/time.c'
+]
+
+rage_types = shared_library(
+    'rage_types', sources, include_directories: types_inc)
+
+test_errors = executable(
+    'test_errors', 'types/test/test_errors.c', include_directories: types_inc,
+    link_with: rage_types)
+test_interpolation = executable(
+    'test_interpolation', 'types/test/test_interpolation.c',
+    include_directories: types_inc, link_with: rage_types)
+test_time = executable(
+    'test_time', 'types/test/test_time.c', include_directories: types_inc,
+    link_with: rage_types)
+test_eu = executable(
+    'test_eu', src=['types/test/test_ports.c'], include_directories: types_inc,
+    link_with: rage_types)
 test('errors', test_errors)
 test('interpolation', test_interpolation)
 test('time', test_time)
+test('eu', test_eu)
+
+# Graph
+
+cc = meson.get_compiler('c')
+dyn_load = cc.find_library('dl')
+
+graph_inc = include_directories('graph/include')
+
+# At some point this should become an executable:
+rage_graph = static_library(
+    'rage_graph', ['graph/src/loader.c'],
+    include_directories: [graph_inc, types_inc],
+    dependencies: [dyn_load])
+
+test_loader = executable(
+    'test_elements', 'graph/test/test_loader.c',
+    include_directories: [graph_inc, types_inc],
+    link_with: [rage_types, rage_graph])
+test('loader', test_loader)
+
+# Elements
 
 amp_sources = ['elements/amp/amp.c']
-amp = shared_library('amp', amp_sources, include_directories: inc, link_with: elem_utils)
+amp = shared_library('amp', amp_sources, include_directories: types_inc, link_with: rage_types)
