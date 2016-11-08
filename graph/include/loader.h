@@ -10,21 +10,12 @@ typedef struct {
     rage_TupleDef const * parameters;
     rage_ElementGetPortsDescription get_ports;
     rage_ElementStateNew state_new;
-    rage_ElementPrepare prepare;
-    rage_ElementRun run;
-    rage_ElementHalt halt;
+    rage_ElementProcess run;
     rage_ElementStateFree state_free;
 } rage_ElementType;
 
-typedef enum {
-    RAGE_ELEMENT_PHASE_INIT,
-    RAGE_ELEMENT_PHASE_PREPARED,
-    RAGE_ELEMENT_PHASE_HALTED
-} rage_ElementPhase;
-
 typedef struct {
     rage_ElementType * type;
-    rage_ElementPhase phase;
     void * state;
     rage_PortDescription * ports;
 } rage_Element;
