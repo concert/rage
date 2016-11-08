@@ -6,12 +6,12 @@ dyn_load = cc.find_library('dl')
 inc = include_directories('include')
 add_global_arguments('-std=c11', '-Werror', language: 'c')
 
-src = ['src/loader.c', 'src/interpolation.c', 'src/time.c']
-librage = static_library('rage', src, include_directories: inc, dependencies: [dyn_load])
-
 elem_utils = shared_library('elem_utils', ['src/ports.c'], include_directories: inc)
 test_eu = executable('test_eu', src=['test/test_ports.c'], include_directories: inc, link_with: elem_utils)
 test('eu', test_eu)
+
+src = ['src/loader.c', 'src/interpolation.c', 'src/time.c']
+librage = static_library('rage', src, include_directories: inc, dependencies: [dyn_load], link_with: elem_utils)
 
 test_loader = executable('test_elements', 'test/test_loader.c', include_directories: inc, link_with: librage)
 test_errors = executable('test_errors', 'test/test_errors.c', include_directories: inc, link_with: librage)

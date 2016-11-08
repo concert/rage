@@ -8,7 +8,7 @@
 typedef struct {
     void * dlhandle;
     rage_TupleDef const * parameters;
-    // rage_ElementGetPorts get_ports;
+    rage_ElementGetPortsDescription get_ports;
     rage_ElementStateNew state_new;
     rage_ElementPrepare prepare;
     rage_ElementRun run;
@@ -26,6 +26,7 @@ typedef struct {
     rage_ElementType * type;
     rage_ElementPhase phase;
     void * state;
+    rage_PortDescription * ports;
 } rage_Element;
 
 typedef void * rage_ElementLoader;
@@ -40,7 +41,8 @@ rage_ElementTypeLoadResult rage_element_loader_load(
     rage_ElementLoader el, char const * type_name);
 void rage_element_loader_unload(rage_ElementLoader el, rage_ElementType * type);
 
-rage_Element * rage_element_new(rage_ElementType * type, rage_Tuple params);
+typedef RAGE_OR_ERROR(rage_Element *) rage_ElementNewResult;
+rage_ElementNewResult rage_element_new(rage_ElementType * type, rage_Tuple params);
 void rage_element_free(rage_Element * elem);
 rage_Error rage_element_prepare(rage_Element * elem, rage_Tuple params);
 void rage_element_halt(rage_Element * elem);

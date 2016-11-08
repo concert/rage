@@ -1,6 +1,9 @@
 #include <stdlib.h>
-// FIXME: this include should be "systemy"
+// FIXME: these includes should be "systemy"
 #include "element.h"
+#include "interpolation.h"
+// TODO: Make a header with the things you need to define in it and include here
+// This header should probably have a hash of the interface files or something dynamically embedded in it
 
 static rage_AtomDef const n_channels = {
     .type = RAGE_ATOM_INT,
@@ -60,14 +63,17 @@ rage_PortDescription * elem_describe_ports(rage_Tuple params) {
 
 typedef struct {
     unsigned n_channels;
-    float gain;
+    rage_Interpolator interpolator;
+    rage_Time sample_length; // Good idea?
 } amp_data;
 
-void * elem_new(rage_Tuple params) {
+rage_NewElementState elem_new(rage_Tuple params) {
     amp_data * ad = malloc(sizeof(amp_data));
     // Not sure I like way the indices tie up here
     ad->n_channels = params[0].i;
-    return (void *) ad;
+    // FIXME: elem_new should be able to error
+    ad->interpolator = rage_interpolator_new(gain_def).right;
+    RAGE_SUCCEED(rage_NewElementState, (void *) ad);
 }
 
 void elem_free(void * state) {
@@ -77,8 +83,14 @@ void elem_free(void * state) {
 
 rage_Error elem_process(
         void * state, rage_Time time, unsigned nsamples, rage_Port * ports) {
-    if (ports[0].in.events->n_events) {
-        // We're getting away from LV2 here, good?
+    amp_data const * const data = (amp_data *) state;
+    for (unsigned s = 0; s < nsamples; s++) {
+        rage_Tuple gain = rage_interpolate(
+            data->interpolator, time, ports[0].in.events->events);
+        for (unsigned c = 1; c < data->n_channels; c += 2) {
+            ports[c+1].out.samples[s] = gain[0].f * ports[c].in.samples[s];
+        }
+        time = rage_time_add(time, data->sample_length);
     }
     RAGE_OK
 }

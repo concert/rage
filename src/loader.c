@@ -36,6 +36,25 @@ rage_ElementTypeLoadResult rage_element_loader_load(
     RAGE_SUCCEED(rage_ElementTypeLoadResult, type)
 }
 
-void rage_element_loader_unload(rage_ElementLoader el, rage_ElementType * type) {
+void rage_element_loader_unload(
+        rage_ElementLoader el, rage_ElementType * type) {
     dlclose(type->dlhandle);
+}
+
+rage_ElementNewResult rage_element_new(
+        rage_ElementType * type, rage_Tuple params) {
+    rage_NewElementState new_state = type->state_new(params);
+    RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_state, void *, state)
+    rage_PortDescription * pd = type->get_ports(state);
+    rage_Element * const elem = malloc(sizeof(rage_Element));
+    elem->type = type;
+    elem->state = state;
+    elem->ports = pd;
+    RAGE_SUCCEED(rage_ElementNewResult, elem);
+}
+
+void rage_element_free(rage_Element * elem) {
+    rage_port_description_free(elem->ports);
+    elem->type->state_free(elem->state);
+    free(elem);
 }

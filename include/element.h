@@ -5,7 +5,8 @@
 #include "error.h"
 
 typedef rage_PortDescription * (*rage_ElementGetPortsDescription)(rage_Tuple params);
-typedef void * (*rage_ElementStateNew)(rage_Tuple params);
+typedef RAGE_OR_ERROR(void *) rage_NewElementState;
+typedef rage_NewElementState (*rage_ElementStateNew)(rage_Tuple params);
 typedef void (*rage_ElementStateFree)(void * state);
 typedef void (*rage_ElementPrepare)(void * state, rage_Tuple params);
 typedef void (*rage_ElementHalt)(void * state);

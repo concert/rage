@@ -42,8 +42,9 @@ rage_Error test() {
             el, element_type_names.items[i]);
         RAGE_EXTRACT_VALUE(rage_Error, etr, rage_ElementType *, et)
         rage_Tuple tup = generate_valid_tuple(et->parameters);
-        void * elem = et->state_new(tup);
-        et->state_free(elem);
+        rage_ElementNewResult elem_ = rage_element_new(et, tup);
+        RAGE_EXTRACT_VALUE(rage_Error, elem_, rage_Element *, elem)
+        rage_element_free(elem);
         free(tup);
         rage_element_loader_unload(el, et);
     }

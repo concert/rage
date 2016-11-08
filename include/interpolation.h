@@ -14,7 +14,7 @@ typedef struct {
     rage_Time time;
     rage_Tuple value;
     rage_InterpolationMode mode;
-    // rage_Tuple args;
+    // rage_Tuple interpolation_args;
 } rage_TimePoint;
 
 typedef RAGE_ARRAY(rage_TimePoint) rage_TimeSeries;
