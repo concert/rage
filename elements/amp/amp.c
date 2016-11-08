@@ -71,9 +71,8 @@ rage_NewElementState elem_new(rage_Tuple params) {
     amp_data * ad = malloc(sizeof(amp_data));
     // Not sure I like way the indices tie up here
     ad->n_channels = params[0].i;
-    RAGE_EXTRACT_VALUE(
-        rage_NewElementState, rage_interpolator_new(gain_def),
-        ad->interpolator)
+    rage_InitialisedInterpolator interpolator = rage_interpolator_new(gain_def);
+    RAGE_EXTRACT_VALUE(rage_NewElementState, interpolator, ad->interpolator)
     ad->sample_length = (rage_Time) {};  // FIXME: sample rate!
     RAGE_SUCCEED(rage_NewElementState, (void *) ad);
 }
