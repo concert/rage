@@ -25,16 +25,16 @@ typedef struct port_desc {
 } rage_PortDescription;
 
 rage_PortDescription * rage_port_description_copy(rage_PortDescription pd);
-void rage_port_description_free(rage_PortDescription * pdp);
+void rage_port_description_free(rage_PortDescription * const pdp);
 
 typedef union {
-    float const * const samples;
-    rage_EventFrame const * const events;
+    float const * samples;
+    rage_EventFrame const * events;
 } rage_InPort;
 
 typedef union {
-    float * const samples;
-    rage_EventFrame * const events;
+    float * samples;
+    rage_EventFrame * events;
 } rage_OutPort;
 
 typedef union {

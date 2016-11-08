@@ -17,6 +17,6 @@ rage_PortDescription * rage_port_description_copy(rage_PortDescription pd) {
     return npd;
 }
 
-void rage_port_description_free(rage_PortDescription * pdp) {
+void rage_port_description_free(rage_PortDescription * const pdp) {
     free(pdp);
 }
