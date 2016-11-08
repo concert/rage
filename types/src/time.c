@@ -17,3 +17,13 @@ bool rage_time_after(rage_Time a, rage_Time b) {
         return false;
     return a.fraction > b.fraction;
 }
+
+rage_Time rage_time_add(rage_Time const a, rage_Time const b) {
+    uint64_t second = a.second + b.second;
+    uint64_t fraction = a.fraction + b.fraction;
+    if (fraction > UINT32_MAX) {
+        second++;
+        fraction -= UINT32_MAX;
+    }
+    return (rage_Time) {.second=second, .fraction=fraction};
+}

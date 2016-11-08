@@ -31,6 +31,7 @@ rage_ElementTypeLoadResult rage_element_loader_load(
     RAGE_ETL_MANDATORY_PARAM(parameters, init_params)
     RAGE_ETL_MANDATORY_PARAM(state_new, elem_new)
     RAGE_ETL_MANDATORY_PARAM(state_free, elem_free)
+    RAGE_ETL_MANDATORY_PARAM(get_ports, elem_describe_ports)
     RAGE_ETL_MANDATORY_PARAM(run, elem_process)
     #undef RAGE_ETL_MANDATORY_PARAM
     RAGE_SUCCEED(rage_ElementTypeLoadResult, type)

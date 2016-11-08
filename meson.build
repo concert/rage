@@ -43,15 +43,17 @@ graph_inc = include_directories('graph/include')
 rage_graph = static_library(
     'rage_graph', ['graph/src/loader.c'],
     include_directories: [graph_inc, types_inc],
-    dependencies: [dyn_load])
+    dependencies: [dyn_load],
+    link_with: rage_types)
 
 test_loader = executable(
     'test_elements', 'graph/test/test_loader.c',
     include_directories: [graph_inc, types_inc],
-    link_with: [rage_types, rage_graph])
+    link_with: rage_graph)
 test('loader', test_loader)
 
 # Elements
 
 amp_sources = ['elements/amp/amp.c']
-amp = shared_library('amp', amp_sources, include_directories: types_inc, link_with: rage_types)
+amp = shared_library(
+    'amp', amp_sources, include_directories: types_inc, link_with: rage_types)
