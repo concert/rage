@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdint.h>
 #include "atoms.h"
 #include "element.h"
 #include "error.h"
@@ -30,13 +31,13 @@ rage_ElementTypes rage_element_loader_list(rage_ElementLoader el);
 typedef RAGE_OR_ERROR(rage_ElementType *) rage_ElementTypeLoadResult;
 rage_ElementTypeLoadResult rage_element_loader_load(
     rage_ElementLoader el, char const * type_name);
-void rage_element_loader_unload(rage_ElementLoader el, rage_ElementType * type);
+void rage_element_loader_unload(
+    rage_ElementLoader el, rage_ElementType * type);
 
 typedef RAGE_OR_ERROR(rage_Element *) rage_ElementNewResult;
-rage_ElementNewResult rage_element_new(rage_ElementType * type, rage_Tuple params);
+rage_ElementNewResult rage_element_new(
+    rage_ElementType * type, uint32_t sample_rate, uint32_t frame_size,
+    rage_Tuple params);
 void rage_element_free(rage_Element * elem);
-rage_Error rage_element_prepare(rage_Element * elem, rage_Tuple params);
-void rage_element_halt(rage_Element * elem);
-void rage_element_free(rage_Element * elem);
-
-// rage_PortsDescription rage_element_get_ports(rage_Element const * const elem);
+rage_Error rage_element_process(
+    rage_Element const * const elem, rage_Time time, rage_Port * ports);

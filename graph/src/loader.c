@@ -43,8 +43,10 @@ void rage_element_loader_unload(
 }
 
 rage_ElementNewResult rage_element_new(
-        rage_ElementType * type, rage_Tuple params) {
-    rage_NewElementState new_state = type->state_new(params);
+        rage_ElementType * type, uint32_t sample_rate, uint32_t frame_size,
+        rage_Tuple params) {
+    rage_NewElementState new_state = type->state_new(
+        sample_rate, frame_size, params);
     RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_state, void * state)
     rage_PortDescription * pd = type->get_ports(state);
     rage_Element * const elem = malloc(sizeof(rage_Element));

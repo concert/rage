@@ -65,15 +65,19 @@ typedef struct {
     unsigned n_channels;
     rage_Interpolator interpolator;
     rage_Time sample_length; // Good idea?
+    uint32_t frame_size; // Doesn't everyone HAVE to do this?
 } amp_data;
 
-rage_NewElementState elem_new(rage_Tuple params) {
+rage_NewElementState elem_new(
+        uint32_t sample_rate, uint32_t frame_size, rage_Tuple params) {
     amp_data * ad = malloc(sizeof(amp_data));
     // Not sure I like way the indices tie up here
     ad->n_channels = params[0].i;
-    rage_InitialisedInterpolator interpolator = rage_interpolator_new(gain_def);
+    rage_InitialisedInterpolator interpolator = rage_interpolator_new(
+        gain_def);
     RAGE_EXTRACT_VALUE(rage_NewElementState, interpolator, ad->interpolator)
-    ad->sample_length = (rage_Time) {};  // FIXME: sample rate!
+    ad->sample_length = rage_time_sample_length(sample_rate);
+    ad->frame_size = frame_size;
     RAGE_SUCCEED(rage_NewElementState, (void *) ad);
 }
 
@@ -81,11 +85,9 @@ void elem_free(void * state) {
     free(state);
 }
 
-
-rage_Error elem_process(
-        void * state, rage_Time time, unsigned nsamples, rage_Port * ports) {
+rage_Error elem_process(void * state, rage_Time time, rage_Port * ports) {
     amp_data const * const data = (amp_data *) state;
-    for (unsigned s = 0; s < nsamples; s++) {
+    for (unsigned s = 0; s < data->frame_size; s++) {
         rage_Tuple gain = rage_interpolate(
             data->interpolator, time, ports[0].in.events->events);
         for (unsigned c = 1; c < data->n_channels; c += 2) {
