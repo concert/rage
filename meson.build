@@ -38,18 +38,22 @@ test('eu', test_eu)
 cc = meson.get_compiler('c')
 dyn_load = cc.find_library('dl')
 
+jack = dependency('jack')
+
 graph_inc = include_directories('graph/include')
 
 # At some point this should become an executable:
 rage_graph = static_library(
-    'rage_graph', ['graph/src/loader.c'],
+    'rage_graph',
+    ['graph/src/loader.c', 'graph/src/engine.c'],
     include_directories: [graph_inc, types_inc],
     dependencies: [dyn_load],
     link_with: rage_types)
 
 test_loader = executable(
-    'test_elements', 'graph/test/test_loader.c',
+    'test_elements', 'graph/test/main.c',
     include_directories: [graph_inc, types_inc],
+    dependencies: [jack],
     link_with: rage_graph)
 test('loader', test_loader)
 

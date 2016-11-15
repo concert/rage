@@ -109,11 +109,3 @@ rage_Error test() {
     rage_element_loader_free(el);
     RAGE_OK
 }
-
-int main() {
-    rage_Error e = test();
-    if (RAGE_FAILED(e)) {
-        printf("Failed: %s\n", RAGE_FAILURE_VALUE(e));
-        return 1;
-    }
-}
