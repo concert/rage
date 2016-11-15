@@ -9,7 +9,8 @@ types_inc = include_directories('types/include')
 sources = [
     'types/src/ports.c',
     'types/src/interpolation.c',
-    'types/src/time.c'
+    'types/src/time.c',
+    'types/src/events.c'
 ]
 
 rage_types = shared_library(

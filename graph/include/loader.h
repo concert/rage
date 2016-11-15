@@ -11,7 +11,7 @@ typedef struct {
     rage_TupleDef const * parameters;
     rage_ElementGetPortsDescription get_ports;
     rage_ElementStateNew state_new;
-    rage_ElementProcess run;
+    rage_ElementProcess process;
     rage_ElementStateFree state_free;
 } rage_ElementType;
 

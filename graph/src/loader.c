@@ -32,7 +32,7 @@ rage_ElementTypeLoadResult rage_element_loader_load(
     RAGE_ETL_MANDATORY_PARAM(state_new, elem_new)
     RAGE_ETL_MANDATORY_PARAM(state_free, elem_free)
     RAGE_ETL_MANDATORY_PARAM(get_ports, elem_describe_ports)
-    RAGE_ETL_MANDATORY_PARAM(run, elem_process)
+    RAGE_ETL_MANDATORY_PARAM(process, elem_process)
     #undef RAGE_ETL_MANDATORY_PARAM
     RAGE_SUCCEED(rage_ElementTypeLoadResult, type)
 }
@@ -60,4 +60,9 @@ void rage_element_free(rage_Element * elem) {
     rage_port_description_free(elem->ports);
     elem->type->state_free(elem->state);
     free(elem);
+}
+
+rage_Error rage_element_process(
+        rage_Element const * const elem, rage_Time time, rage_Port * ports) {
+    return elem->type->process(elem->state, time, ports);
 }

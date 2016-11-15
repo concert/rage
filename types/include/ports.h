@@ -37,7 +37,10 @@ typedef union {
     rage_EventFrame * events;
 } rage_OutPort;
 
-typedef union {
-    rage_InPort in;
-    rage_OutPort out;
+typedef struct {
+    rage_PortDescription const * desc;
+    union {
+        rage_InPort in;
+        rage_OutPort out;
+    };
 } rage_Port;

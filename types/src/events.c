@@ -6,7 +6,7 @@ rage_EventFrame * rage_event_frame_new(uint32_t capacity) {
     frame->buffer = malloc(capacity);
     frame->capacity = capacity;
     frame->fill = 0;
-    frame->elements = {.len = 0, .items = NULL};
+    frame->events = (rage_TimeSeries) {.len = 0, .items = NULL};
     return frame;
 }
 
