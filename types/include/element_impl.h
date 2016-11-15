@@ -10,7 +10,7 @@ rage_Error elem_process(void * state, rage_Time time, rage_Port * ports);
 
 
 // FIXME: there has got to be a better way/place than this
-rage_ElementGetPortsDescription _rage_check_pd = elem_describe_ports;
-rage_ElementStateNew _rage_check_esn = elem_new;
-rage_ElementStateFree _rage_check_esf = elem_free;
-rage_ElementProcess _rage_check_p = elem_process;
+rage_ElementGetPortsDescription rage_internal_check_pd = elem_describe_ports;
+rage_ElementStateNew rage_internal_check_esn = elem_new;
+rage_ElementStateFree rage_internal_check_esf = elem_free;
+rage_ElementProcess rage_internal_check_p = elem_process;
