@@ -17,6 +17,15 @@ rage_PortDescription * rage_port_description_copy(rage_PortDescription pd) {
     return npd;
 }
 
-void rage_port_description_free(rage_PortDescription * const pdp) {
-    free(pdp);
+void rage_port_description_free(rage_PortDescription * const pd) {
+    free(pd);
+}
+
+
+uint32_t rage_port_description_count(rage_PortDescription const * pd) {
+    uint32_t n_ports = 0;
+    for (; pd != NULL; pd = pd->next) {
+        n_ports++;
+    }
+    return n_ports;
 }

@@ -14,4 +14,6 @@ int main() {
         return 3;
     if (npd->stream_def != RAGE_STREAM_AUDIO)
         return 4;
+    if (rage_port_description_count(npd) != 1)
+        return 5;
 }

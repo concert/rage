@@ -37,13 +37,7 @@ rage_Tuple generate_valid_tuple(rage_TupleDef const * td) {
 typedef RAGE_ARRAY(rage_Port) rage_PortArray;
 
 rage_PortArray create_test_ports(rage_PortDescription const * port_desc) {
-    unsigned n_ports = 0;
-    for (
-            rage_PortDescription const * pd = port_desc;
-            pd != NULL;
-            pd = pd->next) {
-        n_ports++;
-    }
+    uint32_t n_ports = rage_port_description_count(port_desc);
     rage_Port * ports = calloc(n_ports, sizeof(rage_Port));
     unsigned port_idx = 0;
     for (

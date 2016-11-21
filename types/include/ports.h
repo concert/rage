@@ -25,7 +25,8 @@ typedef struct port_desc {
 } rage_PortDescription;
 
 rage_PortDescription * rage_port_description_copy(rage_PortDescription pd);
-void rage_port_description_free(rage_PortDescription * const pdp);
+void rage_port_description_free(rage_PortDescription * const pd);
+uint32_t rage_port_description_count(rage_PortDescription const * pd);
 
 typedef union {
     float const * samples;

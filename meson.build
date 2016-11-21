@@ -25,13 +25,13 @@ test_interpolation = executable(
 test_time = executable(
     'test_time', 'types/test/test_time.c', include_directories: types_inc,
     link_with: rage_types)
-test_eu = executable(
-    'test_eu', src=['types/test/test_ports.c'], include_directories: types_inc,
+test_ports = executable(
+    'test_ports', src=['types/test/test_ports.c'], include_directories: types_inc,
     link_with: rage_types)
 test('errors', test_errors)
 test('interpolation', test_interpolation)
 test('time', test_time)
-test('eu', test_eu)
+test('ports', test_ports)
 
 # Graph
 
