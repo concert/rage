@@ -1,4 +1,5 @@
 #include "engine.h"
+#include "loader.h"
 #include "macros.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,6 +11,7 @@ typedef struct {
 } rage_JackPortThing;
 
 struct rage_Harness {
+    rage_Element * elem;
     rage_Port * rage_ports;
     RAGE_ARRAY(rage_JackPortThing) jack_ports;
 };
@@ -30,6 +32,7 @@ static int process(jack_nframes_t nframes, void * arg) {
             harness->rage_ports[jpt->idx].out.samples = jack_port_get_buffer(
                 jpt->port, nframes);
         }
+        rage_element_process(harness->elem, (rage_Time) {.second=0}, harness->rage_ports);
     }
     return 0;
 }
@@ -90,9 +93,12 @@ rage_MountResult rage_engine_mount(rage_Engine * engine, rage_Element * elem, ch
                             jack_port_idx);
                         jack_port_t * new_port = jack_port_register(
                             engine->jack_client, port_name,
-                            JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
+                            JACK_DEFAULT_AUDIO_TYPE,
+                            (pd->is_input) ?
+                                JackPortIsInput : JackPortIsOutput,
+                            0);
                         harness->jack_ports.items[jack_port_idx].port = new_port;
-                        harness->jack_ports.items[jack_port_idx++].idx = port_idx;
+                        harness->jack_ports.items[jack_port_idx++].idx = port_idx - 1;
                         break;
                 }
                 break;
@@ -100,15 +106,21 @@ rage_MountResult rage_engine_mount(rage_Engine * engine, rage_Element * elem, ch
                 // FIXME: Copied from test util thingy
                 // FIXME: magic const for no of events
                 port->out.events = rage_event_frame_new(
-                    pd->event_def.len * 8 * sizeof(rage_Atom));
+                    pd->event_def.len * 8 * sizeof(rage_TimePoint));
                 // FIXME: Hideous empty event thing below should die:
                 port->out.events->events.len = 1;
                 port->out.events->events.items = (rage_TimePoint *) port->out.events->buffer;
+                // FIXME: this is a hack to boot
+                // And it leaks memory too
+                rage_Atom * atm = malloc(sizeof(rage_Atom));
+                atm->f = 1;
+                port->out.events->events.items[0].value = atm;
                 break;
         }
     }
     free(port_name);
     harness->rage_ports = ports;
+    harness->elem = elem;
     // FIXME: proper appending
     engine->harnesses.items = harness;
     engine->harnesses.len = 1;
