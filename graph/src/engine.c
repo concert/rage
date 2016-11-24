@@ -51,6 +51,19 @@ void rage_engine_free(rage_Engine * engine) {
     free(engine);
 }
 
+rage_Error rage_engine_start(rage_Engine * engine) {
+    if (jack_activate(engine->jack_client)) {
+        RAGE_ERROR("Unable to activate jack client");
+    }
+    RAGE_OK
+}
+
+rage_Error rage_engine_stop(rage_Engine * engine) {
+    //FIXME: handle errors
+    jack_deactivate(engine->jack_client);
+    RAGE_OK
+}
+
 rage_MountResult rage_engine_mount(rage_Engine * engine, rage_Element * elem, char const * name) {
     rage_Harness * const harness = malloc(sizeof(rage_Harness));
     char * const port_name = malloc(jack_port_name_size());
