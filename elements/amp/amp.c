@@ -46,10 +46,10 @@ rage_PortDescription * elem_describe_ports(rage_Tuple params) {
         // Too implicit that you get an audio output?
         // Should there be an enum for port direction, so one can go in both?
         prev = rage_port_description_copy((rage_PortDescription) {
-            .is_input = true,
             .next = prev
         });
         prev = rage_port_description_copy((rage_PortDescription) {
+            .is_input = true,
             .next = prev
         });
     }
