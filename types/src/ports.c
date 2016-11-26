@@ -1,31 +1,25 @@
 #include <stdlib.h>
 #include "ports.h"
 
-rage_PortDescription * rage_port_description_copy(rage_PortDescription pd) {
-    rage_PortDescription * npd = malloc(sizeof(rage_PortDescription));
-    npd->is_input = pd.is_input;
-    npd->type = pd.type;
-    npd->next = pd.next;
-    switch (pd.type) {
-        case (RAGE_PORT_STREAM):
-            npd->stream_def = pd.stream_def;
-            break;
-        case (RAGE_PORT_EVENT):
-            npd->event_def = pd.event_def;
-            break;
+rage_Ports rage_ports_new(rage_ProcessRequirements const * const requirements) {
+    rage_Ports ports;
+    ports.controls.len = requirements->controls.len;
+    ports.controls.items = calloc(requirements->controls.len, sizeof(rage_TimeSeries));
+    for (uint32_t i = 0; i < requirements->controls.len; i++) {
+        ports.controls.items[i] = rage_time_series_new(&requirements->controls.items[i]);
+        // FIXME: accessors instead of gain twiddling
+        ports.controls.items[i].items[0].value[0].f = 1;
     }
-    return npd;
+    ports.inputs = calloc(requirements->inputs.len, sizeof(rage_InStream));
+    ports.outputs = calloc(requirements->outputs.len, sizeof(rage_OutStream));
+    return ports;
 }
 
-void rage_port_description_free(rage_PortDescription * const pd) {
-    free(pd);
-}
-
-
-uint32_t rage_port_description_count(rage_PortDescription const * pd) {
-    uint32_t n_ports = 0;
-    for (; pd != NULL; pd = pd->next) {
-        n_ports++;
+void rage_ports_free(rage_Ports ports) {
+    for (uint32_t i = 0; i < ports.controls.len; i++) {
+        rage_time_series_free(ports.controls.items[i]);
     }
-    return n_ports;
+    free(ports.inputs);
+    free(ports.outputs);
+    free(ports.controls.items);
 }

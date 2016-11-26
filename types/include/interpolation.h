@@ -19,6 +19,12 @@ typedef struct {
 
 typedef RAGE_ARRAY(rage_TimePoint) rage_TimeSeries;
 
+rage_TimeSeries rage_time_series_new(rage_TupleDef const * const item_def);
+void rage_time_series_free(rage_TimeSeries ts);
+
+// New file here?
+
+
 typedef void (*rage_AtomInterpolator)(
     rage_Atom * const target, rage_Atom const * const start,
     rage_Atom const * const end, const float weight);

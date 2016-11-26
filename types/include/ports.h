@@ -1,47 +1,26 @@
 #pragma once
 
-#include <stdbool.h>
-#include "events.h"
-
-typedef enum {
-    RAGE_PORT_STREAM,
-    RAGE_PORT_EVENT
-} rage_PortType;
+#include "atoms.h"
+#include "interpolation.h"
 
 typedef enum {
     RAGE_STREAM_AUDIO
-} rage_StreamPortDef;
-
-typedef rage_TupleDef rage_EventPortDef;
-
-typedef struct port_desc {
-    bool is_input;
-    rage_PortType type;
-    union {
-        rage_StreamPortDef stream_def;
-        rage_EventPortDef event_def;
-    };
-    struct port_desc * next;
-} rage_PortDescription;
-
-rage_PortDescription * rage_port_description_copy(rage_PortDescription pd);
-void rage_port_description_free(rage_PortDescription * const pd);
-uint32_t rage_port_description_count(rage_PortDescription const * pd);
-
-typedef union {
-    float const * samples;
-    rage_EventFrame const * events;
-} rage_InPort;
-
-typedef union {
-    float * samples;
-    rage_EventFrame * events;
-} rage_OutPort;
+} rage_StreamDef;
 
 typedef struct {
-    rage_PortDescription const * desc;
-    union {
-        rage_InPort in;
-        rage_OutPort out;
-    };
-} rage_Port;
+    RAGE_ARRAY(rage_TupleDef const) controls;
+    RAGE_ARRAY(rage_StreamDef const) inputs;
+    RAGE_ARRAY(rage_StreamDef const) outputs;
+} rage_ProcessRequirements;
+
+typedef float const * rage_InStream;
+typedef float * rage_OutStream;
+
+typedef struct {
+    RAGE_ARRAY(rage_TimeSeries) controls;
+    rage_InStream * inputs;
+    rage_OutStream * outputs;
+} rage_Ports;
+
+rage_Ports rage_ports_new(rage_ProcessRequirements const * const requirements);
+void rage_ports_free(rage_Ports ports);

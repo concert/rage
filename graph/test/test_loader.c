@@ -34,54 +34,25 @@ rage_Tuple generate_valid_tuple(rage_TupleDef const * td) {
     return tup;
 }
 
-typedef RAGE_ARRAY(rage_Port) rage_PortArray;
-
-rage_PortArray create_test_ports(rage_PortDescription const * port_desc) {
-    uint32_t n_ports = rage_port_description_count(port_desc);
-    rage_Port * ports = calloc(n_ports, sizeof(rage_Port));
-    unsigned port_idx = 0;
-    for (
-            rage_PortDescription const * pd = port_desc;
-            pd != NULL;
-            pd = pd->next) {
-        rage_Port * port = &ports[port_idx++];
-        port->desc = pd;
-        switch (pd->type) {
-            case (RAGE_PORT_STREAM):
-                switch (pd->stream_def) {
-                    case (RAGE_STREAM_AUDIO):
-                        // FIXME: magic constant
-                        port->out.samples = calloc(256, sizeof(float));
-                        break;
-                }
-                break;
-            case (RAGE_PORT_EVENT):
-                // FIXME: magic const for no of events
-                port->out.events = rage_event_frame_new(
-                    pd->event_def.len * 8 * sizeof(rage_Atom));
-                // FIXME: Hideous empty event thing below should die:
-                port->out.events->events.len = 1;
-                port->out.events->events.items = (rage_TimePoint *) port->out.events->buffer;
-                break;
-        }
+static void new_stream_buffers(rage_Ports * ports, rage_ProcessRequirements requirements) {
+    uint32_t i;
+    for (i = 0; i < requirements.inputs.len; i++) {
+        ports->inputs[i] = calloc(256, sizeof(float));
     }
-    return (rage_PortArray) {.items=ports, .len=n_ports};
-}
-
-void free_test_ports(rage_PortArray ports) {
-    for (unsigned i=0; i < ports.len; i++) {
-        rage_Port * port = &ports.items[i];
-        switch (port->desc->type) {
-            case (RAGE_PORT_STREAM):
-                free(port->out.samples);
-                break;
-            case (RAGE_PORT_EVENT):
-                rage_event_frame_free(port->out.events);
-                break;
-        }
+    for (i = 0; i < requirements.outputs.len; i++) {
+        ports->outputs[i] = calloc(256, sizeof(float));
     }
 }
 
+static void free_stream_buffers(rage_Ports * ports, rage_ProcessRequirements requirements) {
+    uint32_t i;
+    for (i = 0; i < requirements.inputs.len; i++) {
+        free((void *) ports->inputs[i]);
+    }
+    for (i = 0; i < requirements.outputs.len; i++) {
+        free((void *) ports->outputs[i]);
+    }
+}
 
 rage_Error test() {
     rage_ElementLoader el = rage_element_loader_new();
@@ -93,9 +64,11 @@ rage_Error test() {
         rage_Tuple tup = generate_valid_tuple(et->parameters);
         rage_ElementNewResult elem_ = rage_element_new(et, 44100, 256, tup);
         RAGE_EXTRACT_VALUE(rage_Error, elem_, rage_Element * elem)
-        rage_PortArray ports = create_test_ports(elem->ports);
-        rage_element_process(elem, (rage_Time) {.second=0}, ports.items);
-        free_test_ports(ports);
+        rage_Ports ports = rage_ports_new(&elem->requirements);
+        new_stream_buffers(&ports, elem->requirements);
+        rage_element_process(elem, (rage_Time) {.second=0}, &ports);
+        free_stream_buffers(&ports, elem->requirements);
+        rage_ports_free(ports);
         rage_element_free(elem);
         free(tup);
         rage_element_loader_unload(el, et);

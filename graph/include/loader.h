@@ -18,7 +18,10 @@ typedef struct {
 typedef struct {
     rage_ElementType * type;
     void * state;
-    rage_PortDescription * ports;
+    union {
+        rage_ProcessRequirements;
+        rage_ProcessRequirements requirements;
+    };
 } rage_Element;
 
 typedef void * rage_ElementLoader;
@@ -40,4 +43,5 @@ rage_ElementNewResult rage_element_new(
     rage_Tuple params);
 void rage_element_free(rage_Element * elem);
 rage_Error rage_element_process(
-    rage_Element const * const elem, rage_Time time, rage_Port * ports);
+    rage_Element const * const elem, rage_Time time,
+    rage_Ports const * ports);

@@ -40,25 +40,25 @@ static rage_TupleDef const gain_def = {
     .items = gain_fields
 };
 
-rage_PortDescription * elem_describe_ports(rage_Tuple params) {
-    rage_PortDescription * prev = NULL;
-    for (unsigned i=0; i<params[0].i; i++) {
-        // Too implicit that you get an audio output?
-        // Should there be an enum for port direction, so one can go in both?
-        prev = rage_port_description_copy((rage_PortDescription) {
-            .next = prev
-        });
-        prev = rage_port_description_copy((rage_PortDescription) {
-            .is_input = true,
-            .next = prev
-        });
+rage_ProcessRequirements elem_describe_ports(rage_Tuple params) {
+    rage_ProcessRequirements rval;
+    rval.controls.len = 1;
+    rval.controls.items = &gain_def;
+    rage_StreamDef * stream_defs = calloc(params[0].i, sizeof(rage_StreamDef));
+    for (unsigned i = 0; i < params[0].i; i++) {
+        stream_defs[i] = RAGE_STREAM_AUDIO;
     }
-    return rage_port_description_copy((rage_PortDescription) {
-        .is_input = true,
-        .type = RAGE_PORT_EVENT,
-        .event_def = gain_def,
-        .next = prev
-    });
+    rval.inputs.len = params[0].i;
+    rval.inputs.items = stream_defs;
+    rval.outputs.len = params[0].i;
+    rval.outputs.items = stream_defs;
+    return rval;
+}
+
+void elem_free_port_description(rage_ProcessRequirements pr) {
+    // FIXME: too const requiring cast?
+    free((void *) pr.inputs.items);
+    free((void *) pr.outputs.items);
 }
 
 typedef struct {
@@ -85,13 +85,14 @@ void elem_free(void * state) {
     free(state);
 }
 
-rage_Error elem_process(void * state, rage_Time time, rage_Port * ports) {
+rage_Error elem_process(
+        void * state, rage_Time time, rage_Ports const * ports) {
     amp_data const * const data = (amp_data *) state;
     for (unsigned s = 0; s < data->frame_size; s++) {
         rage_Tuple gain = rage_interpolate(
-            data->interpolator, time, ports[0].in.events->events);
-        for (unsigned c = 1; c < data->n_channels; c += 2) {
-            ports[c+1].out.samples[s] = gain[0].f * ports[c].in.samples[s];
+            data->interpolator, time, ports->controls.items[0]);
+        for (unsigned c = 0; c < data->n_channels; c++) {
+            ports->outputs[c][s] = ports->inputs[c][s] * gain[0].f;
         }
         time = rage_time_add(time, data->sample_length);
     }

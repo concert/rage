@@ -1,6 +1,6 @@
 project('rage', 'c')
 
-add_global_arguments('-std=c11', '-Werror', language: 'c')
+add_global_arguments('-std=c11', '-Werror', '-fms-extensions', language: 'c')
 
 # Types
 

@@ -48,21 +48,20 @@ rage_ElementNewResult rage_element_new(
     rage_NewElementState new_state = type->state_new(
         sample_rate, frame_size, params);
     RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_state, void * state)
-    rage_PortDescription * pd = type->get_ports(state);
     rage_Element * const elem = malloc(sizeof(rage_Element));
     elem->type = type;
     elem->state = state;
-    elem->ports = pd;
+    elem->requirements = type->get_ports(state);
     RAGE_SUCCEED(rage_ElementNewResult, elem);
 }
 
 void rage_element_free(rage_Element * elem) {
-    rage_port_description_free(elem->ports);
     elem->type->state_free(elem->state);
     free(elem);
 }
 
 rage_Error rage_element_process(
-        rage_Element const * const elem, rage_Time time, rage_Port * ports) {
+        rage_Element const * const elem, rage_Time time,
+        rage_Ports const * ports) {
     return elem->type->process(elem->state, time, ports);
 }
