@@ -8,7 +8,7 @@ rage_TimeSeries rage_time_series_new(rage_TupleDef const * const item_def) {
     rage_TimePoint * tp = malloc(sizeof(rage_TimePoint));
     tp->time.second = 0;
     tp->time.fraction = 0;
-    tp->value = malloc(sizeof(rage_Atom));
+    tp->value = rage_tuple_generate(item_def);
     tp->value[0].f = 0;
     tp->mode = RAGE_INTERPOLATION_CONST;
     ts.items = tp;
