@@ -60,3 +60,5 @@ typedef union {
 } rage_Atom;
 
 typedef rage_Atom * rage_Tuple;
+
+rage_Tuple rage_tuple_generate(rage_TupleDef const * const td);

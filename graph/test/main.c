@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "test_loader.c"
 #include "test_engine.c"
 
