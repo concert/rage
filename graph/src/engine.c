@@ -1,6 +1,7 @@
 #include "engine.h"
 #include "loader.h"
 #include "macros.h"
+#include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <jack/jack.h>
@@ -15,6 +16,9 @@ struct rage_Harness {
     jack_port_t ** jack_inputs;
     uint32_t n_outputs;
     jack_port_t ** jack_outputs;
+    rage_TimeSeries * target_controls;
+    pthread_cond_t control_changed;
+    pthread_mutex_t control_lock;
 };
 
 struct rage_Engine {
@@ -32,6 +36,11 @@ static int process(jack_nframes_t nframes, void * arg) {
         }
         for (i = 0; i < harness->n_outputs; i++) {
             harness->outputs[i] = jack_port_get_buffer(harness->jack_outputs[i], nframes);
+        }
+        if (pthread_mutex_trylock(&harness->control_lock) == 0) {
+            harness->controls.items = harness->target_controls;
+            pthread_cond_signal(&harness->control_changed);
+            pthread_mutex_unlock(&harness->control_lock);
         }
         // FIXME: time
         rage_element_process(
@@ -58,6 +67,10 @@ void rage_engine_free(rage_Engine * engine) {
 }
 
 rage_Error rage_engine_start(rage_Engine * engine) {
+    for (uint32_t hid = 0; hid < engine->harnesses.len; hid++) {
+        rage_Harness * harness = &engine->harnesses.items[hid];
+        pthread_mutex_trylock(&harness->control_lock);
+    }
     if (jack_activate(engine->jack_client)) {
         RAGE_ERROR("Unable to activate jack client");
     }
@@ -67,6 +80,10 @@ rage_Error rage_engine_start(rage_Engine * engine) {
 rage_Error rage_engine_stop(rage_Engine * engine) {
     //FIXME: handle errors
     jack_deactivate(engine->jack_client);
+    for (uint32_t hid = 0; hid < engine->harnesses.len; hid++) {
+        rage_Harness * harness = &engine->harnesses.items[hid];
+        pthread_mutex_unlock(&harness->control_lock);
+    }
     RAGE_OK
 }
 
@@ -99,6 +116,9 @@ rage_MountResult rage_engine_mount(rage_Engine * engine, rage_Element * elem, ch
     harness->elem = elem;
     harness->n_inputs = elem->inputs.len;
     harness->n_outputs = elem->outputs.len;
+    // Atomic control change sync stuff
+    pthread_cond_init(&harness->control_changed, NULL);
+    pthread_mutex_init(&harness->control_lock, NULL);
     // FIXME: proper appending
     engine->harnesses.items = harness;
     engine->harnesses.len = 1;
@@ -120,5 +140,19 @@ void rage_engine_unmount(rage_Engine * engine, rage_Harness * harness) {
     }
     free(harness->jack_inputs);
     free(harness->jack_outputs);
+    pthread_mutex_destroy(&harness->control_lock);
+    pthread_cond_destroy(&harness->control_changed);
     free(harness);
+}
+
+void rage_harness_set_time_series(
+        rage_Harness * const harness,
+        rage_TimeSeries * const new_controls) {
+    // FIXME: freeing the old one!
+    if (pthread_mutex_trylock(&harness->control_lock) == 0) {
+        harness->controls.items = new_controls;
+    } else {
+        harness->target_controls = new_controls;
+        pthread_cond_wait(&harness->control_changed, &harness->control_lock);
+    }
 }

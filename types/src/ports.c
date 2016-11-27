@@ -6,9 +6,8 @@ rage_Ports rage_ports_new(rage_ProcessRequirements const * const requirements) {
     ports.controls.len = requirements->controls.len;
     ports.controls.items = calloc(requirements->controls.len, sizeof(rage_TimeSeries));
     for (uint32_t i = 0; i < requirements->controls.len; i++) {
-        ports.controls.items[i] = rage_time_series_new(&requirements->controls.items[i]);
-        // FIXME: accessors instead of gain twiddling
-        ports.controls.items[i].items[0].value[0].f = 1;
+        ports.controls.items[i] = rage_time_series_new(
+            &requirements->controls.items[i]);
     }
     ports.inputs = calloc(requirements->inputs.len, sizeof(rage_InStream));
     ports.outputs = calloc(requirements->outputs.len, sizeof(rage_OutStream));
