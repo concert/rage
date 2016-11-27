@@ -1,7 +1,7 @@
 #pragma once
 
 #include "atoms.h"
-#include "interpolation.h"
+#include "time_series.h"
 
 typedef enum {
     RAGE_STREAM_AUDIO

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "interpolation.h"
+#include "time_series.h"
 
 typedef struct {
     rage_TimeSeries events;
