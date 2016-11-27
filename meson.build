@@ -63,3 +63,10 @@ test('loader', test_loader)
 amp_sources = ['elements/amp/amp.c']
 amp = shared_library(
     'amp', amp_sources, include_directories: types_inc, link_with: rage_types)
+
+# Example
+
+example_sources = ['example/main.c']
+example = executable(
+    'example', example_sources, include_directories: [types_inc, graph_inc],
+    link_with: [rage_types, rage_graph], dependencies: [jack])
