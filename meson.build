@@ -10,7 +10,6 @@ sources = [
     'types/src/ports.c',
     'types/src/interpolation.c',
     'types/src/time.c',
-    'types/src/events.c',
     'types/src/time_series.c'
 ]
 
