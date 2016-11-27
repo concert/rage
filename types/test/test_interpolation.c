@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "interpolation.h"
 
-int check(
+static int check(
         rage_Interpolator interpolator, rage_TimeSeries ts, uint32_t second,
         float expected) {
     float got = rage_interpolate(interpolator, (rage_Time) {.second=second}, ts)[0].f;
@@ -12,7 +12,7 @@ int check(
     return 0;
 }
 
-int checks(rage_Interpolator interpolator, rage_TimeSeries ts) {
+static int checks(rage_Interpolator interpolator, rage_TimeSeries ts) {
     if (check(interpolator, ts, 0, 0.0))
         return 1;
     if (check(interpolator, ts, 1, 0.5))
