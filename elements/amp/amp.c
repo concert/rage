@@ -58,7 +58,6 @@ rage_ProcessRequirements elem_describe_ports(rage_Tuple params) {
 void elem_free_port_description(rage_ProcessRequirements pr) {
     // FIXME: too const requiring cast?
     free((void *) pr.inputs.items);
-    free((void *) pr.outputs.items);
 }
 
 typedef struct {
