@@ -62,7 +62,6 @@ void elem_free_port_description(rage_ProcessRequirements pr) {
 
 typedef struct {
     unsigned n_channels;
-    rage_Interpolator * interpolator;
     uint32_t frame_size; // Doesn't everyone HAVE to do this?
 } amp_data;
 
