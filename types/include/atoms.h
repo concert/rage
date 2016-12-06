@@ -59,6 +59,6 @@ typedef union {
     char * s;
 } rage_Atom;
 
-typedef rage_Atom * rage_Tuple;
-
-rage_Tuple rage_tuple_generate(rage_TupleDef const * const td);
+rage_Atom * rage_tuple_generate(rage_TupleDef const * const td);
+rage_Atom * rage_tuple_copy(rage_TupleDef const * const td, rage_Atom const * const tup);
+void rage_tuple_free(rage_TupleDef const * const td, rage_Atom * const tup);

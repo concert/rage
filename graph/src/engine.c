@@ -16,7 +16,7 @@ struct rage_Harness {
     jack_port_t ** jack_inputs;
     uint32_t n_outputs;
     jack_port_t ** jack_outputs;
-    rage_TimeSeries * target_controls;
+    rage_Interpolator ** target_controls;
     pthread_cond_t control_changed;
     pthread_mutex_t control_lock;
 };
@@ -38,13 +38,12 @@ static int process(jack_nframes_t nframes, void * arg) {
             harness->outputs[i] = jack_port_get_buffer(harness->jack_outputs[i], nframes);
         }
         if (pthread_mutex_trylock(&harness->control_lock) == 0) {
-            harness->controls.items = harness->target_controls;
+            harness->controls = harness->target_controls;
             pthread_cond_signal(&harness->control_changed);
             pthread_mutex_unlock(&harness->control_lock);
         }
-        // FIXME: time
-        rage_element_process(
-            harness->elem, (rage_Time) {.second=0}, &harness->ports);
+        // FIXME: interpolator clock sync
+        rage_element_process(harness->elem, &harness->ports);
     }
     return 0;
 }
@@ -117,6 +116,7 @@ rage_MountResult rage_engine_mount(rage_Engine * engine, rage_Element * elem, ch
     harness->n_inputs = elem->inputs.len;
     harness->n_outputs = elem->outputs.len;
     // Atomic control change sync stuff
+    harness->target_controls = harness->ports.controls;
     pthread_cond_init(&harness->control_changed, NULL);
     pthread_mutex_init(&harness->control_lock, NULL);
     // FIXME: proper appending
@@ -148,11 +148,29 @@ void rage_engine_unmount(rage_Engine * engine, rage_Harness * harness) {
 void rage_harness_set_time_series(
         rage_Harness * const harness,
         rage_TimeSeries * const new_controls) {
-    // FIXME: freeing the old one!
+    // FIXME: can fail!
+    uint32_t const n_controls = harness->elem->controls.len;
+    rage_Interpolator ** new_interpolators = calloc(n_controls, sizeof(rage_Interpolator *));
+    for (uint32_t i = 0; i < n_controls; i++) {
+        // FIXME: const sample rate
+        rage_InitialisedInterpolator ii = rage_interpolator_new(
+            &harness->elem->controls.items[i], &new_controls[i], 44100);
+        // FIXME: error handling!
+        new_interpolators[i] = RAGE_SUCCESS_VALUE(ii);
+    }
+    rage_Interpolator ** old_interpolators = harness->target_controls;
+    harness->target_controls = new_interpolators;
     if (pthread_mutex_trylock(&harness->control_lock) == 0) {
-        harness->controls.items = new_controls;
+        harness->controls = new_interpolators;
     } else {
-        harness->target_controls = new_controls;
         pthread_cond_wait(&harness->control_changed, &harness->control_lock);
     }
+    for (uint32_t i = 0; i < n_controls; i++) {
+        // FIXME: initialise with value eliminating this
+        if (old_interpolators[i] != NULL) {
+            rage_interpolator_free(
+                &harness->elem->controls.items[i], old_interpolators[i]);
+        }
+    }
+    free(old_interpolators);
 }

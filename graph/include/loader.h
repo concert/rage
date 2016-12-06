@@ -40,8 +40,7 @@ void rage_element_loader_unload(
 typedef RAGE_OR_ERROR(rage_Element *) rage_ElementNewResult;
 rage_ElementNewResult rage_element_new(
     rage_ElementType * type, uint32_t sample_rate, uint32_t frame_size,
-    rage_Tuple params);
+    rage_Atom * params);
 void rage_element_free(rage_Element * elem);
 rage_Error rage_element_process(
-    rage_Element const * const elem, rage_Time time,
-    rage_Ports const * ports);
+    rage_Element const * const elem, rage_Ports const * ports);

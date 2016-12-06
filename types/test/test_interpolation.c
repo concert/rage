@@ -2,28 +2,29 @@
 #include "interpolation.h"
 
 static int check(
-        rage_Interpolator interpolator, rage_TimeSeries ts, uint32_t second,
+        rage_Interpolator * interpolator, rage_FrameNo consume,
         float expected) {
-    float got = rage_interpolate(interpolator, (rage_Time) {.second=second}, ts)[0].f;
+    rage_InterpolatedValue val = rage_interpolate(interpolator, consume);
+    float got = val.value[0].f;
     if (got != expected) {
-        printf("%u: %f != %f", second, got, expected);
+        printf("%f != %f", got, expected);
         return 1;
     }
     return 0;
 }
 
-static int checks(rage_Interpolator interpolator, rage_TimeSeries ts) {
-    if (check(interpolator, ts, 0, 0.0))
+static int checks(rage_Interpolator * interpolator) {
+    if (check(interpolator, 0, 0.0))
         return 1;
-    if (check(interpolator, ts, 1, 0.5))
+    if (check(interpolator, 1, 0.5))
         return 1;
-    if (check(interpolator, ts, 2, 1.0))
+    if (check(interpolator, 1, 1.0))
         return 1;
-    if (check(interpolator, ts, 3, 1.0))
+    if (check(interpolator, 1, 1.0))
         return 1;
-    if (check(interpolator, ts, 4, 2.0))
+    if (check(interpolator, 1, 2.0))
         return 1;
-    if (check(interpolator, ts, 5, 2.0))
+    if (check(interpolator, 1, 2.0))
         return 1;
     return 0;
 }
@@ -63,13 +64,13 @@ int main() {
         .len = 3,
         .items = tps
     };
-    rage_InitialisedInterpolator ii = rage_interpolator_new(td);
+    rage_InitialisedInterpolator ii = rage_interpolator_new(&td, &ts, 1);
     if (RAGE_FAILED(ii)) {
         printf("Interpolator init failed: %s", RAGE_FAILURE_VALUE(ii));
         return 2;
     }
-    rage_Interpolator interpolator = RAGE_SUCCESS_VALUE(ii);
-    int rv = checks(interpolator, ts);
-    rage_interpolator_free(interpolator);
+    rage_Interpolator * interpolator = RAGE_SUCCESS_VALUE(ii);
+    int rv = checks(interpolator);
+    rage_interpolator_free(&td, interpolator);
     return rv;
 }

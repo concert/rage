@@ -5,20 +5,27 @@
 #include "error.h"
 #include "time_series.h"
 
+typedef uint64_t rage_FrameNo;
 
-typedef void (*rage_AtomInterpolator)(
-    rage_Atom * const target, rage_Atom const * const start,
-    rage_Atom const * const end, const float weight);
+typedef struct rage_Interpolator rage_Interpolator;
 
 typedef struct {
-    uint32_t len;
-    rage_AtomInterpolator * interpolators;
-    rage_Tuple value;
-} rage_Interpolator_;
-typedef rage_Interpolator_ * rage_Interpolator;
-typedef RAGE_OR_ERROR(rage_Interpolator) rage_InitialisedInterpolator;
+    rage_Atom * value;
+    rage_FrameNo valid_for;
+} rage_InterpolatedValue;
 
-rage_InitialisedInterpolator rage_interpolator_new(rage_TupleDef type);
-void rage_interpolator_free(rage_Interpolator state);
-rage_Tuple rage_interpolate(
-    rage_Interpolator state, rage_Time time, rage_TimeSeries points);
+// Should this return a pointer?
+rage_InterpolatedValue rage_interpolate(
+    rage_Interpolator * state, rage_FrameNo consumed);
+
+// FIXME: different headers?
+
+typedef RAGE_OR_ERROR(rage_Interpolator *) rage_InitialisedInterpolator;
+
+rage_InitialisedInterpolator rage_interpolator_new(
+    rage_TupleDef const * const type, rage_TimeSeries const * points,
+    uint32_t const sample_rate);
+void rage_interpolator_free(
+    rage_TupleDef const * const type, rage_Interpolator * state);
+
+void rage_interpolator_seek(rage_Interpolator * state, rage_FrameNo pos);

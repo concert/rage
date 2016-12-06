@@ -1,7 +1,7 @@
 #pragma once
 
 #include "atoms.h"
-#include "time_series.h"
+#include "interpolation.h"
 
 typedef enum {
     RAGE_STREAM_AUDIO
@@ -17,7 +17,7 @@ typedef float const * rage_InStream;
 typedef float * rage_OutStream;
 
 typedef struct {
-    RAGE_ARRAY(rage_TimeSeries) controls;
+    rage_Interpolator ** controls;
     rage_InStream * inputs;
     rage_OutStream * outputs;
 } rage_Ports;

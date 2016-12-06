@@ -44,7 +44,7 @@ void rage_element_loader_unload(
 
 rage_ElementNewResult rage_element_new(
         rage_ElementType * type, uint32_t sample_rate, uint32_t frame_size,
-        rage_Tuple params) {
+        rage_Atom * params) {
     rage_NewElementState new_state = type->state_new(
         sample_rate, frame_size, params);
     RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_state, void * state)
@@ -61,7 +61,6 @@ void rage_element_free(rage_Element * elem) {
 }
 
 rage_Error rage_element_process(
-        rage_Element const * const elem, rage_Time time,
-        rage_Ports const * ports) {
-    return elem->type->process(elem->state, time, ports);
+        rage_Element const * const elem, rage_Ports const * ports) {
+    return elem->type->process(elem->state, ports);
 }

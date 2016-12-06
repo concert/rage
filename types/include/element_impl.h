@@ -2,12 +2,12 @@
 #include "element.h"
 
 rage_TupleDef const init_params;
-rage_ProcessRequirements elem_describe_ports(rage_Tuple params);
+rage_ProcessRequirements elem_describe_ports(rage_Atom * params);
 void elem_free_port_description(rage_ProcessRequirements pr);
 rage_NewElementState elem_new(
-    uint32_t sample_rate, uint32_t frame_size, rage_Tuple params);
+    uint32_t sample_rate, uint32_t frame_size, rage_Atom * params);
 void elem_free(void * state);
-rage_Error elem_process(void * state, rage_Time time, rage_Ports const * ports);
+rage_Error elem_process(void * state, rage_Ports const * ports);
 
 
 // FIXME: there has got to be a better way/place than this

@@ -6,15 +6,15 @@
 
 // FIXME: This feels like it should be coming from interpolation somehow?
 typedef enum {
-    RAGE_INTERPOLATION_CONST,
-    RAGE_INTERPOLATION_LINEAR
+    RAGE_INTERPOLATION_CONST = 0x01,
+    RAGE_INTERPOLATION_LINEAR = 0x02
 } rage_InterpolationMode;
 
 typedef struct {
     rage_Time time;
-    rage_Tuple value;
+    rage_Atom * value;
     rage_InterpolationMode mode;
-    // rage_Tuple interpolation_args;
+    // rage_Atom * interpolation_args;
 } rage_TimePoint;
 
 typedef RAGE_ARRAY(rage_TimePoint) rage_TimeSeries;

@@ -40,7 +40,7 @@ static rage_TupleDef const gain_def = {
     .items = gain_fields
 };
 
-rage_ProcessRequirements elem_describe_ports(rage_Tuple params) {
+rage_ProcessRequirements elem_describe_ports(rage_Atom * params) {
     rage_ProcessRequirements rval;
     rval.controls.len = 1;
     rval.controls.items = &gain_def;
@@ -62,20 +62,15 @@ void elem_free_port_description(rage_ProcessRequirements pr) {
 
 typedef struct {
     unsigned n_channels;
-    rage_Interpolator interpolator;
-    rage_Time sample_length; // Good idea?
+    rage_Interpolator * interpolator;
     uint32_t frame_size; // Doesn't everyone HAVE to do this?
 } amp_data;
 
 rage_NewElementState elem_new(
-        uint32_t sample_rate, uint32_t frame_size, rage_Tuple params) {
+        uint32_t sample_rate, uint32_t frame_size, rage_Atom * params) {
     amp_data * ad = malloc(sizeof(amp_data));
     // Not sure I like way the indices tie up here
     ad->n_channels = params[0].i;
-    rage_InitialisedInterpolator interpolator = rage_interpolator_new(
-        gain_def);
-    RAGE_EXTRACT_VALUE(rage_NewElementState, interpolator, ad->interpolator)
-    ad->sample_length = rage_time_sample_length(sample_rate);
     ad->frame_size = frame_size;
     RAGE_SUCCEED(rage_NewElementState, (void *) ad);
 }
@@ -85,15 +80,14 @@ void elem_free(void * state) {
 }
 
 rage_Error elem_process(
-        void * state, rage_Time time, rage_Ports const * ports) {
+        void * state, rage_Ports const * ports) {
     amp_data const * const data = (amp_data *) state;
+    rage_Atom * gain = rage_interpolate(ports->controls[0], 0).value;
     for (unsigned s = 0; s < data->frame_size; s++) {
-        rage_Tuple gain = rage_interpolate(
-            data->interpolator, time, ports->controls.items[0]);
         for (unsigned c = 0; c < data->n_channels; c++) {
             ports->outputs[c][s] = ports->inputs[c][s] * gain[0].f;
         }
-        time = rage_time_add(time, data->sample_length);
+        gain = rage_interpolate(ports->controls[0], 1).value;
     }
     RAGE_OK
 }
