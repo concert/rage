@@ -110,6 +110,7 @@ static rage_InterpolationMode allowed_interpolators(
                 break;
             case (RAGE_ATOM_TIME):
             case (RAGE_ATOM_STRING):
+            case (RAGE_ATOM_ENUM):
                 m = RAGE_INTERPOLATION_CONST;
                 break;
         }
@@ -139,6 +140,7 @@ rage_InitialisedInterpolator rage_interpolator_new(
                 break;
             case (RAGE_ATOM_TIME):
             case (RAGE_ATOM_STRING):
+            case (RAGE_ATOM_ENUM):
                 state->interpolators[i] = NULL;
         }
     }

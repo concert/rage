@@ -28,6 +28,7 @@ rage_Atom * rage_tuple_generate(rage_TupleDef const * const td) {
             }
             case RAGE_ATOM_TIME:
             case RAGE_ATOM_STRING:
+            case RAGE_ATOM_ENUM:
                 assert(false);
         }
     }
@@ -42,6 +43,7 @@ rage_Atom * rage_tuple_copy(rage_TupleDef const * const td, rage_Atom const * co
             case RAGE_ATOM_INT:
             case RAGE_ATOM_FLOAT:
             case RAGE_ATOM_TIME:
+            case RAGE_ATOM_ENUM:
                 copy[i] = orig[i];
                 break;
             case RAGE_ATOM_STRING:
@@ -63,6 +65,7 @@ void rage_tuple_free(rage_TupleDef const * const td, rage_Atom * const tup) {
             case RAGE_ATOM_INT:
             case RAGE_ATOM_FLOAT:
             case RAGE_ATOM_TIME:
+            case RAGE_ATOM_ENUM:
                 break;
         }
     }

@@ -22,11 +22,19 @@ typedef RAGE_MINMAX(rage_Time) rage_TimeConstraints;
 
 typedef RAGE_MAYBE(char const *) rage_StringConstraints;
 
+typedef struct {
+    int value;
+    char * name;
+} rage_EnumOpt;
+
+typedef RAGE_ARRAY(rage_EnumOpt) rage_EnumConstraints;
+
 typedef enum {
     RAGE_ATOM_INT,
     RAGE_ATOM_FLOAT,
     RAGE_ATOM_TIME,
-    RAGE_ATOM_STRING
+    RAGE_ATOM_STRING,
+    RAGE_ATOM_ENUM
 } rage_AtomType;
 
 typedef struct {
@@ -37,6 +45,7 @@ typedef struct {
         rage_FloatConstraints f;
         rage_TimeConstraints t;
         rage_StringConstraints s;
+        rage_EnumConstraints e;
     } constraints;
 } rage_AtomDef;
 
@@ -57,6 +66,7 @@ typedef union {
     float f;
     rage_Time t;
     char * s;
+    int e;
 } rage_Atom;
 
 rage_Atom * rage_tuple_generate(rage_TupleDef const * const td);
