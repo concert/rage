@@ -27,7 +27,7 @@ typedef struct {
     char * name;
 } rage_EnumOpt;
 
-typedef RAGE_ARRAY(rage_EnumOpt) rage_EnumConstraints;
+typedef RAGE_ARRAY(rage_EnumOpt const) rage_EnumConstraints;
 
 typedef enum {
     RAGE_ATOM_INT,
