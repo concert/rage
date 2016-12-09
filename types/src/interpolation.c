@@ -38,7 +38,6 @@ struct rage_Interpolator {
 
 static rage_Error validate_time_series(
         rage_TimeSeries const * points, rage_InterpolationMode allowed_modes) {
-    // FIXME: validate at least 1 point at 0, check times are monotonic
     if (points->len == 0) {
         RAGE_ERROR("No points in time series");
     }
