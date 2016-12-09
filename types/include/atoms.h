@@ -67,6 +67,7 @@ typedef union {
     rage_Time t;
     char * s;
     int e;
+    rage_FrameNo frame_no;
 } rage_Atom;
 
 rage_Atom * rage_tuple_generate(rage_TupleDef const * const td);

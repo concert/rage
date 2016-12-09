@@ -5,8 +5,6 @@
 #include "error.h"
 #include "time_series.h"
 
-typedef uint64_t rage_FrameNo;
-
 typedef struct rage_Interpolator rage_Interpolator;
 
 typedef struct {
