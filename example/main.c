@@ -2,7 +2,7 @@
 #include <unistd.h> // for sleep
 #include "error.h"
 #include "loader.h"
-#include "engine.h"
+#include "harness.h"
 
 int main() {
     printf("Example started\n");

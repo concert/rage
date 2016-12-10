@@ -46,7 +46,7 @@ graph_inc = include_directories('graph/include')
 # At some point this should become an executable:
 rage_graph = static_library(
     'rage_graph',
-    ['graph/src/loader.c', 'graph/src/engine.c'],
+    ['graph/src/loader.c', 'graph/src/harness.c'],
     include_directories: [graph_inc, types_inc],
     dependencies: [dyn_load],
     link_with: rage_types)

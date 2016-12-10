@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "test_loader.c"
-#include "test_engine.c"
+#include "test_harness.c"
 
 typedef rage_Error (*rage_TestFunc)();
 
@@ -8,7 +8,7 @@ int main() {
     unsigned const len = 2;
     rage_TestFunc tests[] = {
         test,
-        test_engine
+        test_harness
     };
     for (unsigned i=0; i < len; i++) {
         rage_Error e = tests[i]();
