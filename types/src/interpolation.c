@@ -33,7 +33,7 @@ struct rage_Interpolator {
     rage_Atom * value;
     rage_FrameNo pos;
     rage_FrameSeries points;
-    // FIXME: transport state
+    rage_TransportState transport;
 };
 
 static rage_Error validate_time_series(
@@ -119,7 +119,7 @@ static rage_InterpolationMode allowed_interpolators(
 
 rage_InitialisedInterpolator rage_interpolator_new(
         rage_TupleDef const * const type, rage_TimeSeries const * points,
-        uint32_t const sample_rate) {
+        uint32_t const sample_rate, rage_TransportState transport) {
     rage_Error err = validate_time_series(points, allowed_interpolators(type));
     if (RAGE_FAILED(err)) {
         RAGE_FAIL(rage_InitialisedInterpolator, RAGE_FAILURE_VALUE(err));
@@ -144,6 +144,7 @@ rage_InitialisedInterpolator rage_interpolator_new(
         }
     }
     state->points = as_frameseries(type, points, sample_rate);
+    state->transport = transport;
     RAGE_SUCCEED(rage_InitialisedInterpolator, state);
 }
 
@@ -160,7 +161,13 @@ rage_InterpolatedValue rage_interpolate(
     rage_FramePoint const * start = NULL;
     rage_FramePoint const * end = NULL;
     unsigned i;
-    state->pos += consumed;
+    switch (state->transport) {
+        case RAGE_TRANSPORT_ROLLING:
+            state->pos += consumed;
+        case RAGE_TRANSPORT_STOPPED:
+            // FIXME: also value valid for remainder of the frame
+            break;
+    }
     for (i = 0; i < state->points.len; i++) {
         if (state->points.items[i].frame > state->pos) {
             end = &(state->points.items[i]);
@@ -184,4 +191,14 @@ rage_InterpolatedValue rage_interpolate(
         }
         return (rage_InterpolatedValue) {.value=state->value, .valid_for=1};
     }
+}
+
+void rage_interpolator_set_transport_state(
+        rage_Interpolator * state, rage_TransportState transport) {
+    state->transport = transport;
+}
+
+rage_TransportState rage_interpolator_get_transport_state(
+        rage_Interpolator * state) {
+    return state->transport;
 }

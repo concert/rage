@@ -42,7 +42,7 @@ static int process(jack_nframes_t nframes, void * arg) {
             pthread_cond_signal(&harness->control_changed);
             pthread_mutex_unlock(&harness->control_lock);
         }
-        // FIXME: interpolator clock sync
+        // FIXME: interpolator clock&transport sync
         rage_element_process(harness->elem, &harness->ports);
     }
     return 0;
@@ -154,7 +154,7 @@ void rage_harness_set_time_series(
     for (uint32_t i = 0; i < n_controls; i++) {
         // FIXME: const sample rate
         rage_InitialisedInterpolator ii = rage_interpolator_new(
-            &harness->elem->controls.items[i], &new_controls[i], 44100);
+            &harness->elem->controls.items[i], &new_controls[i], 44100, RAGE_TRANSPORT_STOPPED);
         // FIXME: error handling!
         new_interpolators[i] = RAGE_SUCCESS_VALUE(ii);
     }

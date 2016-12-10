@@ -25,7 +25,7 @@ static rage_Error new_interpolators(rage_Ports * ports, rage_ProcessRequirements
     for (uint32_t i = 0; i < requirements.controls.len; i++) {
         rage_TimeSeries ts = rage_time_series_new(&requirements.controls.items[i]);
         rage_InitialisedInterpolator ii = rage_interpolator_new(
-            &requirements.controls.items[i], &ts, 44100);
+            &requirements.controls.items[i], &ts, 44100, RAGE_TRANSPORT_STOPPED);
         rage_time_series_free(ts);
         RAGE_EXTRACT_VALUE(rage_Error, ii, ports->controls[i])
     }
