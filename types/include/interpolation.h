@@ -3,6 +3,7 @@
 #include "time.h"
 #include "atoms.h"
 #include "error.h"
+#include "transport_state.h"
 #include "time_series.h"
 
 typedef struct rage_Interpolator rage_Interpolator;
