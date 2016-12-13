@@ -52,7 +52,7 @@ rage_Error test() {
         rage_Ports ports = rage_ports_new(&elem->requirements);
         new_stream_buffers(&ports, elem->requirements);
         new_interpolators(&ports, elem->requirements);
-        rage_element_process(elem, &ports);
+        rage_element_process(elem, RAGE_TRANSPORT_ROLLING, &ports);
         free_interpolators(&ports, elem->requirements);
         free_stream_buffers(&ports, elem->requirements);
         rage_ports_free(ports);

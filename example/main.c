@@ -39,16 +39,6 @@ int main() {
     }
     rage_Element * const elem = RAGE_SUCCESS_VALUE(elem_);
     printf("Element loaded\n");
-    rage_MountResult mr = rage_engine_mount(e, elem, "amp");
-    if (RAGE_FAILED(mr)) {
-        printf("Mount failed\n");
-        rage_element_free(elem);
-        rage_element_loader_unload(el, et);
-        rage_element_loader_free(el);
-        rage_engine_free(e);
-        return 4;
-    }
-    rage_Harness * const harness = RAGE_SUCCESS_VALUE(mr);
     rage_Atom vals[] = {{.f = 0.01}};
     rage_TimePoint tps[] = {
         {
@@ -61,6 +51,16 @@ int main() {
         .len = 1,
         .items = tps
     };
+    rage_MountResult mr = rage_engine_mount(e, elem, &ts, "amp");
+    if (RAGE_FAILED(mr)) {
+        printf("Mount failed\n");
+        rage_element_free(elem);
+        rage_element_loader_unload(el, et);
+        rage_element_loader_free(el);
+        rage_engine_free(e);
+        return 4;
+    }
+    rage_Harness * const harness = RAGE_SUCCESS_VALUE(mr);
     rage_harness_set_time_series(harness, &ts);
     //FIXME: handle errors (start/stop)
     printf("Starting engine...\n");
@@ -72,7 +72,7 @@ int main() {
         sleep(90);
         rage_engine_stop(e);
     }
-    rage_engine_unmount(e, harness);
+    rage_engine_unmount(harness);
     printf("Unmounted\n");
     rage_element_free(elem);
     printf("Elem freed\n");

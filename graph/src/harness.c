@@ -6,7 +6,14 @@
 #include <stdio.h>
 #include <jack/jack.h>
 
+struct rage_Engine {
+    jack_client_t * jack_client;
+    RAGE_ARRAY(rage_Harness) harnesses;
+    rage_TransportState transport;
+};
+
 struct rage_Harness {
+    rage_Engine * engine;
     rage_Element * elem;
     union {
         rage_Ports;
@@ -19,11 +26,6 @@ struct rage_Harness {
     rage_Interpolator ** target_controls;
     pthread_cond_t control_changed;
     pthread_mutex_t control_lock;
-};
-
-struct rage_Engine {
-    jack_client_t * jack_client;
-    RAGE_ARRAY(rage_Harness) harnesses;
 };
 
 static int process(jack_nframes_t nframes, void * arg) {
@@ -43,7 +45,7 @@ static int process(jack_nframes_t nframes, void * arg) {
             pthread_mutex_unlock(&harness->control_lock);
         }
         // FIXME: interpolator clock&transport sync
-        rage_element_process(harness->elem, &harness->ports);
+        rage_element_process(harness->elem, harness->engine->transport, &harness->ports);
     }
     return 0;
 }
@@ -86,7 +88,26 @@ rage_Error rage_engine_stop(rage_Engine * engine) {
     RAGE_OK
 }
 
-rage_MountResult rage_engine_mount(rage_Engine * engine, rage_Element * elem, char const * name) {
+static rage_Interpolator ** interpolators_for(
+        rage_TransportState * transport,
+        rage_ProcessRequirementsControls const * control_requirements,
+        rage_TimeSeries * const control_values) {
+    // FIXME: can fail!
+    uint32_t const n_controls = control_requirements->len;
+    rage_Interpolator ** new_interpolators = calloc(n_controls, sizeof(rage_Interpolator *));
+    for (uint32_t i = 0; i < n_controls; i++) {
+        // FIXME: const sample rate
+        rage_InitialisedInterpolator ii = rage_interpolator_new(
+            &control_requirements->items[i], &control_values[i], 44100, transport);
+        // FIXME: error handling!
+        new_interpolators[i] = RAGE_SUCCESS_VALUE(ii);
+    }
+    return new_interpolators;
+}
+
+rage_MountResult rage_engine_mount(
+        rage_Engine * engine, rage_Element * elem, rage_TimeSeries * controls,
+        char const * name) {
     rage_Harness * const harness = malloc(sizeof(rage_Harness));
     harness->ports = rage_ports_new(&elem->requirements);
     size_t const name_size = jack_port_name_size();
@@ -115,6 +136,10 @@ rage_MountResult rage_engine_mount(rage_Engine * engine, rage_Element * elem, ch
     harness->elem = elem;
     harness->n_inputs = elem->inputs.len;
     harness->n_outputs = elem->outputs.len;
+    // FIXME: freeing something pointlessly?
+    free(harness->ports.controls);
+    harness->ports.controls = interpolators_for(
+        &engine->transport, &elem->controls, controls);
     // Atomic control change sync stuff
     harness->target_controls = harness->ports.controls;
     pthread_cond_init(&harness->control_changed, NULL);
@@ -125,18 +150,18 @@ rage_MountResult rage_engine_mount(rage_Engine * engine, rage_Element * elem, ch
     RAGE_SUCCEED(rage_MountResult, harness)
 }
 
-void rage_engine_unmount(rage_Engine * engine, rage_Harness * harness) {
+void rage_engine_unmount(rage_Harness * harness) {
     // FIXME: potential races here :(
-    engine->harnesses.len = 0;
-    engine->harnesses.items = NULL;
+    harness->engine->harnesses.len = 0;
+    harness->engine->harnesses.items = NULL;
     rage_ports_free(harness->ports);
     for (uint32_t i = 0; i < harness->n_inputs; i++) {
         // FIXME: ignoring error codes of this
-        jack_port_unregister(engine->jack_client, harness->jack_inputs[i]);
+        jack_port_unregister(harness->engine->jack_client, harness->jack_inputs[i]);
     }
     for (uint32_t i = 0; i < harness->n_outputs; i++) {
         // FIXME: ignoring error codes of this
-        jack_port_unregister(engine->jack_client, harness->jack_outputs[i]);
+        jack_port_unregister(harness->engine->jack_client, harness->jack_outputs[i]);
     }
     free(harness->jack_inputs);
     free(harness->jack_outputs);
@@ -149,15 +174,8 @@ void rage_harness_set_time_series(
         rage_Harness * const harness,
         rage_TimeSeries * const new_controls) {
     // FIXME: can fail!
-    uint32_t const n_controls = harness->elem->controls.len;
-    rage_Interpolator ** new_interpolators = calloc(n_controls, sizeof(rage_Interpolator *));
-    for (uint32_t i = 0; i < n_controls; i++) {
-        // FIXME: const sample rate
-        rage_InitialisedInterpolator ii = rage_interpolator_new(
-            &harness->elem->controls.items[i], &new_controls[i], 44100, RAGE_TRANSPORT_STOPPED);
-        // FIXME: error handling!
-        new_interpolators[i] = RAGE_SUCCESS_VALUE(ii);
-    }
+    rage_Interpolator ** new_interpolators = interpolators_for(
+        &harness->engine->transport, &harness->elem->controls, new_controls);
     rage_Interpolator ** old_interpolators = harness->target_controls;
     harness->target_controls = new_interpolators;
     if (pthread_mutex_trylock(&harness->control_lock) == 0) {
@@ -165,7 +183,7 @@ void rage_harness_set_time_series(
     } else {
         pthread_cond_wait(&harness->control_changed, &harness->control_lock);
     }
-    for (uint32_t i = 0; i < n_controls; i++) {
+    for (uint32_t i = 0; i < harness->elem->controls.len; i++) {
         // FIXME: initialise with value eliminating this
         if (old_interpolators[i] != NULL) {
             rage_interpolator_free(

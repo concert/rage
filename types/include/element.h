@@ -12,4 +12,6 @@ typedef rage_NewElementState (*rage_ElementStateNew)(
 typedef void (*rage_ElementStateFree)(void * state);
 typedef rage_ProcessRequirements (*rage_ElementGetPortsDescription)(rage_Atom * params);
 typedef void (*rage_ElementFreePortsDescription)(rage_ProcessRequirements);
-typedef rage_Error (*rage_ElementProcess)(void * state, rage_Ports const * ports);
+typedef rage_Error (*rage_ElementProcess)(
+    void * state, rage_TransportState const transport_state,
+    rage_Ports const * ports);

@@ -7,16 +7,19 @@ typedef enum {
     RAGE_STREAM_AUDIO
 } rage_StreamDef;
 
+typedef RAGE_ARRAY(rage_TupleDef const) rage_ProcessRequirementsControls;
+typedef RAGE_ARRAY(rage_StreamDef const) rage_ProcessRequirementsStreams;
 typedef struct {
-    RAGE_ARRAY(rage_TupleDef const) controls;
-    RAGE_ARRAY(rage_StreamDef const) inputs;
-    RAGE_ARRAY(rage_StreamDef const) outputs;
+    rage_ProcessRequirementsControls controls;
+    rage_ProcessRequirementsStreams inputs;
+    rage_ProcessRequirementsStreams outputs;
 } rage_ProcessRequirements;
 
 typedef float const * rage_InStream;
 typedef float * rage_OutStream;
 
 typedef struct {
+    rage_TransportState * transport;
     rage_Interpolator ** controls;
     rage_InStream * inputs;
     rage_OutStream * outputs;

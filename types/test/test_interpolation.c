@@ -64,8 +64,9 @@ int main() {
         .len = 3,
         .items = tps
     };
+    rage_TransportState transport = RAGE_TRANSPORT_ROLLING;
     rage_InitialisedInterpolator ii = rage_interpolator_new(
-        &td, &ts, 1, RAGE_TRANSPORT_ROLLING);
+        &td, &ts, 1, &transport);
     if (RAGE_FAILED(ii)) {
         printf("Interpolator init failed: %s", RAGE_FAILURE_VALUE(ii));
         return 2;

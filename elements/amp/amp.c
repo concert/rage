@@ -79,7 +79,7 @@ void elem_free(void * state) {
 }
 
 rage_Error elem_process(
-        void * state, rage_Ports const * ports) {
+        void * state, rage_TransportState const transport_state, rage_Ports const * ports) {
     amp_data const * const data = (amp_data *) state;
     rage_Atom * gain = rage_interpolate(ports->controls[0], 0).value;
     for (unsigned s = 0; s < data->frame_size; s++) {

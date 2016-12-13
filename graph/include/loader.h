@@ -43,4 +43,5 @@ rage_ElementNewResult rage_element_new(
     rage_Atom * params);
 void rage_element_free(rage_Element * elem);
 rage_Error rage_element_process(
-    rage_Element const * const elem, rage_Ports const * ports);
+    rage_Element const * const elem, rage_TransportState const transport_state,
+    rage_Ports const * ports);
