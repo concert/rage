@@ -184,11 +184,8 @@ void rage_harness_set_time_series(
         pthread_cond_wait(&harness->control_changed, &harness->control_lock);
     }
     for (uint32_t i = 0; i < harness->elem->controls.len; i++) {
-        // FIXME: initialise with value eliminating this
-        if (old_interpolators[i] != NULL) {
-            rage_interpolator_free(
-                &harness->elem->controls.items[i], old_interpolators[i]);
-        }
+        rage_interpolator_free(
+            &harness->elem->controls.items[i], old_interpolators[i]);
     }
     free(old_interpolators);
 }
