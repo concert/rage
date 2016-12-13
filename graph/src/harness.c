@@ -88,21 +88,41 @@ rage_Error rage_engine_stop(rage_Engine * engine) {
     RAGE_OK
 }
 
-static rage_Interpolator ** interpolators_for(
+typedef RAGE_OR_ERROR(rage_Interpolator **) InterpolatorsForResult;
+
+static InterpolatorsForResult interpolators_for(
         rage_TransportState * transport,
         rage_ProcessRequirementsControls const * control_requirements,
         rage_TimeSeries * const control_values) {
-    // FIXME: can fail!
     uint32_t const n_controls = control_requirements->len;
-    rage_Interpolator ** new_interpolators = calloc(n_controls, sizeof(rage_Interpolator *));
+    rage_Interpolator ** new_interpolators = calloc(
+        n_controls, sizeof(rage_Interpolator *));
+    if (new_interpolators == NULL) {
+        RAGE_FAIL(
+            InterpolatorsForResult,
+            "Unable to allocate memory for new interpolators")
+    }
     for (uint32_t i = 0; i < n_controls; i++) {
         // FIXME: const sample rate
         rage_InitialisedInterpolator ii = rage_interpolator_new(
-            &control_requirements->items[i], &control_values[i], 44100, transport);
-        // FIXME: error handling!
-        new_interpolators[i] = RAGE_SUCCESS_VALUE(ii);
+            &control_requirements->items[i], &control_values[i], 44100,
+            transport);
+        if (RAGE_FAILED(ii)) {
+            if (i) {
+                do {
+                    i--;
+                    rage_interpolator_free(
+                        &control_requirements->items[i], new_interpolators[i]);
+                } while (i > 0);
+            }
+            free(new_interpolators);
+            RAGE_FAIL(InterpolatorsForResult, RAGE_FAILURE_VALUE(ii));
+            break;
+        } else {
+            new_interpolators[i] = RAGE_SUCCESS_VALUE(ii);
+        }
     }
-    return new_interpolators;
+    RAGE_SUCCEED(InterpolatorsForResult, new_interpolators)
 }
 
 rage_MountResult rage_engine_mount(
@@ -138,8 +158,9 @@ rage_MountResult rage_engine_mount(
     harness->n_outputs = elem->outputs.len;
     // FIXME: freeing something pointlessly?
     free(harness->ports.controls);
-    harness->ports.controls = interpolators_for(
-        &engine->transport, &elem->controls, controls);
+    // FIXME: Error handling
+    harness->ports.controls = RAGE_SUCCESS_VALUE(interpolators_for(
+        &engine->transport, &elem->controls, controls));
     // Atomic control change sync stuff
     harness->target_controls = harness->ports.controls;
     pthread_cond_init(&harness->control_changed, NULL);
@@ -170,16 +191,15 @@ void rage_engine_unmount(rage_Harness * harness) {
     free(harness);
 }
 
-void rage_harness_set_time_series(
+rage_Error rage_harness_set_time_series(
         rage_Harness * const harness,
         rage_TimeSeries * const new_controls) {
-    // FIXME: can fail!
-    rage_Interpolator ** new_interpolators = interpolators_for(
+    InterpolatorsForResult ifr = interpolators_for(
         &harness->engine->transport, &harness->elem->controls, new_controls);
+    RAGE_EXTRACT_VALUE(rage_Error, ifr, harness->target_controls);
     rage_Interpolator ** old_interpolators = harness->target_controls;
-    harness->target_controls = new_interpolators;
     if (pthread_mutex_trylock(&harness->control_lock) == 0) {
-        harness->controls = new_interpolators;
+        harness->controls = harness->target_controls;
     } else {
         pthread_cond_wait(&harness->control_changed, &harness->control_lock);
     }
@@ -188,4 +208,5 @@ void rage_harness_set_time_series(
             &harness->elem->controls.items[i], old_interpolators[i]);
     }
     free(old_interpolators);
+    RAGE_OK
 }
