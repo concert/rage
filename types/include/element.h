@@ -15,3 +15,5 @@ typedef void (*rage_ElementFreePortsDescription)(rage_ProcessRequirements);
 typedef rage_Error (*rage_ElementProcess)(
     void * state, rage_TransportState const transport_state,
     rage_Ports const * ports);
+
+typedef RAGE_OR_ERROR(uint32_t) rage_PreparedFrames;

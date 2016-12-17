@@ -64,6 +64,13 @@ amp_sources = ['elements/amp/amp.c']
 amp = shared_library(
     'amp', amp_sources, include_directories: types_inc, link_with: rage_types)
 
+sndfile = dependency('sndfile')
+
+persist_sources = ['elements/persistence/persistence.c']
+persist = shared_library(
+    'persist', persist_sources, include_directories: types_inc,
+    link_with: rage_types, dependencies: [jack, sndfile])
+
 # Example
 
 example_sources = ['example/main.c']
