@@ -21,6 +21,7 @@ rage_ElementLoader * rage_element_loader_new() {
 void rage_element_loader_free(rage_ElementLoader * el) {
     while (el->type_handle != NULL) {
         rage_TypeHandle * nxt = el->type_handle->next;
+        dlclose(el->type_handle->dlhandle);
         free(el->type_handle);
         el->type_handle = nxt;
     }
