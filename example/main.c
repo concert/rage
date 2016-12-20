@@ -13,7 +13,7 @@ int main() {
     }
     rage_Engine * const e = RAGE_SUCCESS_VALUE(ne);
     printf("Engine created\n");
-    rage_ElementLoader el = rage_element_loader_new();
+    rage_ElementLoader * el = rage_element_loader_new();
     //rage_ElementTypes element_type_names = rage_element_loader_list(el);
     // FIXME: loading super busted
     rage_ElementTypeLoadResult et_ = rage_element_loader_load(

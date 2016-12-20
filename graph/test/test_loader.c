@@ -40,7 +40,7 @@ static void free_interpolators(rage_Ports * ports, rage_ProcessRequirements requ
 
 rage_Error test() {
     // FIXME: Error handling (and memory in those cases)
-    rage_ElementLoader el = rage_element_loader_new();
+    rage_ElementLoader * el = rage_element_loader_new();
     rage_ElementTypes element_type_names = rage_element_loader_list(el);
     for (unsigned i=0; i<element_type_names.len; i++) {
         rage_ElementTypeLoadResult et_ = rage_element_loader_load(

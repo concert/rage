@@ -90,3 +90,12 @@ rage_Error elem_process(
     }
     RAGE_OK
 }
+
+rage_ElementType const elem_info = {
+    .parameters = &init_params,
+    .state_new = elem_new,
+    .state_free = elem_free,
+    .get_ports = elem_describe_ports,
+    .free_ports = elem_free_port_description,
+    .process = elem_process
+};

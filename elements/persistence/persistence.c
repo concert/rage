@@ -275,7 +275,7 @@ static void interleave(
     }
 }
 
-rage_Error elem_cleanup(void * state, rage_Interpolator ** controls) {
+rage_PreparedFrames elem_cleanup(void * state, rage_Interpolator ** controls) {
     persist_state * const data = (persist_state *) state;
     size_t slabs[2];
     populate_slabs(
@@ -290,9 +290,9 @@ rage_Error elem_cleanup(void * state, rage_Interpolator ** controls) {
         (float const **) &data->rb_vec[data->n_channels],
         data->n_channels, slabs[1]);
     size_t rb_left = rb_space;
-    rage_InterpolatedValue chunk = rage_interpolate(
-        controls[0], 0);
+    rage_InterpolatedValue chunk = {.valid_for=0};
     while (rb_left) {
+        chunk = rage_interpolate(controls[0], chunk.valid_for);
         switch ((PersistanceMode) chunk.value[0].e) {
             case REC:
                 data->sf = prep_sndfile(
@@ -301,7 +301,7 @@ rage_Error elem_cleanup(void * state, rage_Interpolator ** controls) {
                 sf_count_t const written = sf_writef_float(
                     data->sf, data->interleaved_buffer, to_write);
                 if (written < to_write) {
-                    RAGE_ERROR("Unable to write all data to file")
+                    RAGE_FAIL(rage_PreparedFrames, "Unable to write all data to file")
                 }
                 rb_left -= written;
                 break;
@@ -309,12 +309,16 @@ rage_Error elem_cleanup(void * state, rage_Interpolator ** controls) {
             case PLAY:
                 break;
         }
-        chunk = rage_interpolate(controls[0], chunk.valid_for);
     }
     for (uint32_t c = 0; c < data->n_channels; c++) {
         jack_ringbuffer_read_advance(data->rec_buffs[c], rb_space * sizeof(float));
     }
-    RAGE_OK
+    uint32_t n_before_rec = 0;
+    while (chunk.value[0].e != REC) {
+        n_before_rec += chunk.valid_for;
+        chunk = rage_interpolate(controls[0], chunk.valid_for);
+    }
+    RAGE_SUCCEED(rage_PreparedFrames, rb_space + n_before_rec)
 }
 
 rage_Error elem_clear(void * state) {
@@ -325,3 +329,14 @@ rage_Error elem_clear(void * state) {
     }
     RAGE_OK
 }
+
+rage_ElementType const elem_info = {
+    .state_new = elem_new,
+    .state_free = elem_free,
+    .get_ports = elem_describe_ports,
+    .free_ports = elem_free_port_description,
+    .process = elem_process,
+    .prep = elem_prepare,
+    .clear = elem_clear,
+    .clean = elem_cleanup
+};
