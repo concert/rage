@@ -11,11 +11,13 @@ sources = [
     'types/src/interpolation.c',
     'types/src/time.c',
     'types/src/time_series.c',
-    'types/src/atoms.c'
+    'types/src/atoms.c',
+    'types/src/finaliser.c'
 ]
 
+sem = dependency('threads')
 rage_types = shared_library(
-    'rage_types', sources, include_directories: types_inc)
+    'rage_types', sources, include_directories: types_inc, dependencies: [sem])
 
 test_errors = executable(
     'test_errors', 'types/test/test_errors.c', include_directories: types_inc,
