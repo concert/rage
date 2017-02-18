@@ -7,6 +7,8 @@ add_global_arguments('-std=c11', '-Werror', '-fms-extensions', language: 'c')
 types_inc = include_directories('types/include')
 
 sources = [
+    'types/src/barrier.c',
+    'types/src/countdown.c',
     'types/src/ports.c',
     'types/src/interpolation.c',
     'types/src/time.c',
@@ -29,7 +31,7 @@ test_time = executable(
     'test_time', 'types/test/test_time.c', include_directories: types_inc,
     link_with: rage_types)
 test_ports = executable(
-    'test_ports', src=['types/test/test_ports.c'], include_directories: types_inc,
+    'test_ports', ['types/test/test_ports.c'], include_directories: types_inc,
     link_with: rage_types)
 test('errors', test_errors)
 test('interpolation', test_interpolation)
@@ -48,7 +50,7 @@ graph_inc = include_directories('graph/include')
 # At some point this should become an executable:
 rage_graph = static_library(
     'rage_graph',
-    ['graph/src/loader.c', 'graph/src/harness.c'],
+    ['graph/src/loader.c', 'graph/src/harness.c'], #, 'graph/src/softrt.c'],
     include_directories: [graph_inc, types_inc],
     dependencies: [dyn_load],
     link_with: rage_types)

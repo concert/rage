@@ -81,12 +81,32 @@ void elem_free(void * state) {
 rage_Error elem_process(
         void * state, rage_TransportState const transport_state, rage_Ports const * ports) {
     amp_data const * const data = (amp_data *) state;
-    rage_Atom * gain = rage_interpolate(ports->controls[0], 0).value;
-    for (unsigned s = 0; s < data->frame_size; s++) {
-        for (unsigned c = 0; c < data->n_channels; c++) {
-            ports->outputs[c][s] = ports->inputs[c][s] * gain[0].f;
+    rage_InterpolatedValue const * val = rage_interpolated_view_value(ports->controls[0]);
+    uint32_t n_to_change, remaining = data->frame_size;
+    switch (transport_state) {
+        case RAGE_TRANSPORT_STOPPED:
+            n_to_change = data->frame_size;
+            break;
+        case RAGE_TRANSPORT_ROLLING:
+            n_to_change = (data->frame_size < val->valid_for) ?
+                data->frame_size : val->valid_for;
+            break;
+    }
+    while (1) {
+        for (unsigned s = 0; s < n_to_change; s++) {
+            for (unsigned c = 0; c < data->n_channels; c++) {
+                ports->outputs[c][s] = ports->inputs[c][s] * val->value[0].f;
+            }
         }
-        gain = rage_interpolate(ports->controls[0], 1).value;
+        rage_interpolated_view_advance(ports->controls[0], n_to_change);
+        remaining -= n_to_change;
+        if (remaining) {
+            val = rage_interpolated_view_value(ports->controls[0]);
+            n_to_change = (data->frame_size < val->valid_for) ?
+                data->frame_size : val->valid_for;
+        } else {
+            break;
+        }
     }
     RAGE_OK
 }

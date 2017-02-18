@@ -3,7 +3,7 @@
 
 rage_Ports rage_ports_new(rage_ProcessRequirements const * const requirements) {
     rage_Ports ports;
-    ports.controls = calloc(requirements->controls.len, sizeof(rage_Interpolator *));
+    ports.controls = calloc(requirements->controls.len, sizeof(rage_InterpolatedView *));
     ports.inputs = calloc(requirements->inputs.len, sizeof(rage_InStream));
     ports.outputs = calloc(requirements->outputs.len, sizeof(rage_OutStream));
     return ports;

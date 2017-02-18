@@ -2,6 +2,7 @@
 
 #include "atoms.h"
 #include "interpolation.h"
+#include "transport_state.h"
 
 typedef enum {
     RAGE_STREAM_AUDIO
@@ -15,12 +16,13 @@ typedef struct {
     rage_ProcessRequirementsStreams outputs;
 } rage_ProcessRequirements;
 
+// FIXME: typedeffed pointers
 typedef float const * rage_InStream;
 typedef float * rage_OutStream;
 
 typedef struct {
     rage_TransportState * transport;
-    rage_Interpolator ** controls;
+    rage_InterpolatedView ** controls;
     rage_InStream * inputs;
     rage_OutStream * outputs;
 } rage_Ports;

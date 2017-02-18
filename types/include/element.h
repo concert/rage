@@ -17,9 +17,12 @@ typedef rage_Error (*rage_ElementProcess)(
     rage_Ports const * ports);
 
 typedef RAGE_OR_ERROR(uint32_t) rage_PreparedFrames;
-typedef rage_PreparedFrames (*rage_ElementPrepare)(void * state, rage_Interpolator ** controls);
-typedef rage_Error (*rage_ElementClear)(void * state);
-typedef rage_PreparedFrames (*rage_ElementClean)(void * state, rage_Interpolator ** controls);
+typedef rage_PreparedFrames (*rage_ElementPrepare)(
+    void * state, rage_InterpolatedView ** controls);
+typedef rage_Error (*rage_ElementClear)(
+    void * state, rage_InterpolatedView ** controls, rage_FrameNo const preserve);
+typedef rage_PreparedFrames (*rage_ElementClean)(
+    void * state, rage_InterpolatedView ** controls);
 
 typedef struct {
     // Mandatory:

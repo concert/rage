@@ -24,3 +24,8 @@ typedef enum {
         uint32_t len; \
         t * items; \
     }
+
+#define RAGE_ARRAY_INIT(var, length, index) \
+    (var)->len = length; \
+    (var)->items = calloc(sizeof(__typeof__(*(var)->items)), (var)->len); \
+    for (uint32_t index=0; index < (var)->len; index++)

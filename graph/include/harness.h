@@ -17,5 +17,7 @@ rage_MountResult rage_engine_mount(
     rage_Engine * engine, rage_Element * elem, rage_TimeSeries * controls,
     char const * name);
 void rage_engine_unmount(rage_Harness * harness);
-rage_Error rage_harness_set_time_series(
-    rage_Harness * const harness, rage_TimeSeries * const new_time_series);
+rage_Finaliser * rage_harness_set_time_series(
+    rage_Harness * const harness,
+    uint32_t const series_idx,
+    rage_TimeSeries const * const new_controls);

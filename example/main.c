@@ -61,7 +61,6 @@ int main() {
         return 4;
     }
     rage_Harness * const harness = RAGE_SUCCESS_VALUE(mr);
-    rage_harness_set_time_series(harness, &ts);
     //FIXME: handle errors (start/stop)
     printf("Starting engine...\n");
     rage_Error en_st = rage_engine_start(e);

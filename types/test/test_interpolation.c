@@ -2,10 +2,9 @@
 #include "interpolation.h"
 
 static int check(
-        rage_Interpolator * interpolator, rage_FrameNo consume,
-        float expected) {
-    rage_InterpolatedValue val = rage_interpolate(interpolator, consume);
-    float got = val.value[0].f;
+        rage_InterpolatedView * v, float expected) {
+    rage_InterpolatedValue const * val = rage_interpolated_view_value(v);
+    float got = val->value[0].f;
     if (got != expected) {
         printf("%f != %f", got, expected);
         return 1;
@@ -14,18 +13,26 @@ static int check(
 }
 
 static int checks(rage_Interpolator * interpolator) {
-    if (check(interpolator, 0, 0.0))
+    // FIXME: this is a bit of a hack to make it go
+    rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
+    if (check(v, 0.0))
         return 1;
-    if (check(interpolator, 1, 0.5))
+    rage_interpolated_view_advance(v, 1);
+    if (check(v, 0.5))
         return 1;
-    if (check(interpolator, 1, 1.0))
+    rage_interpolated_view_advance(v, 1);
+    if (check(v, 1.0))
         return 1;
-    if (check(interpolator, 1, 1.0))
+    rage_interpolated_view_advance(v, 1);
+    if (check(v, 1.0))
         return 1;
-    if (check(interpolator, 1, 2.0))
+    rage_interpolated_view_advance(v, 1);
+    if (check(v, 2.0))
         return 1;
-    if (check(interpolator, 1, 2.0))
+    rage_interpolated_view_advance(v, 1);
+    if (check(v, 2.0))
         return 1;
+    rage_interpolated_view_advance(v, 1);
     return 0;
 }
 
@@ -64,9 +71,8 @@ int main() {
         .len = 3,
         .items = tps
     };
-    rage_TransportState transport = RAGE_TRANSPORT_ROLLING;
     rage_InitialisedInterpolator ii = rage_interpolator_new(
-        &td, &ts, 1, &transport);
+        &td, &ts, 1, 1);
     if (RAGE_FAILED(ii)) {
         printf("Interpolator init failed: %s", RAGE_FAILURE_VALUE(ii));
         return 2;

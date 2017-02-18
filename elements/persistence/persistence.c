@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
 #include <jack/ringbuffer.h>
 #include <sndfile.h>
+
 // FIXME: these includes should be "systemy"
 // This header should probably have a hash of the interface files or something
 // dynamically embedded in it:
@@ -130,8 +132,8 @@ void elem_free(void * state) {
 
 rage_Error elem_process(void * state, rage_TransportState const transport_state, rage_Ports const * ports) {
     persist_state const * const data = (persist_state *) state;
-    rage_InterpolatedValue chunk;
-    uint32_t step_frames = 0, remaining = data->frame_size;
+    rage_InterpolatedValue const * chunk;
+    uint32_t step_frames, remaining = data->frame_size;
     uint32_t c, frame_pos = 0;
     size_t chunk_size;
     if (transport_state == RAGE_TRANSPORT_STOPPED) {
@@ -142,13 +144,12 @@ rage_Error elem_process(void * state, rage_TransportState const transport_state,
         RAGE_OK
     }
     while (remaining) {
-        chunk = rage_interpolate(
-            ports->controls[0], step_frames);
+        chunk = rage_interpolated_view_value(ports->controls[0]);
         frame_pos = data->frame_size - remaining;
-        step_frames = (remaining > chunk.valid_for) ?
-            chunk.valid_for : remaining;
+        step_frames = (remaining > chunk->valid_for) ?
+            chunk->valid_for : remaining;
         chunk_size = step_frames * sizeof(float);
-        switch ((PersistanceMode) chunk.value[0].e) {
+        switch ((PersistanceMode) chunk->value[0].e) {
             case PLAY:
                 for (c = 0; c < data->n_channels; c++) {
                     jack_ringbuffer_read(
@@ -172,6 +173,7 @@ rage_Error elem_process(void * state, rage_TransportState const transport_state,
                 break;
         }
         remaining -= step_frames;
+        rage_interpolated_view_advance(ports->controls[0], step_frames);
     }
     RAGE_OK
 }
@@ -220,21 +222,21 @@ static void populate_slabs(
     }
 }
 
-rage_PreparedFrames elem_prepare(void * state, rage_Interpolator ** controls) {
+rage_PreparedFrames elem_prepare(void * state, rage_InterpolatedView ** controls) {
     persist_state * const data = (persist_state *) state;
     uint32_t n_prepared_frames = 0;
-    rage_InterpolatedValue chunk = rage_interpolate(controls[0], 0);
-    while (chunk.valid_for != UINT32_MAX) {
-        switch ((PersistanceMode) chunk.value[0].e) {
+    rage_InterpolatedValue const * chunk = rage_interpolated_view_value(controls[0]);
+    while (chunk->valid_for != UINT32_MAX) {
+        switch ((PersistanceMode) chunk->value[0].e) {
             case PLAY:
                 data->sf = prep_sndfile(
-                    data->sf, &data->sf_info, chunk.value[1].s, chunk.value[2].frame_no);
+                    data->sf, &data->sf_info, chunk->value[1].s, chunk->value[2].frame_no);
                 size_t slabs[2];
                 populate_slabs(
                     slabs, data->n_channels, jack_ringbuffer_get_write_vector,
                     data->rb_vec, data->play_buffs);
                 size_t const rb_space = slabs[0] + slabs[1];
-                size_t const to_read = (rb_space < chunk.valid_for) ? rb_space : chunk.valid_for;
+                size_t const to_read = (rb_space < chunk->valid_for) ? rb_space : chunk->valid_for;
                 sf_count_t const read = sf_readf_float(
                     data->sf, data->interleaved_buffer, to_read);
                 if (read < to_read) {
@@ -249,19 +251,20 @@ rage_PreparedFrames elem_prepare(void * state, rage_Interpolator ** controls) {
                     jack_ringbuffer_write_advance(data->play_buffs[c], read * sizeof(float));
                 }
                 n_prepared_frames += read;
-                if (rb_space <= chunk.valid_for) {
+                if (rb_space <= chunk->valid_for) {
                     RAGE_SUCCEED(rage_PreparedFrames, n_prepared_frames);
                 }
                 break;
             case IDLE:
             case REC:
                 // FIXME: worry about overflow?
-                n_prepared_frames += chunk.valid_for;
+                n_prepared_frames += chunk->valid_for;
                 break;
         }
-        chunk = rage_interpolate(controls[0], chunk.valid_for);
+        rage_interpolated_view_advance(controls[0], chunk->valid_for);
+        chunk = rage_interpolated_view_value(controls[0]);
     }
-    assert(chunk.value[0].e == IDLE);
+    assert(chunk->value[0].e == IDLE);
     RAGE_SUCCEED(rage_PreparedFrames, UINT32_MAX)
 }
 
@@ -275,7 +278,7 @@ static void interleave(
     }
 }
 
-rage_PreparedFrames elem_cleanup(void * state, rage_Interpolator ** controls) {
+rage_PreparedFrames elem_cleanup(void * state, rage_InterpolatedView ** controls) {
     persist_state * const data = (persist_state *) state;
     size_t slabs[2];
     populate_slabs(
@@ -290,14 +293,14 @@ rage_PreparedFrames elem_cleanup(void * state, rage_Interpolator ** controls) {
         (float const **) &data->rb_vec[data->n_channels],
         data->n_channels, slabs[1]);
     size_t rb_left = rb_space;
-    rage_InterpolatedValue chunk = {.valid_for=0};
+    rage_InterpolatedValue const * chunk;
     while (rb_left) {
-        chunk = rage_interpolate(controls[0], chunk.valid_for);
-        switch ((PersistanceMode) chunk.value[0].e) {
+        chunk = rage_interpolated_view_value(controls[0]);
+        switch ((PersistanceMode) chunk->value[0].e) {
             case REC:
                 data->sf = prep_sndfile(
-                    data->sf, &data->sf_info, chunk.value[1].s, chunk.value[2].frame_no);
-                size_t const to_write = (rb_left < chunk.valid_for) ? rb_left : chunk.valid_for;
+                    data->sf, &data->sf_info, chunk->value[1].s, chunk->value[2].frame_no);
+                size_t const to_write = (rb_left < chunk->valid_for) ? rb_left : chunk->valid_for;
                 sf_count_t const written = sf_writef_float(
                     data->sf, data->interleaved_buffer, to_write);
                 if (written < to_write) {
@@ -309,23 +312,45 @@ rage_PreparedFrames elem_cleanup(void * state, rage_Interpolator ** controls) {
             case PLAY:
                 break;
         }
+        rage_interpolated_view_advance(controls[0], chunk->valid_for);
     }
     for (uint32_t c = 0; c < data->n_channels; c++) {
         jack_ringbuffer_read_advance(data->rec_buffs[c], rb_space * sizeof(float));
     }
     uint32_t n_before_rec = 0;
-    while (chunk.value[0].e != REC) {
-        n_before_rec += chunk.valid_for;
-        chunk = rage_interpolate(controls[0], chunk.valid_for);
+    while (chunk->value[0].e != REC) {
+        n_before_rec += chunk->valid_for;
+        chunk = rage_interpolated_view_value(controls[0]);
+        rage_interpolated_view_advance(controls[0], chunk->valid_for);
     }
     RAGE_SUCCEED(rage_PreparedFrames, rb_space + n_before_rec)
 }
 
-rage_Error elem_clear(void * state) {
+rage_Error elem_clear(void * state, rage_InterpolatedView ** controls, rage_FrameNo to_present) {
+    // Controls are initialised at the start of the section to clear
+    // to_present is the number of frames between that start point and the position after the last write
     persist_state * const data = (persist_state *) state;
+    // ! Do NOT look at the read pointer, it will be moving during this.
+    rage_InterpolatedValue const * chunk;
+    // Work out the number of frames that have been inserted in the cleared
+    // interval (which must include to the latest sample)
+    rage_FrameNo consumed, to_erase = 0;
+    while (to_present) {
+        chunk = rage_interpolated_view_value(controls[0]);
+        consumed = (consumed < chunk->valid_for) ? consumed : chunk->valid_for;
+        switch ((PersistanceMode) chunk->value[0].e) {
+            case PLAY:
+                to_erase += consumed;
+            case IDLE:
+            case REC:
+                to_present -= consumed;
+        }
+        rage_interpolated_view_advance(controls[0], consumed);
+    }
     for (uint32_t i = 0; i < data->n_channels; i++) {
         jack_ringbuffer_t * const rb = data->play_buffs[i];
-        jack_ringbuffer_read_advance(rb, jack_ringbuffer_read_space(rb));
+        // Roll back the write pointer
+        jack_ringbuffer_write_advance(rb, -to_erase);
     }
     RAGE_OK
 }

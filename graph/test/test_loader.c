@@ -21,22 +21,26 @@ static void free_stream_buffers(rage_Ports * ports, rage_ProcessRequirements req
     }
 }
 
-static rage_TransportState transp_state = RAGE_TRANSPORT_STOPPED;
+typedef RAGE_ARRAY(rage_Interpolator *) rage_InterpolatorArray;
+typedef RAGE_OR_ERROR(rage_InterpolatorArray) rage_Interpolators;
 
-static rage_Error new_interpolators(rage_Ports * ports, rage_ProcessRequirements requirements) {
-    for (uint32_t i = 0; i < requirements.controls.len; i++) {
+static rage_Interpolators new_interpolators(rage_Ports * ports, rage_ProcessRequirements requirements) {
+    rage_InterpolatorArray interpolators;
+    RAGE_ARRAY_INIT(&interpolators, requirements.controls.len, i) {
         rage_TimeSeries ts = rage_time_series_new(&requirements.controls.items[i]);
         rage_InitialisedInterpolator ii = rage_interpolator_new(
-            &requirements.controls.items[i], &ts, 44100, &transp_state);
+            &requirements.controls.items[i], &ts, 44100, 1);
         rage_time_series_free(ts);
-        RAGE_EXTRACT_VALUE(rage_Error, ii, ports->controls[i])
+        // FIXME: unwinding memory frees etc
+        RAGE_EXTRACT_VALUE(rage_Interpolators, ii, interpolators.items[i])
+        ports->controls[i] = rage_interpolator_get_view(interpolators.items[i], 0);
     }
-    RAGE_OK
+    RAGE_SUCCEED(rage_Interpolators, interpolators)
 }
 
-static void free_interpolators(rage_Ports * ports, rage_ProcessRequirements requirements) {
-    for (uint32_t i = 0; i < requirements.controls.len; i++) {
-        rage_interpolator_free(&requirements.controls.items[i], ports->controls[i]);
+static void free_interpolators(rage_InterpolatorArray interpolators, rage_ProcessRequirements requirements) {
+    for (uint32_t i = 0; i < interpolators.len; i++) {
+        rage_interpolator_free(&requirements.controls.items[i], interpolators.items[i]);
     }
 }
 
@@ -53,9 +57,10 @@ rage_Error test() {
         RAGE_EXTRACT_VALUE(rage_Error, elem_, rage_Element * elem)
         rage_Ports ports = rage_ports_new(&elem->requirements);
         new_stream_buffers(&ports, elem->requirements);
-        new_interpolators(&ports, elem->requirements);
+        rage_Interpolators ii = new_interpolators(&ports, elem->requirements);
+        RAGE_EXTRACT_VALUE(rage_Error, ii, rage_InterpolatorArray interpolators);
         rage_element_process(elem, RAGE_TRANSPORT_ROLLING, &ports);
-        free_interpolators(&ports, elem->requirements);
+        free_interpolators(interpolators, elem->requirements);
         free_stream_buffers(&ports, elem->requirements);
         rage_ports_free(ports);
         rage_element_free(elem);

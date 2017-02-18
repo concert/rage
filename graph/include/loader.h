@@ -39,6 +39,6 @@ rage_Error rage_element_process(
 
 
 // FIXME: better or worse?
-#define RAGE_ELEM_PREP(elem) elem->type->prep(elem->state)
-#define RAGE_ELEM_CLEAN(elem) elem->type->clean(elem->state)
-#define RAGE_ELEM_CLEAR(elem) elem->type->clear(elem->state)
+#define RAGE_ELEM_PREP(elem, controls) elem->type->prep(elem->state, controls)
+#define RAGE_ELEM_CLEAN(elem, controls) elem->type->clean(elem->state, controls)
+#define RAGE_ELEM_CLEAR(elem, ...) elem->type->clear(elem->state, __VA_ARGS__)
