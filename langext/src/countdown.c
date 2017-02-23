@@ -2,6 +2,7 @@
 #include <stdatomic.h>
 #include <semaphore.h>
 #include <stdlib.h>
+#include <time.h>
 
 struct rage_Countdown {
     _Atomic int counter;
@@ -23,8 +24,21 @@ void rage_countdown_free(rage_Countdown * c) {
     free(c);
 }
 
-void rage_countdown_wait(rage_Countdown * c) {
-    sem_wait(&c->sig);
+rage_Error rage_countdown_timed_wait(rage_Countdown * c, unsigned millis) {
+    struct timespec ts;
+    if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+        RAGE_ERROR("Unable to get current time")
+    }
+    ts.tv_sec += millis / 1000;
+    ts.tv_nsec += (millis % 1000) * 1000000;
+    if (ts.tv_nsec > 1000000000) {
+        ts.tv_sec += 1;
+        ts.tv_nsec -= 1000000000;
+    }
+    if (sem_timedwait(&c->sig, &ts) == -1) {
+        RAGE_ERROR("Timed out waiting")
+    }
+    RAGE_OK
 }
 
 int rage_countdown_add(rage_Countdown * c, int delta) {

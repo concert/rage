@@ -1,6 +1,6 @@
 project('rage', 'c')
 
-add_global_arguments('-std=c11', '-Werror', '-fms-extensions', language: 'c')
+add_global_arguments('-std=gnu11', '-Werror', '-fms-extensions', language: 'c')
 
 # Language Extensions
 
@@ -21,6 +21,11 @@ langext = shared_library(
 test_errors = executable(
     'test_errors', 'langext/test/test_errors.c', include_directories: [langext_inc],
     link_with: langext)
+test('errors', test_errors)
+test_synchronisation_primitives = executable(
+    'test_synchronisation_primitives', 'langext/test/test_synchronisation_primitives.c',
+    include_directories: [langext_inc], link_with: langext, dependencies: [sem])
+test('countdown', test_synchronisation_primitives)
 
 # Types
 
@@ -47,7 +52,6 @@ test_time = executable(
 test_ports = executable(
     'test_ports', ['types/test/test_ports.c'], include_directories: [types_inc, langext_inc],
     link_with: rage_types)
-test('errors', test_errors)
 test('interpolation', test_interpolation)
 test('time', test_time)
 test('ports', test_ports)
