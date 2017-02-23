@@ -5,7 +5,7 @@
 #include <semaphore.h>
 
 #include "interpolation.h"
-#include "barrier.h"
+#include "countdown.h"
 
 static rage_FrameNo rage_time_to_frame(rage_Time const * t, uint32_t sample_rate) {
     return (sample_rate * t->second) + (sample_rate * (((float) t->fraction) / UINT32_MAX));
@@ -35,7 +35,7 @@ _Static_assert(
     "Atomic pointers not lock free on this platform");
 
 typedef struct {
-    rage_Barrier * b;
+    rage_Countdown * c;
     RAGE_ARRAY(rage_FramePoint);
 } rage_FrameSeries;
 
@@ -66,7 +66,7 @@ static void rage_interpolatedview_init(
 }
 
 static void rage_interpolatedview_destroy(rage_InterpolatedView * iv) {
-    rage_barrier_release_token(iv->points->b);
+    rage_countdown_add(iv->points->c, -1);
     free(iv->val);
 }
 
@@ -97,7 +97,7 @@ static rage_FrameSeries * as_frameseries(
         rage_TupleDef const * const tuple_def, rage_TimeSeries const * points,
         uint32_t const sample_rate, uint8_t const awaiting_completion) {
     rage_FrameSeries * fs = malloc(sizeof(rage_FrameSeries));
-    fs->b = rage_barrier_new(awaiting_completion);
+    fs->c = rage_countdown_new(awaiting_completion);
     RAGE_ARRAY_INIT(fs, points->len, i) {
         rage_TimePoint const * p = &points->items[i];
         fs->items[i] = (rage_FramePoint) {
@@ -111,7 +111,7 @@ static rage_FrameSeries * as_frameseries(
 
 static void frameseries_free(
         rage_TupleDef const * const tuple_def, rage_FrameSeries * points) {
-    rage_barrier_free(points->b);
+    rage_countdown_free(points->c);
     for (uint32_t i = 0; i < points->len; i++) {
         rage_tuple_free(tuple_def, points->items[i].value);
     }
@@ -245,7 +245,7 @@ void rage_interpolated_view_seek(
     if (
             active_pts != view->points &&
             view->pos >= view->interpolator->valid_from) {
-        rage_barrier_release_token(view->points->b);
+        rage_countdown_add(view->points->c, -1);
         view->points = active_pts;
     }
 }
@@ -263,7 +263,7 @@ typedef struct {
 
 static void rage_finalise_timeseries_change(void * p) {
     rage_TimeSeriesChange * tsc = p;
-    rage_barrier_wait(tsc->fs->b);
+    rage_countdown_timed_wait(tsc->fs->c, 500); // FIXME: ERROR HANDLING!
     sem_post(tsc->change_sem);
     frameseries_free(tsc->type, tsc->fs);
 }

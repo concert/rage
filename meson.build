@@ -7,7 +7,6 @@ add_global_arguments('-std=gnu11', '-Werror', '-fms-extensions', language: 'c')
 langext_inc = include_directories('langext/include')
 
 langext_sources = [
-    'langext/src/barrier.c',
     'langext/src/countdown.c',
     'langext/src/finaliser.c'
 ]
