@@ -52,6 +52,7 @@ rage_NewEngine rage_engine_new() {
         RAGE_FAIL(rage_NewEngine, "Could not create jack client")
     }
     rage_Engine * e = malloc(sizeof(rage_Engine));
+    e->transport = RAGE_TRANSPORT_STOPPED;
     e->jack_client = client;
     e->harnesses.items = NULL;
     e->harnesses.len = 0;
@@ -119,6 +120,7 @@ rage_MountResult rage_engine_mount(
         rage_Engine * engine, rage_Element * elem, rage_TimeSeries * controls,
         char const * name) {
     rage_Harness * const harness = malloc(sizeof(rage_Harness));
+    harness->engine = engine;
     harness->ports = rage_ports_new(&elem->requirements);
     size_t const name_size = jack_port_name_size();
     char * const port_name = malloc(name_size);
