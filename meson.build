@@ -72,12 +72,12 @@ rage_graph = static_library(
     dependencies: [dyn_load],
     link_with: rage_types)
 
-test_loader = executable(
-    'test_elements', 'graph/test/main.c',
+test_graph = executable(
+    'test_graph', 'graph/test/main.c',
     include_directories: [graph_inc, types_inc, langext_inc],
     dependencies: [jack],
     link_with: rage_graph)
-test('loader', test_loader)
+test('graph', test_graph)
 
 # Elements
 
