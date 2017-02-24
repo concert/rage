@@ -62,15 +62,15 @@ void elem_free_port_description(rage_ProcessRequirements pr) {
 
 typedef struct {
     unsigned n_channels;
-    uint32_t frame_size; // Doesn't everyone HAVE to do this?
+    uint32_t period_size; // Doesn't everyone HAVE to do this?
 } amp_data;
 
 rage_NewElementState elem_new(
-        uint32_t sample_rate, uint32_t frame_size, rage_Atom * params) {
+        uint32_t sample_rate, uint32_t period_size, rage_Atom * params) {
     amp_data * ad = malloc(sizeof(amp_data));
     // Not sure I like way the indices tie up here
     ad->n_channels = params[0].i;
-    ad->frame_size = frame_size;
+    ad->period_size = period_size;
     RAGE_SUCCEED(rage_NewElementState, (void *) ad);
 }
 
@@ -82,14 +82,14 @@ rage_Error elem_process(
         void * state, rage_TransportState const transport_state, rage_Ports const * ports) {
     amp_data const * const data = (amp_data *) state;
     rage_InterpolatedValue const * val = rage_interpolated_view_value(ports->controls[0]);
-    uint32_t n_to_change, remaining = data->frame_size;
+    uint32_t n_to_change, remaining = data->period_size;
     switch (transport_state) {
         case RAGE_TRANSPORT_STOPPED:
-            n_to_change = data->frame_size;
+            n_to_change = data->period_size;
             break;
         case RAGE_TRANSPORT_ROLLING:
-            n_to_change = (data->frame_size < val->valid_for) ?
-                data->frame_size : val->valid_for;
+            n_to_change = (data->period_size < val->valid_for) ?
+                data->period_size : val->valid_for;
             break;
     }
     while (1) {
@@ -102,8 +102,8 @@ rage_Error elem_process(
         remaining -= n_to_change;
         if (remaining) {
             val = rage_interpolated_view_value(ports->controls[0]);
-            n_to_change = (data->frame_size < val->valid_for) ?
-                data->frame_size : val->valid_for;
+            n_to_change = (data->period_size < val->valid_for) ?
+                data->period_size : val->valid_for;
         } else {
             break;
         }
