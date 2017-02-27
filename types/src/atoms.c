@@ -7,30 +7,26 @@ rage_Atom * rage_tuple_generate(rage_TupleDef const * const td) {
     rage_Atom * tup = calloc(td->len, sizeof(rage_Atom));
     for (unsigned i=0; i < td->len; i++) {
         rage_AtomDef const * const at = td->items[i].type;
+        #define RAGE_MINMAX_GENERATOR(type, member, initial_value) { \
+            type v = initial_value; \
+            if (at->constraints.member.min.half == RAGE_EITHER_RIGHT) \
+                v = at->constraints.member.min.right; \
+            if (at->constraints.member.max.half == RAGE_EITHER_RIGHT) \
+                v = at->constraints.member.max.right; \
+            tup[i].member = v; \
+            break;}
         switch (at->type) {
-            case RAGE_ATOM_INT: {
-                int32_t v = 0;
-                if (at->constraints.i.min.half == RAGE_EITHER_RIGHT)
-                    v = at->constraints.i.min.right;
-                if (at->constraints.i.max.half == RAGE_EITHER_RIGHT)
-                    v = at->constraints.i.max.right;
-                tup[i].i = v;
-                break;
-            }
-            case RAGE_ATOM_FLOAT: {
-                float v = 0;
-                if (at->constraints.f.min.half == RAGE_EITHER_RIGHT)
-                    v = at->constraints.f.min.right;
-                if (at->constraints.f.max.half == RAGE_EITHER_RIGHT)
-                    v = at->constraints.f.max.right;
-                tup[i].f = v;
-                break;
-            }
+            case RAGE_ATOM_INT:
+                RAGE_MINMAX_GENERATOR(int32_t, i, 0)
+            case RAGE_ATOM_FLOAT:
+                RAGE_MINMAX_GENERATOR(float, f, 0.0)
             case RAGE_ATOM_TIME:
+                RAGE_MINMAX_GENERATOR(rage_Time, t, {})
             case RAGE_ATOM_STRING:
             case RAGE_ATOM_ENUM:
                 assert(false);
         }
+        #undef RAGE_MINMAX_GENERATOR
     }
     return tup;
 }
