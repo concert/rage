@@ -32,7 +32,7 @@ rage_TupleDef const init_params = {
 
 static rage_AtomDef const path_atom = {
     .type = RAGE_ATOM_STRING, .name = "path",
-    .constraints = {.s = RAGE_JUST(".*")}
+    .constraints = {.s = RAGE_NOTHING}
 };
 
 static rage_AtomDef const time_atom = {

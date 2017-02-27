@@ -22,9 +22,13 @@ rage_Atom * rage_tuple_generate(rage_TupleDef const * const td) {
                 RAGE_MINMAX_GENERATOR(float, f, 0.0)
             case RAGE_ATOM_TIME:
                 RAGE_MINMAX_GENERATOR(rage_Time, t, {})
-            case RAGE_ATOM_STRING:
             case RAGE_ATOM_ENUM:
-                assert(false);
+                assert(at->constraints.e.len);
+                tup[i].e = at->constraints.e.items[0].value;
+                break;
+            case RAGE_ATOM_STRING:
+                assert(at->constraints.s.half == RAGE_EITHER_LEFT);
+                tup[i].s = "";
         }
         #undef RAGE_MINMAX_GENERATOR
     }

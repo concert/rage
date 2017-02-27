@@ -30,10 +30,11 @@ void rage_element_loader_free(rage_ElementLoader * el) {
 
 // FIXME: Dynamism
 static char amp[] = "./libamp.so";
-static char * element_types[] = {amp};
+static char persist[] = "./libpersist.so";
+static char * element_types[] = {amp, persist};
 
 rage_ElementTypes rage_element_loader_list(rage_ElementLoader * el) {
-    return (rage_ElementTypes) {.len=1, .items=element_types};
+    return (rage_ElementTypes) {.len=2, .items=element_types};
 }
 
 static void type_handle_append(
