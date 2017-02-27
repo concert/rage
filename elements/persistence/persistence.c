@@ -356,6 +356,7 @@ rage_Error elem_clear(void * state, rage_InterpolatedView ** controls, rage_Fram
 }
 
 rage_ElementType const elem_info = {
+    .parameters = &init_params,
     .state_new = elem_new,
     .state_free = elem_free,
     .get_ports = elem_describe_ports,
