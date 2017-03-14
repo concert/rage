@@ -2,16 +2,16 @@
 #include <unistd.h> // for sleep
 #include "error.h"
 #include "loader.h"
-#include "harness.h"
+#include "jack_bindings.h"
 
 int main() {
     printf("Example started\n");
-    rage_NewEngine ne = rage_engine_new();
+    rage_NewJackBinding ne = rage_jack_binding_new();
     if (RAGE_FAILED(ne)) {
         printf("Engine creation failed: %s\n", RAGE_FAILURE_VALUE(ne));
         return 1;
     }
-    rage_Engine * const e = RAGE_SUCCESS_VALUE(ne);
+    rage_JackBinding * const e = RAGE_SUCCESS_VALUE(ne);
     printf("Engine created\n");
     rage_ElementLoader * el = rage_element_loader_new();
     //rage_ElementTypes element_type_names = rage_element_loader_list(el);
@@ -20,7 +20,7 @@ int main() {
         el, "./build/libamp.so");
     if (RAGE_FAILED(et_)) {
         printf("Element type load failed: %s\n", RAGE_FAILURE_VALUE(et_));
-        rage_engine_free(e);
+        rage_jack_binding_free(e);
         return 2;
     }
     rage_ElementType * const et = RAGE_SUCCESS_VALUE(et_);
@@ -33,13 +33,13 @@ int main() {
     rage_ElementNewResult elem_ = rage_element_new(et, 44100, 1024, tup);
     if (RAGE_FAILED(elem_)) {
         printf("Element load failed: %s\n", RAGE_FAILURE_VALUE(elem_));
-        rage_engine_free(e);
+        rage_jack_binding_free(e);
         rage_element_loader_free(el);
         return 3;
     }
     rage_Element * const elem = RAGE_SUCCESS_VALUE(elem_);
     printf("Element loaded\n");
-    rage_Atom vals[] = {{.f = 0.01}};
+    rage_Atom vals[] = {{.f = 1.0}};
     rage_TimePoint tps[] = {
         {
             .time = {.second = 0},
@@ -51,27 +51,27 @@ int main() {
         .len = 1,
         .items = tps
     };
-    rage_MountResult mr = rage_engine_mount(e, elem, &ts, "amp");
+    rage_MountResult mr = rage_jack_binding_mount(e, elem, &ts, "amp");
     if (RAGE_FAILED(mr)) {
         printf("Mount failed\n");
         rage_element_free(elem);
         rage_element_loader_unload(el, et);
         rage_element_loader_free(el);
-        rage_engine_free(e);
+        rage_jack_binding_free(e);
         return 4;
     }
-    rage_Harness * const harness = RAGE_SUCCESS_VALUE(mr);
+    rage_JackHarness * const harness = RAGE_SUCCESS_VALUE(mr);
     //FIXME: handle errors (start/stop)
     printf("Starting engine...\n");
-    rage_Error en_st = rage_engine_start(e);
+    rage_Error en_st = rage_jack_binding_start(e);
     if (RAGE_FAILED(en_st)) {
         printf("Start failed: %s\n", RAGE_FAILURE_VALUE(en_st));
     } else {
         printf("Sleeping...\n");
         sleep(90);
-        rage_engine_stop(e);
+        rage_jack_binding_stop(e);
     }
-    rage_engine_unmount(harness);
+    rage_jack_binding_unmount(harness);
     printf("Unmounted\n");
     rage_element_free(elem);
     printf("Elem freed\n");
@@ -79,5 +79,5 @@ int main() {
     printf("Elem type freed\n");
     rage_element_loader_free(el);
     printf("Elem loader freed\n");
-    rage_engine_free(e);
+    rage_jack_binding_free(e);
 }

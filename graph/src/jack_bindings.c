@@ -1,4 +1,4 @@
-#include "harness.h"
+#include "jack_bindings.h"
 #include "loader.h"
 #include "macros.h"
 #include "countdown.h"
@@ -7,18 +7,17 @@
 #include <jack/jack.h>
 #include <semaphore.h>
 
-// FIXME: This isn't an engine
-struct rage_Engine {
+struct rage_JackBinding {
     jack_client_t * jack_client;
-    RAGE_ARRAY(rage_Harness) harnesses;
+    RAGE_ARRAY(rage_JackHarness) harnesses;
     rage_TransportState desired_transport;
     rage_TransportState rt_transport;
     sem_t transport_synced;
     rage_Countdown * rolling_countdown;
 };
 
-struct rage_Harness {
-    rage_Engine * engine;
+struct rage_JackHarness {
+    rage_JackBinding * engine;
     rage_Element * elem;
     union {
         rage_Ports;
@@ -32,14 +31,14 @@ struct rage_Harness {
 };
 
 static int process(jack_nframes_t nframes, void * arg) {
-    rage_Engine * const e = (rage_Engine *) arg;
+    rage_JackBinding * const e = (rage_JackBinding *) arg;
     uint32_t i;
     // FIXME: does the read of desired_transport need to be atomic?
     // Could use trylock if required.
     bool transport_changed = e->desired_transport != e->rt_transport;
     e->rt_transport = e->desired_transport;
     for (uint32_t hid = 0; hid < e->harnesses.len; hid++) {
-        rage_Harness * harness = &e->harnesses.items[hid];
+        rage_JackHarness * harness = &e->harnesses.items[hid];
         for (i = 0; i < harness->n_inputs; i++) {
             harness->inputs[i] = jack_port_get_buffer(harness->jack_inputs[i], nframes);
         }
@@ -67,13 +66,13 @@ static int process(jack_nframes_t nframes, void * arg) {
     return 0;
 }
 
-rage_NewEngine rage_engine_new() {
+rage_NewJackBinding rage_jack_binding_new() {
     // FIXME: Error handling etc.
     jack_client_t * client = jack_client_open("rage", JackNoStartServer, NULL);
     if (client == NULL) {
-        RAGE_FAIL(rage_NewEngine, "Could not create jack client")
+        RAGE_FAIL(rage_NewJackBinding, "Could not create jack client")
     }
-    rage_Engine * e = malloc(sizeof(rage_Engine));
+    rage_JackBinding * e = malloc(sizeof(rage_JackBinding));
     e->desired_transport = e->rt_transport = RAGE_TRANSPORT_STOPPED;
     sem_init(&e->transport_synced, 0, 0);
     e->rolling_countdown = rage_countdown_new(0);
@@ -81,10 +80,10 @@ rage_NewEngine rage_engine_new() {
     e->harnesses.items = NULL;
     e->harnesses.len = 0;
     jack_set_process_callback(e->jack_client, process, e);
-    RAGE_SUCCEED(rage_NewEngine, e);
+    RAGE_SUCCEED(rage_NewJackBinding, e);
 }
 
-void rage_engine_free(rage_Engine * engine) {
+void rage_jack_binding_free(rage_JackBinding * engine) {
     rage_countdown_free(engine->rolling_countdown);
     // FIXME: this is probably a hint that starting and stopping should be
     // elsewhere as the close has a return code
@@ -92,14 +91,14 @@ void rage_engine_free(rage_Engine * engine) {
     free(engine);
 }
 
-rage_Error rage_engine_start(rage_Engine * engine) {
+rage_Error rage_jack_binding_start(rage_JackBinding * engine) {
     if (jack_activate(engine->jack_client)) {
         RAGE_ERROR("Unable to activate jack client");
     }
     RAGE_OK
 }
 
-rage_Error rage_engine_stop(rage_Engine * engine) {
+rage_Error rage_jack_binding_stop(rage_JackBinding * engine) {
     //FIXME: handle errors
     jack_deactivate(engine->jack_client);
     RAGE_OK
@@ -141,10 +140,10 @@ static InterpolatorsForResult interpolators_for(
     RAGE_SUCCEED(InterpolatorsForResult, new_interpolators)
 }
 
-rage_MountResult rage_engine_mount(
-        rage_Engine * engine, rage_Element * elem, rage_TimeSeries * controls,
+rage_MountResult rage_jack_binding_mount(
+        rage_JackBinding * engine, rage_Element * elem, rage_TimeSeries * controls,
         char const * name) {
-    rage_Harness * const harness = malloc(sizeof(rage_Harness));
+    rage_JackHarness * const harness = malloc(sizeof(rage_JackHarness));
     harness->engine = engine;
     harness->ports = rage_ports_new(&elem->requirements);
     size_t const name_size = jack_port_name_size();
@@ -204,7 +203,7 @@ rage_MountResult rage_engine_mount(
     RAGE_SUCCEED(rage_MountResult, harness)
 }
 
-void rage_engine_unmount(rage_Harness * harness) {
+void rage_jack_binding_unmount(rage_JackHarness * harness) {
     // FIXME: potential races here :(
     harness->engine->harnesses.len = 0;
     harness->engine->harnesses.items = NULL;
@@ -223,7 +222,7 @@ void rage_engine_unmount(rage_Harness * harness) {
 }
 
 rage_Finaliser * rage_harness_set_time_series(
-        rage_Harness * const harness,
+        rage_JackHarness * const harness,
         uint32_t const series_idx,
         rage_TimeSeries const * const new_controls) {
     // FIXME: fixed offset (should be derived from sample rate and period size at least)
