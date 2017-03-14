@@ -1,3 +1,4 @@
+#pragma once
 #include "error.h"
 #include "countdown.h"
 #include "interpolation.h"
