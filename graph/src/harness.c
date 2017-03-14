@@ -5,11 +5,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <jack/jack.h>
+#include <semaphore.h>
 
+// FIXME: This isn't an engine
 struct rage_Engine {
     jack_client_t * jack_client;
     RAGE_ARRAY(rage_Harness) harnesses;
-    rage_TransportState transport;
+    rage_TransportState desired_transport;
+    rage_TransportState rt_transport;
+    sem_t transport_synced;
+    rage_Countdown * rolling_countdown;
 };
 
 struct rage_Harness {
@@ -24,12 +29,15 @@ struct rage_Harness {
     uint32_t n_outputs;
     jack_port_t ** jack_outputs;
     rage_Interpolator ** interpolators;
-    rage_Countdown * countdown;
 };
 
 static int process(jack_nframes_t nframes, void * arg) {
     rage_Engine * const e = (rage_Engine *) arg;
     uint32_t i;
+    // FIXME: does the read of desired_transport need to be atomic?
+    // Could use trylock if required.
+    bool transport_changed = e->desired_transport != e->rt_transport;
+    e->rt_transport = e->desired_transport;
     for (uint32_t hid = 0; hid < e->harnesses.len; hid++) {
         rage_Harness * harness = &e->harnesses.items[hid];
         for (i = 0; i < harness->n_inputs; i++) {
@@ -38,9 +46,23 @@ static int process(jack_nframes_t nframes, void * arg) {
         for (i = 0; i < harness->n_outputs; i++) {
             harness->outputs[i] = jack_port_get_buffer(harness->jack_outputs[i], nframes);
         }
-        rage_countdown_add(harness->countdown, -1);
         // FIXME: interpolator clock&transport sync
-        rage_element_process(harness->elem, harness->engine->transport, &harness->ports);
+        rage_element_process(harness->elem, e->rt_transport, &harness->ports);
+    }
+    switch (e->rt_transport) {
+        case RAGE_TRANSPORT_ROLLING:
+            rage_countdown_add(e->rolling_countdown, -1);
+            break;
+        case RAGE_TRANSPORT_STOPPED:
+            if (transport_changed) {
+                int countdown_value = rage_countdown_add(
+                    e->rolling_countdown, -1);
+                rage_countdown_add(e->rolling_countdown, -countdown_value);
+            }
+            break;
+    }
+    if (transport_changed) {
+        sem_post(&e->transport_synced);
     }
     return 0;
 }
@@ -52,7 +74,9 @@ rage_NewEngine rage_engine_new() {
         RAGE_FAIL(rage_NewEngine, "Could not create jack client")
     }
     rage_Engine * e = malloc(sizeof(rage_Engine));
-    e->transport = RAGE_TRANSPORT_STOPPED;
+    e->desired_transport = e->rt_transport = RAGE_TRANSPORT_STOPPED;
+    sem_init(&e->transport_synced, 0, 0);
+    e->rolling_countdown = rage_countdown_new(0);
     e->jack_client = client;
     e->harnesses.items = NULL;
     e->harnesses.len = 0;
@@ -61,6 +85,7 @@ rage_NewEngine rage_engine_new() {
 }
 
 void rage_engine_free(rage_Engine * engine) {
+    rage_countdown_free(engine->rolling_countdown);
     // FIXME: this is probably a hint that starting and stopping should be
     // elsewhere as the close has a return code
     jack_client_close(engine->jack_client);
@@ -173,8 +198,6 @@ rage_MountResult rage_engine_mount(
                 harness->interpolators[i], ++view_idx);
         }
     }
-    // Atomic control change sync stuff
-    harness->countdown = rage_countdown_new(0);
     // FIXME: proper appending
     engine->harnesses.items = harness;
     engine->harnesses.len = 1;
@@ -196,7 +219,6 @@ void rage_engine_unmount(rage_Harness * harness) {
     }
     free(harness->jack_inputs);
     free(harness->jack_outputs);
-    rage_countdown_free(harness->countdown);
     free(harness);
 }
 
