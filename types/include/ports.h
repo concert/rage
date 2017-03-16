@@ -21,6 +21,7 @@ typedef float const * rage_InStream;
 typedef float * rage_OutStream;
 
 typedef struct {
+    // FIXME: transport unused?
     rage_TransportState * transport;
     rage_InterpolatedView ** controls;
     rage_InStream * inputs;

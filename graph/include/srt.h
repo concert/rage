@@ -15,5 +15,5 @@ rage_Error rage_support_convoy_stop(rage_SupportConvoy * convoy);
 
 rage_SupportTruck * rage_support_convoy_mount(
     rage_SupportConvoy * convoy, rage_Element * elem,
-    rage_InterpolatedView ** prep_view,
-    rage_InterpolatedView ** clean_view);
+    rage_InterpolatedView ** prep_views,
+    rage_InterpolatedView ** clean_views);

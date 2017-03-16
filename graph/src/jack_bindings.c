@@ -17,7 +17,7 @@ struct rage_JackBinding {
 };
 
 struct rage_JackHarness {
-    rage_JackBinding * engine;
+    rage_JackBinding * jack_binding;
     rage_Element * elem;
     union {
         rage_Ports;
@@ -27,7 +27,6 @@ struct rage_JackHarness {
     jack_port_t ** jack_inputs;
     uint32_t n_outputs;
     jack_port_t ** jack_outputs;
-    rage_Interpolator ** interpolators;
 };
 
 static int process(jack_nframes_t nframes, void * arg) {
@@ -66,7 +65,7 @@ static int process(jack_nframes_t nframes, void * arg) {
     return 0;
 }
 
-rage_NewJackBinding rage_jack_binding_new() {
+rage_NewJackBinding rage_jack_binding_new(rage_Countdown * countdown) {
     // FIXME: Error handling etc.
     jack_client_t * client = jack_client_open("rage", JackNoStartServer, NULL);
     if (client == NULL) {
@@ -75,76 +74,39 @@ rage_NewJackBinding rage_jack_binding_new() {
     rage_JackBinding * e = malloc(sizeof(rage_JackBinding));
     e->desired_transport = e->rt_transport = RAGE_TRANSPORT_STOPPED;
     sem_init(&e->transport_synced, 0, 0);
-    e->rolling_countdown = rage_countdown_new(0);
     e->jack_client = client;
+    e->rolling_countdown = countdown;
     e->harnesses.items = NULL;
     e->harnesses.len = 0;
     jack_set_process_callback(e->jack_client, process, e);
     RAGE_SUCCEED(rage_NewJackBinding, e);
 }
 
-void rage_jack_binding_free(rage_JackBinding * engine) {
-    rage_countdown_free(engine->rolling_countdown);
+void rage_jack_binding_free(rage_JackBinding * jack_binding) {
     // FIXME: this is probably a hint that starting and stopping should be
     // elsewhere as the close has a return code
-    jack_client_close(engine->jack_client);
-    free(engine);
+    jack_client_close(jack_binding->jack_client);
+    free(jack_binding);
 }
 
-rage_Error rage_jack_binding_start(rage_JackBinding * engine) {
-    if (jack_activate(engine->jack_client)) {
+rage_Error rage_jack_binding_start(rage_JackBinding * jack_binding) {
+    if (jack_activate(jack_binding->jack_client)) {
         RAGE_ERROR("Unable to activate jack client");
     }
     RAGE_OK
 }
 
-rage_Error rage_jack_binding_stop(rage_JackBinding * engine) {
+rage_Error rage_jack_binding_stop(rage_JackBinding * jack_binding) {
     //FIXME: handle errors
-    jack_deactivate(engine->jack_client);
+    jack_deactivate(jack_binding->jack_client);
     RAGE_OK
 }
 
-typedef RAGE_OR_ERROR(rage_Interpolator **) InterpolatorsForResult;
-
-static InterpolatorsForResult interpolators_for(
-        rage_ProcessRequirementsControls const * control_requirements,
-        rage_TimeSeries * const control_values, uint8_t const n_views) {
-    uint32_t const n_controls = control_requirements->len;
-    rage_Interpolator ** new_interpolators = calloc(
-        n_controls, sizeof(rage_Interpolator *));
-    if (new_interpolators == NULL) {
-        RAGE_FAIL(
-            InterpolatorsForResult,
-            "Unable to allocate memory for new interpolators")
-    }
-    for (uint32_t i = 0; i < n_controls; i++) {
-        // FIXME: const sample rate
-        rage_InitialisedInterpolator ii = rage_interpolator_new(
-            &control_requirements->items[i], &control_values[i], 44100,
-            n_views);
-        if (RAGE_FAILED(ii)) {
-            if (i) {
-                do {
-                    i--;
-                    rage_interpolator_free(
-                        &control_requirements->items[i], new_interpolators[i]);
-                } while (i > 0);
-            }
-            free(new_interpolators);
-            RAGE_FAIL(InterpolatorsForResult, RAGE_FAILURE_VALUE(ii));
-            break;
-        } else {
-            new_interpolators[i] = RAGE_SUCCESS_VALUE(ii);
-        }
-    }
-    RAGE_SUCCEED(InterpolatorsForResult, new_interpolators)
-}
-
-rage_MountResult rage_jack_binding_mount(
-        rage_JackBinding * engine, rage_Element * elem, rage_TimeSeries * controls,
-        char const * name) {
+rage_JackHarness * rage_jack_binding_mount(
+        rage_JackBinding * jack_binding, rage_Element * elem,
+        rage_InterpolatedView ** view, char const * name) {
     rage_JackHarness * const harness = malloc(sizeof(rage_JackHarness));
-    harness->engine = engine;
+    harness->jack_binding = jack_binding;
     harness->ports = rage_ports_new(&elem->requirements);
     size_t const name_size = jack_port_name_size();
     char * const port_name = malloc(name_size);
@@ -153,7 +115,7 @@ rage_MountResult rage_jack_binding_mount(
         snprintf(port_name, name_size, "%s_in%u", name, i);
         // FIXME other stream types
         harness->jack_inputs[i] = jack_port_register(
-            engine->jack_client, port_name,
+            jack_binding->jack_client, port_name,
             JACK_DEFAULT_AUDIO_TYPE,
             JackPortIsInput,
             0);
@@ -163,7 +125,7 @@ rage_MountResult rage_jack_binding_mount(
         snprintf(port_name, name_size, "%s_out%u", name, i);
         // FIXME other stream types
         harness->jack_outputs[i] = jack_port_register(
-            engine->jack_client, port_name,
+            jack_binding->jack_client, port_name,
             JACK_DEFAULT_AUDIO_TYPE,
             JackPortIsOutput,
             0);
@@ -172,61 +134,27 @@ rage_MountResult rage_jack_binding_mount(
     harness->elem = elem;
     harness->n_inputs = elem->inputs.len;
     harness->n_outputs = elem->outputs.len;
-    uint8_t n_views = 1;
-    if (elem->type->prep != NULL) {
-        n_views++;
-    }
-    if (elem->type->clean != NULL) {
-        n_views++;
-    }
-    // FIXME: Error handling
-    harness->interpolators = RAGE_SUCCESS_VALUE(interpolators_for(
-        &elem->controls, controls, n_views));
-    for (uint32_t i = 0; i < elem->controls.len; i++) {
-        uint8_t view_idx = 0;
-        harness->ports.controls[i] = rage_interpolator_get_view(
-            harness->interpolators[i], view_idx);
-        if (elem->type->prep != NULL) {
-            // FIXME: use this
-            harness->ports.controls[i] = rage_interpolator_get_view(
-                harness->interpolators[i], ++view_idx);
-        }
-        if (elem->type->clean != NULL) {
-            // FIXME: use this
-            harness->ports.controls[i] = rage_interpolator_get_view(
-                harness->interpolators[i], ++view_idx);
-        }
-    }
+    harness->ports.controls = view;
     // FIXME: proper appending
-    engine->harnesses.items = harness;
-    engine->harnesses.len = 1;
-    RAGE_SUCCEED(rage_MountResult, harness)
+    jack_binding->harnesses.items = harness;
+    jack_binding->harnesses.len = 1;
+    return harness;
 }
 
 void rage_jack_binding_unmount(rage_JackHarness * harness) {
     // FIXME: potential races here :(
-    harness->engine->harnesses.len = 0;
-    harness->engine->harnesses.items = NULL;
+    harness->jack_binding->harnesses.len = 0;
+    harness->jack_binding->harnesses.items = NULL;
     rage_ports_free(harness->ports);
     for (uint32_t i = 0; i < harness->n_inputs; i++) {
         // FIXME: ignoring error codes of this
-        jack_port_unregister(harness->engine->jack_client, harness->jack_inputs[i]);
+        jack_port_unregister(harness->jack_binding->jack_client, harness->jack_inputs[i]);
     }
     for (uint32_t i = 0; i < harness->n_outputs; i++) {
         // FIXME: ignoring error codes of this
-        jack_port_unregister(harness->engine->jack_client, harness->jack_outputs[i]);
+        jack_port_unregister(harness->jack_binding->jack_client, harness->jack_outputs[i]);
     }
     free(harness->jack_inputs);
     free(harness->jack_outputs);
     free(harness);
-}
-
-rage_Finaliser * rage_harness_set_time_series(
-        rage_JackHarness * const harness,
-        uint32_t const series_idx,
-        rage_TimeSeries const * const new_controls) {
-    // FIXME: fixed offset (should be derived from sample rate and period size at least)
-    rage_FrameNo const offset = 4096;
-    rage_FrameNo const change_at = rage_interpolated_view_get_pos(harness->ports.controls[series_idx]) + offset;
-    return rage_interpolator_change_timeseries(harness->interpolators[series_idx], new_controls, change_at);
 }
