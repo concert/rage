@@ -52,7 +52,7 @@ rage_Error rage_proc_block_stop(rage_ProcBlock * pb) {
     if (RAGE_FAILED(rv)) {
         return rv;
     }
-    return rage_support_convoy_start(pb->convoy);
+    return rage_support_convoy_stop(pb->convoy);
 }
 
 typedef RAGE_OR_ERROR(rage_Interpolator **) InterpolatorsForResult;
@@ -133,6 +133,7 @@ rage_MountResult rage_proc_block_mount(
                 harness->interpolators[i], ++view_idx);
         }
     }
+    // FIXME: could be more efficient, and not add this if not required
     harness->truck = rage_support_convoy_mount(
         pb->convoy, elem, prep_views, clean_views);
     harness->jack_harness = rage_jack_binding_mount(
@@ -144,7 +145,7 @@ void rage_proc_block_unmount(rage_Harness * harness) {
     // This could handle the aligning of unmounts and the thing being unmounted
     // from (reducing backrefs)
     rage_jack_binding_unmount(harness->jack_harness);
-    // FIXME: Soft RT NOT HANDLED AT ALL
+    rage_support_convoy_unmount(harness->truck);
 }
 
 rage_Finaliser * rage_harness_set_time_series(

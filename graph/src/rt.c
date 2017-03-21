@@ -1,0 +1,2 @@
+struct rage_JackBinding {
+}

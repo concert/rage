@@ -48,6 +48,10 @@ static rage_PreparedFrames prepare(rage_Trucks * trucks) {
     uint32_t min_prepared = UINT32_MAX;
     for (unsigned i = 0; i < trucks->len; i++) {
         rage_SupportTruck * truck = trucks->items + i;
+        if (truck->prep_view == NULL) {
+            // FIXME: having to work out what to skip each iteration is inefficient
+            continue;
+        }
         rage_PreparedFrames prepared = RAGE_ELEM_PREP(truck->elem, truck->prep_view);
         RAGE_EXTRACT_VALUE(rage_PreparedFrames, prepared, uint32_t n_prepared)
         min_prepared = (n_prepared < min_prepared) ? n_prepared : min_prepared;
@@ -60,6 +64,10 @@ static rage_PreparedFrames clean(rage_Trucks * trucks) {
     uint32_t min_prepared = UINT32_MAX;
     for (unsigned i = 0; i < trucks->len; i++) {
         rage_SupportTruck * truck = trucks->items + i;
+        if (truck->clean_view == NULL) {
+            // FIXME: having to work out what to skip each iteration is inefficient
+            continue;
+        }
         rage_PreparedFrames prepared = RAGE_ELEM_CLEAN(truck->elem, truck->clean_view);
         RAGE_EXTRACT_VALUE(rage_PreparedFrames, prepared, uint32_t n_prepared)
         min_prepared = (n_prepared < min_prepared) ? n_prepared : min_prepared;
@@ -163,4 +171,14 @@ rage_SupportTruck * rage_support_convoy_mount(
     convoy->trucks.len = appended_len;
     pthread_mutex_unlock(&convoy->active);
     return truck;
+}
+
+void rage_support_convoy_unmount(rage_SupportTruck * truck) {
+    // FIXME: just empties everything!
+    pthread_mutex_lock(&truck->convoy->active);
+    rage_SupportTruck * old_items = truck->convoy->trucks.items;
+    truck->convoy->trucks.len = 0;
+    truck->convoy->trucks.items = NULL;
+    pthread_mutex_unlock(&truck->convoy->active);
+    free(old_items);
 }
