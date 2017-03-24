@@ -6,8 +6,8 @@
 
 // FIXME: This feels like it should be coming from interpolation somehow?
 typedef enum {
-    RAGE_INTERPOLATION_CONST = 0x01,
-    RAGE_INTERPOLATION_LINEAR = 0x02
+    RAGE_INTERPOLATION_CONST,
+    RAGE_INTERPOLATION_LINEAR
 } rage_InterpolationMode;
 
 typedef struct {

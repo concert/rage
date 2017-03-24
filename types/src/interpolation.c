@@ -11,6 +11,8 @@ static rage_FrameNo rage_time_to_frame(rage_Time const * t, uint32_t sample_rate
     return (sample_rate * t->second) + (sample_rate * (((float) t->fraction) / UINT32_MAX));
 }
 
+#define RAGE_INTERPOLATORS_N RAGE_INTERPOLATION_LINEAR + 1
+
 static bool unambiguous_mode(rage_InterpolationMode mode) {
     switch (mode) {
         case (RAGE_INTERPOLATION_CONST):
@@ -20,9 +22,10 @@ static bool unambiguous_mode(rage_InterpolationMode mode) {
     return false;
 }
 
-typedef void (*rage_AtomInterpolator)(
-    rage_Atom * const target, rage_Atom const * const start,
-    rage_Atom const * const end, const float weight);
+typedef uint32_t (*rage_AtomInterpolator)(
+    rage_Atom * const target,
+    rage_Atom const * const start_value, rage_Atom const * const end_value,
+    const uint32_t frames_through, const uint32_t duration);
 
 typedef struct {
     rage_FrameNo frame;
@@ -42,7 +45,7 @@ typedef struct {
 struct rage_Interpolator {
     rage_TupleDef const * type;
     uint32_t sample_rate;
-    RAGE_ARRAY(rage_AtomInterpolator) interpolators;
+    RAGE_ARRAY(rage_AtomInterpolator *) interpolators;
     sem_t change_sem;
     rage_FrameSeries * _Atomic points;
     rage_FrameNo valid_from;
@@ -53,7 +56,7 @@ struct rage_InterpolatedView {
     rage_Interpolator * interpolator;
     rage_FrameSeries * points;
     rage_InterpolatedValue value;
-    rage_Atom * val;
+    rage_Atom * val;  // FIXME: eliminate this var
     rage_FrameNo pos;
 };
 
@@ -63,11 +66,16 @@ static void rage_interpolatedview_init(
     iv->points = atomic_load_explicit(&interpolator->points, memory_order_relaxed);
     iv->val = calloc(sizeof(rage_Atom), interpolator->interpolators.len);
     iv->pos = 0;
+    iv->value.value = iv->val;
 }
 
 static void rage_interpolatedview_destroy(rage_InterpolatedView * iv) {
     rage_countdown_add(iv->points->c, -1);
     free(iv->val);
+}
+
+static int as_interpolation_mask(rage_InterpolationMode m) {
+    return 2 ^ m;
 }
 
 static rage_Error validate_time_series(
@@ -82,7 +90,7 @@ static rage_Error validate_time_series(
     }
     for (uint32_t i = 0; i < points->len; i++) {
         point = &points->items[i];
-        if (!(point->mode & allowed_modes && unambiguous_mode(point->mode))) {
+        if (!(as_interpolation_mask(point->mode) & allowed_modes && unambiguous_mode(point->mode))) {
             RAGE_ERROR("Unsupported interpolation mode");
         }
         if (i && !rage_time_after(point->time, *t)) {
@@ -120,23 +128,62 @@ static void frameseries_free(
     free(points);
 }
 
-static void rage_float_interpolate(
-        rage_Atom * const target, rage_Atom const * const start,
-        rage_Atom const * const end, const float weight) {
-    target->f = (start->f * (1 - weight)) + (end->f * weight);
+static uint32_t rage_const_interpolate(
+        rage_Atom * const target,
+        rage_Atom const * const start_value, rage_Atom const * const end_value,
+        const uint32_t frames_through, const uint32_t duration) {
+    *target = *start_value;
+    return duration - frames_through;
 }
 
-static void rage_int_interpolate(
-        rage_Atom * const target, rage_Atom const * const start,
-        rage_Atom const * const end, const float weight) {
-    target->i = (start->i * (1 - weight)) + (end->i * weight);
+static uint32_t rage_time_interpolate(
+        rage_Atom * const target,
+        rage_Atom const * const start_value, rage_Atom const * const end_value,
+        const uint32_t frames_through, const uint32_t duration) {
+    target->frame_no = start_value->frame_no + frames_through;
+    return duration - frames_through;
 }
 
-static rage_InterpolationMode allowed_interpolators(
+static uint32_t rage_float_linear_interpolate(
+        rage_Atom * const target,
+        rage_Atom const * const start_value, rage_Atom const * const end_value,
+        const uint32_t frames_through, const uint32_t duration) {
+    float const weight = (float) frames_through / (float) duration;
+    target->f = (start_value->f * (1 - weight)) + (end_value->f * weight);
+    return 1;
+}
+
+// FIXME: factor stuff out here
+static uint32_t rage_int_linear_interpolate(
+        rage_Atom * const target,
+        rage_Atom const * const start_value, rage_Atom const * const end_value,
+        const uint32_t frames_through, const uint32_t duration) {
+    float const weight = (float) frames_through / (float) duration;
+    target->i = (start_value->i * (1 - weight)) + (end_value->i * weight);
+    return 1;
+}
+
+static rage_AtomInterpolator const_interpolators[RAGE_INTERPOLATORS_N] = {
+    rage_const_interpolate, NULL
+};
+
+static rage_AtomInterpolator int_interpolators[RAGE_INTERPOLATORS_N] = {
+    rage_const_interpolate, rage_int_linear_interpolate
+};
+
+static rage_AtomInterpolator float_interpolators[RAGE_INTERPOLATORS_N] = {
+    rage_const_interpolate, rage_float_linear_interpolate
+};
+
+static rage_AtomInterpolator time_interpolators[RAGE_INTERPOLATORS_N] = {
+    rage_time_interpolate, NULL
+};
+
+static int allowed_interpolators(
         rage_TupleDef const * const td) {
     rage_InterpolationMode m =
-        RAGE_INTERPOLATION_CONST |
-        RAGE_INTERPOLATION_LINEAR;
+        as_interpolation_mask(RAGE_INTERPOLATION_CONST) |
+        as_interpolation_mask(RAGE_INTERPOLATION_LINEAR);
     for (unsigned i=0; i < td->len; i++) {
         switch (td->items[i].type->type) {
             case (RAGE_ATOM_FLOAT):
@@ -145,7 +192,7 @@ static rage_InterpolationMode allowed_interpolators(
             case (RAGE_ATOM_TIME):
             case (RAGE_ATOM_STRING):
             case (RAGE_ATOM_ENUM):
-                m = RAGE_INTERPOLATION_CONST;
+                m = as_interpolation_mask(RAGE_INTERPOLATION_CONST);
                 break;
         }
     }
@@ -168,15 +215,17 @@ rage_InitialisedInterpolator rage_interpolator_new(
         rage_AtomDef const * atom_def = type->items[i].type;
         switch (atom_def->type) {
             case (RAGE_ATOM_FLOAT):
-                state->interpolators.items[i] = rage_float_interpolate;
+                state->interpolators.items[i] = float_interpolators;
                 break;
             case (RAGE_ATOM_INT):
-                state->interpolators.items[i] = rage_int_interpolate;
+                state->interpolators.items[i] = int_interpolators;
                 break;
             case (RAGE_ATOM_TIME):
+                state->interpolators.items[i] = time_interpolators;
+                break;
             case (RAGE_ATOM_STRING):
             case (RAGE_ATOM_ENUM):
-                state->interpolators.items[i] = NULL;
+                state->interpolators.items[i] = const_interpolators;
         }
     }
     RAGE_ARRAY_INIT(&state->views, n_views, i) {
@@ -203,6 +252,7 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
     rage_FramePoint const * start = NULL;
     rage_FramePoint const * end = NULL;
     unsigned i;
+    uint32_t frames_through, duration;
     for (i = 0; i < view->points->len; i++) {
         if (view->points->items[i].frame > view->pos) {
             end = &(view->points->items[i]);
@@ -210,24 +260,17 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
         }
         start = &(view->points->items[i]);
     }
+    frames_through = view->pos - start->frame;  // FIXME: eliminate temporary
     if (end == NULL) {
-        view->value.value = start->value;
-        view->value.valid_for = UINT32_MAX;
+        duration = UINT32_MAX;
+        end = start;  // Not sure about this, it avoids a segfault at the expense of an odd arg.
     } else {
-        if (start->mode == RAGE_INTERPOLATION_CONST) {
-            view->value.value = start->value;
-            view->value.valid_for = end->frame - view->pos;
-        } else {
-            float const weight =
-                (float) (view->pos - start->frame) /
-                (float) (end->frame - start->frame);
-            for (i = 0; i < view->interpolator->interpolators.len; i++) {
-                view->interpolator->interpolators.items[i](
-                    view->val + i, start->value + i, end->value + i, weight);
-            }
-            view->value.value = view->val;
-            view->value.valid_for = 1;
-        }
+        duration = end->frame - start->frame;
+    }
+    for (i = 0; i < view->interpolator->interpolators.len; i++) {
+        view->value.valid_for = view->interpolator->interpolators.items[i][start->mode](
+            view->val + i, start->value + i, end->value + i, frames_through,
+            duration);
     }
     return &view->value;
 }
