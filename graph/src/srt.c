@@ -115,7 +115,7 @@ static void * rage_support_convoy_worker(void * ptr) {
             break;
         }
         // FIXME: Do something about the timeout here
-        rage_countdown_timed_wait(convoy->countdown, 1000);
+        rage_countdown_timed_wait(convoy->countdown, UINT32_MAX);
         pthread_mutex_lock(&convoy->active);
         frames_until_next = clean(&convoy->trucks);
         RAGE_BAIL_ON_FAIL {

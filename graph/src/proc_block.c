@@ -17,6 +17,8 @@ struct rage_Harness {
 
 rage_NewProcBlock rage_proc_block_new() {
     rage_Countdown * countdown = rage_countdown_new(0);
+    // FIXME: make a better way for a countdown to be initialised with a value of 0 but without releasing the lock
+    rage_countdown_timed_wait(countdown, 1);
     rage_NewJackBinding njb = rage_jack_binding_new(countdown);
     if (RAGE_FAILED(njb)) {
         rage_countdown_free(countdown);
@@ -158,4 +160,9 @@ rage_Finaliser * rage_harness_set_time_series(
         harness->interpolators[series_idx], 0);
     rage_FrameNo const change_at = rage_interpolated_view_get_pos(first_rt_view) + offset;
     return rage_interpolator_change_timeseries(harness->interpolators[series_idx], new_controls, change_at);
+}
+
+void rage_proc_block_set_transport_state(rage_ProcBlock * pb, rage_TransportState state) {
+    // FIXME: softrt unhandled
+    rage_jack_binding_set_transport_state(pb->jack_binding, state);
 }

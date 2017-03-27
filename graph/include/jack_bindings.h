@@ -16,3 +16,6 @@ rage_JackHarness * rage_jack_binding_mount(
     rage_JackBinding * jack_binding, rage_Element * elem,
     rage_InterpolatedView ** rt_views, char const * name);
 void rage_jack_binding_unmount(rage_JackHarness * harness);
+
+void rage_jack_binding_set_transport_state(
+    rage_JackBinding * binding, rage_TransportState state);

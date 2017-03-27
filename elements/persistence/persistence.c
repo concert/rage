@@ -214,7 +214,7 @@ static void populate_slabs(
         char ** rb_vec, jack_ringbuffer_t ** rbs) {
     for (uint32_t c = 0; c < n_channels; c++) {
         jack_ringbuffer_data_t vec[2];
-        jack_ringbuffer_get_read_vector(rbs[c], vec);
+        get_vec(rbs[c], vec);
         rb_vec[c] = vec[0].buf;
         slabs[0] = vec[0].len / sizeof(float);
         rb_vec[c + n_channels] = vec[1].buf;
@@ -252,6 +252,7 @@ rage_PreparedFrames elem_prepare(void * state, rage_InterpolatedView ** controls
                 }
                 n_prepared_frames += read;
                 if (rb_space <= chunk->valid_for) {
+                    rage_interpolated_view_advance(controls[0], n_prepared_frames);
                     RAGE_SUCCEED(rage_PreparedFrames, n_prepared_frames);
                 }
                 break;
