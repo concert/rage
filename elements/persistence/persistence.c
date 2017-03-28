@@ -183,15 +183,18 @@ rage_Error elem_process(void * state, rage_TransportState const transport_state,
     RAGE_OK
 }
 
-static SNDFILE * prep_sndfile(
-        SNDFILE * sf, SF_INFO * info, char const * path, size_t pos) {
-    if (sf != NULL) {
-        sf_close(sf);
+// FIXME: some comonality with the writing version
+static sf_count_t read_prep_sndfile(
+        persist_state * data, char const * path, size_t pos,
+        uint32_t to_read) {
+    if (data->sf != NULL) {
+        sf_close(data->sf);
     }
-    sf = sf_open(path, SFM_READ, info);
+    data->sf = sf_open(path, SFM_READ, &data->sf_info);
     // FIXME: may fail
-    sf_seek(sf, pos, SEEK_SET);
-    return sf;
+    sf_seek(data->sf, pos, SEEK_SET);
+    return sf_readf_float(
+        data->sf, data->interleaved_buffer, to_read);
 }
 
 static void deinterleave(
@@ -234,10 +237,8 @@ rage_PreparedFrames elem_prepare(void * state, rage_InterpolatedView ** controls
                     data->rb_vec, data->play_buffs);
                 size_t const rb_space = slabs[0] + slabs[1];
                 size_t const to_read = (rb_space < chunk->valid_for) ? rb_space : chunk->valid_for;
-                data->sf = prep_sndfile(
-                    data->sf, &data->sf_info, chunk->value[1].s, chunk->value[2].frame_no);
-                sf_count_t const read = sf_readf_float(
-                    data->sf, data->interleaved_buffer, to_read);
+                sf_count_t const read = read_prep_sndfile(
+                    data, chunk->value[1].s, chunk->value[2].frame_no, to_read);
                 if (read < to_read) {
                     RAGE_FAIL(rage_PreparedFrames, "Insufficient data in file")
                 }
