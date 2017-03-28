@@ -142,24 +142,20 @@ static uint32_t rage_time_interpolate(
     return duration - frames_through;
 }
 
-static uint32_t rage_float_linear_interpolate(
-        rage_Atom * const target,
-        rage_Atom const * const start_value, rage_Atom const * const end_value,
-        const uint32_t frames_through, const uint32_t duration) {
-    float const weight = (float) frames_through / (float) duration;
-    target->f = (start_value->f * (1 - weight)) + (end_value->f * weight);
-    return 1;
-}
+#define RAGE_NUMERIC_INTERPOLATE(type, member) \
+    static uint32_t rage_##type##_linear_interpolate( \
+            rage_Atom * const target, \
+            rage_Atom const * const start_value, rage_Atom const * const end_value, \
+            const uint32_t frames_through, const uint32_t duration) { \
+        float const weight = (float) frames_through / (float) duration; \
+        target->member = (start_value->member * (1 - weight)) + (end_value->member * weight); \
+        return 1; \
+    }
 
-// FIXME: factor stuff out here
-static uint32_t rage_int_linear_interpolate(
-        rage_Atom * const target,
-        rage_Atom const * const start_value, rage_Atom const * const end_value,
-        const uint32_t frames_through, const uint32_t duration) {
-    float const weight = (float) frames_through / (float) duration;
-    target->i = (start_value->i * (1 - weight)) + (end_value->i * weight);
-    return 1;
-}
+RAGE_NUMERIC_INTERPOLATE(float, f)
+RAGE_NUMERIC_INTERPOLATE(int, i)
+
+#undef RAGE_NUMERIC_INTERPOLATE
 
 static rage_AtomInterpolator const_interpolators[RAGE_INTERPOLATORS_N] = {
     rage_const_interpolate, NULL
