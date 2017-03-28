@@ -252,7 +252,7 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
     rage_FramePoint const * start = NULL;
     rage_FramePoint const * end = NULL;
     unsigned i;
-    uint32_t frames_through, duration;
+    uint32_t duration;
     for (i = 0; i < view->points->len; i++) {
         if (view->points->items[i].frame > view->pos) {
             end = &(view->points->items[i]);
@@ -260,7 +260,6 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
         }
         start = &(view->points->items[i]);
     }
-    frames_through = view->pos - start->frame;  // FIXME: eliminate temporary
     if (end == NULL) {
         duration = UINT32_MAX;
         end = start;  // Not sure about this, it avoids a segfault at the expense of an odd arg.
@@ -269,7 +268,7 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
     }
     for (i = 0; i < view->interpolator->interpolators.len; i++) {
         view->value.valid_for = view->interpolator->interpolators.items[i][start->mode](
-            view->val + i, start->value + i, end->value + i, frames_through,
+            view->val + i, start->value + i, end->value + i, view->pos - start->frame,
             duration);
     }
     return &view->value;
