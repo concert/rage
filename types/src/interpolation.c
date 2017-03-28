@@ -260,7 +260,7 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
     }
     if (end == NULL) {
         duration = UINT32_MAX;
-        end = start;  // Not sure about this, it avoids a segfault at the expense of an odd arg.
+        end = start;
     } else {
         duration = end->frame - start->frame;
     }
