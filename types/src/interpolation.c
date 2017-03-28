@@ -56,7 +56,6 @@ struct rage_InterpolatedView {
     rage_Interpolator * interpolator;
     rage_FrameSeries * points;
     rage_InterpolatedValue value;
-    rage_Atom * val;  // FIXME: eliminate this var
     rage_FrameNo pos;
 };
 
@@ -64,14 +63,13 @@ static void rage_interpolatedview_init(
         rage_Interpolator * interpolator, rage_InterpolatedView * iv) {
     iv->interpolator = interpolator;
     iv->points = atomic_load_explicit(&interpolator->points, memory_order_relaxed);
-    iv->val = calloc(sizeof(rage_Atom), interpolator->interpolators.len);
+    iv->value.value = calloc(sizeof(rage_Atom), interpolator->interpolators.len);
     iv->pos = 0;
-    iv->value.value = iv->val;
 }
 
 static void rage_interpolatedview_destroy(rage_InterpolatedView * iv) {
     rage_countdown_add(iv->points->c, -1);
-    free(iv->val);
+    free(iv->value.value);
 }
 
 static int as_interpolation_mask(rage_InterpolationMode m) {
@@ -268,8 +266,8 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
     }
     for (i = 0; i < view->interpolator->interpolators.len; i++) {
         view->value.valid_for = view->interpolator->interpolators.items[i][start->mode](
-            view->val + i, start->value + i, end->value + i, view->pos - start->frame,
-            duration);
+            view->value.value + i, start->value + i, end->value + i,
+            view->pos - start->frame, duration);
     }
     return &view->value;
 }
