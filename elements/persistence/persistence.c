@@ -86,6 +86,11 @@ void elem_free_port_description(rage_ProcessRequirements pr) {
     free((void *) pr.inputs.items);
 }
 
+// FIXME: use this or similar to improve efficiency
+typedef struct {
+    char * path;
+} sndfile_status;
+
 typedef struct {
     unsigned n_channels;
     uint32_t frame_size; // Doesn't everyone HAVE to do this?
@@ -178,12 +183,6 @@ rage_Error elem_process(void * state, rage_TransportState const transport_state,
     RAGE_OK
 }
 
-// FIXME: use this or similar to improve efficiency
-typedef struct {
-    SF_INFO info;
-    char * path;
-} sndfile_status;
-
 static SNDFILE * prep_sndfile(
         SNDFILE * sf, SF_INFO * info, char const * path, size_t pos) {
     if (sf != NULL) {
@@ -225,18 +224,18 @@ static void populate_slabs(
 rage_PreparedFrames elem_prepare(void * state, rage_InterpolatedView ** controls) {
     persist_state * const data = (persist_state *) state;
     uint32_t n_prepared_frames = 0;
+    size_t slabs[2];
     rage_InterpolatedValue const * chunk = rage_interpolated_view_value(controls[0]);
     while (chunk->valid_for != UINT32_MAX) {
         switch ((PersistanceMode) chunk->value[0].e) {
             case PLAY:
-                data->sf = prep_sndfile(
-                    data->sf, &data->sf_info, chunk->value[1].s, chunk->value[2].frame_no);
-                size_t slabs[2];
                 populate_slabs(
                     slabs, data->n_channels, jack_ringbuffer_get_write_vector,
                     data->rb_vec, data->play_buffs);
                 size_t const rb_space = slabs[0] + slabs[1];
                 size_t const to_read = (rb_space < chunk->valid_for) ? rb_space : chunk->valid_for;
+                data->sf = prep_sndfile(
+                    data->sf, &data->sf_info, chunk->value[1].s, chunk->value[2].frame_no);
                 sf_count_t const read = sf_readf_float(
                     data->sf, data->interleaved_buffer, to_read);
                 if (read < to_read) {
@@ -279,6 +278,24 @@ static void interleave(
     }
 }
 
+// FIXME: this takes an overly broad first arg
+static sf_count_t write_buffer_to_file(
+        persist_state * const data, char const * const path, uint32_t pos,
+        uint32_t to_write) {
+    if (data->sf != NULL) {
+        sf_close(data->sf);
+    }
+    data->sf_info.samplerate = 44100;  // FIXME: fixed sample rate
+    data->sf_info.channels = data->n_channels;
+    data->sf_info.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
+    // FIXME: what if the file is incompatible with our info struct?
+    data->sf = sf_open(path, SFM_RDWR, &data->sf_info);
+    // FIXME: may fail
+    sf_seek(data->sf, pos, SEEK_SET);
+    return sf_writef_float(
+        data->sf, data->interleaved_buffer, to_write);
+}
+
 rage_PreparedFrames elem_cleanup(void * state, rage_InterpolatedView ** controls) {
     persist_state * const data = (persist_state *) state;
     uint32_t frames_until_buffer_full = 0;
@@ -307,11 +324,9 @@ rage_PreparedFrames elem_cleanup(void * state, rage_InterpolatedView ** controls
                         (float const **) &data->rb_vec[data->n_channels],
                         data->n_channels, slabs[1]);
                 }
-                data->sf = prep_sndfile(
-                    data->sf, &data->sf_info, chunk->value[1].s, chunk->value[2].frame_no);
                 size_t const to_write = (rb_left < chunk->valid_for) ? rb_left : chunk->valid_for;
-                sf_count_t const written = sf_writef_float(
-                    data->sf, data->interleaved_buffer, to_write);
+                sf_count_t const written = write_buffer_to_file(
+                    data, chunk->value[1].s, chunk->value[2].frame_no, to_write);
                 if (written < to_write) {
                     RAGE_FAIL(rage_PreparedFrames, "Unable to write all data to file")
                 }
