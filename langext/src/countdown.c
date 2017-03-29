@@ -15,7 +15,7 @@ _Static_assert(
 rage_Countdown * rage_countdown_new(int initial_value) {
     rage_Countdown * c = malloc(sizeof(rage_Countdown));
     atomic_init(&c->counter, initial_value);
-    sem_init(&c->sig, 0, (initial_value == 0) ? 1 : 0);
+    sem_init(&c->sig, 0, 0);
     return c;
 }
 

@@ -17,8 +17,6 @@ struct rage_Harness {
 
 rage_NewProcBlock rage_proc_block_new() {
     rage_Countdown * countdown = rage_countdown_new(0);
-    // FIXME: make a better way for a countdown to be initialised with a value of 0 but without releasing the lock
-    rage_countdown_timed_wait(countdown, 1);
     rage_NewJackBinding njb = rage_jack_binding_new(countdown);
     if (RAGE_FAILED(njb)) {
         rage_countdown_free(countdown);
