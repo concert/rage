@@ -97,8 +97,9 @@ rage_Error rage_jack_binding_start(rage_JackBinding * jack_binding) {
 }
 
 rage_Error rage_jack_binding_stop(rage_JackBinding * jack_binding) {
-    //FIXME: handle errors
-    jack_deactivate(jack_binding->jack_client);
+    if (jack_deactivate(jack_binding->jack_client)) {
+        RAGE_ERROR("Jack deactivation failed")
+    }
     RAGE_OK
 }
 
