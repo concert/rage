@@ -94,6 +94,7 @@ typedef struct {
 typedef struct {
     unsigned n_channels;
     uint32_t frame_size; // Doesn't everyone HAVE to do this?
+    uint32_t sample_rate;
     jack_ringbuffer_t ** rec_buffs;
     jack_ringbuffer_t ** play_buffs;
     char ** rb_vec;
@@ -108,6 +109,7 @@ rage_NewElementState elem_new(
     // Not sure I like way the indices tie up here
     ad->n_channels = params[0].i;
     ad->frame_size = frame_size;
+    ad->sample_rate = sample_rate;
     ad->rec_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
     ad->play_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
     for (uint32_t c = 0; c < ad->n_channels; c++) {
@@ -286,7 +288,7 @@ static sf_count_t write_buffer_to_file(
     if (data->sf != NULL) {
         sf_close(data->sf);
     }
-    data->sf_info.samplerate = 44100;  // FIXME: fixed sample rate
+    data->sf_info.samplerate = data->sample_rate;
     data->sf_info.channels = data->n_channels;
     data->sf_info.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
     // FIXME: what if the file is incompatible with our info struct?

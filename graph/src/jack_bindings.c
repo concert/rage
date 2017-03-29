@@ -1,7 +1,6 @@
 #include "jack_bindings.h"
 #include "loader.h"
 #include "macros.h"
-#include "countdown.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <jack/jack.h>
@@ -65,9 +64,11 @@ static int process(jack_nframes_t nframes, void * arg) {
     return 0;
 }
 
-rage_NewJackBinding rage_jack_binding_new(rage_Countdown * countdown) {
+rage_NewJackBinding rage_jack_binding_new(
+        rage_Countdown * countdown, uint32_t * sample_rate) {
     // FIXME: Error handling etc.
     jack_client_t * client = jack_client_open("rage", JackNoStartServer, NULL);
+    *sample_rate = jack_get_sample_rate(client);
     if (client == NULL) {
         RAGE_FAIL(rage_NewJackBinding, "Could not create jack client")
     }

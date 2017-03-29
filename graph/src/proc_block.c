@@ -7,6 +7,7 @@ struct rage_ProcBlock {
     rage_Countdown * countdown;
     rage_JackBinding * jack_binding;
     rage_SupportConvoy * convoy;
+    uint32_t * sample_rate;
 };
 
 struct rage_Harness {
@@ -15,9 +16,9 @@ struct rage_Harness {
     rage_Interpolator ** interpolators;
 };
 
-rage_NewProcBlock rage_proc_block_new() {
+rage_NewProcBlock rage_proc_block_new(uint32_t * sample_rate) {
     rage_Countdown * countdown = rage_countdown_new(0);
-    rage_NewJackBinding njb = rage_jack_binding_new(countdown);
+    rage_NewJackBinding njb = rage_jack_binding_new(countdown, sample_rate);
     if (RAGE_FAILED(njb)) {
         rage_countdown_free(countdown);
         RAGE_FAIL(rage_NewProcBlock, RAGE_FAILURE_VALUE(njb));
@@ -58,6 +59,7 @@ rage_Error rage_proc_block_stop(rage_ProcBlock * pb) {
 typedef RAGE_OR_ERROR(rage_Interpolator **) InterpolatorsForResult;
 
 static InterpolatorsForResult interpolators_for(
+        uint32_t sample_rate,
         rage_ProcessRequirementsControls const * control_requirements,
         rage_TimeSeries * const control_values, uint8_t const n_views) {
     uint32_t const n_controls = control_requirements->len;
@@ -71,7 +73,7 @@ static InterpolatorsForResult interpolators_for(
     for (uint32_t i = 0; i < n_controls; i++) {
         // FIXME: const sample rate
         rage_InitialisedInterpolator ii = rage_interpolator_new(
-            &control_requirements->items[i], &control_values[i], 44100,
+            &control_requirements->items[i], &control_values[i], sample_rate,
             n_views);
         if (RAGE_FAILED(ii)) {
             if (i) {
@@ -104,7 +106,7 @@ rage_MountResult rage_proc_block_mount(
         n_views++;
     }
     harness->interpolators = RAGE_SUCCESS_VALUE(interpolators_for(
-        &elem->controls, controls, n_views));
+        *pb->sample_rate, &elem->controls, controls, n_views));
     rage_InterpolatedView ** rt_views = calloc(
         elem->controls.len, sizeof(rage_InterpolatedView *));
     rage_InterpolatedView ** prep_views, ** clean_views;

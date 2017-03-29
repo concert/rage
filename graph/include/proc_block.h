@@ -8,7 +8,7 @@ typedef RAGE_OR_ERROR(rage_ProcBlock *) rage_NewProcBlock;
 typedef struct rage_Harness rage_Harness;
 typedef RAGE_OR_ERROR(rage_Harness *) rage_MountResult;
 
-rage_NewProcBlock rage_proc_block_new();
+rage_NewProcBlock rage_proc_block_new(uint32_t * sample_rate);
 void rage_proc_block_free(rage_ProcBlock * pb);
 
 rage_Error rage_proc_block_start(rage_ProcBlock * pb);
