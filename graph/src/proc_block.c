@@ -161,6 +161,6 @@ rage_Finaliser * rage_harness_set_time_series(
 }
 
 void rage_proc_block_set_transport_state(rage_ProcBlock * pb, rage_TransportState state) {
-    // FIXME: softrt unhandled
+    rage_support_convoy_set_transport_state(pb->convoy, state);
     rage_jack_binding_set_transport_state(pb->jack_binding, state);
 }

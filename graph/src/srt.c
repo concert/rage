@@ -182,3 +182,10 @@ void rage_support_convoy_unmount(rage_SupportTruck * truck) {
     pthread_mutex_unlock(&truck->convoy->active);
     free(old_items);
 }
+
+void rage_support_convoy_set_transport_state(
+        rage_SupportConvoy * convoy, rage_TransportState state) {
+    pthread_mutex_lock(&convoy->active);
+    // FIXME: Doesn't do anything more than sync up
+    pthread_mutex_unlock(&convoy->active);
+}

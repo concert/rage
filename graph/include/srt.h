@@ -19,3 +19,6 @@ rage_SupportTruck * rage_support_convoy_mount(
     rage_InterpolatedView ** clean_views);
 
 void rage_support_convoy_unmount(rage_SupportTruck * truck);
+
+void rage_support_convoy_set_transport_state(
+    rage_SupportConvoy * convoy, rage_TransportState state);
