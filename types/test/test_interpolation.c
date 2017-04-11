@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "interpolation.h"
+#include "testing.h"
 
 static rage_InitialisedInterpolator interpolator_for(
         rage_TupleDef const * td, rage_TimePoint * points,
@@ -11,9 +12,9 @@ static rage_InitialisedInterpolator interpolator_for(
     return rage_interpolator_new(td, &ts, 1, n_views);
 }
 
-static int check_with_single_field_interpolator(
+static rage_Error check_with_single_field_interpolator(
         rage_AtomDef const * atom_def, rage_TimePoint * points,
-        unsigned n_points, int (*checker)(rage_InterpolatedView *)) {
+        unsigned n_points, rage_Error (*checker)(rage_InterpolatedView *)) {
     rage_FieldDef fields[] = {
         {.name = "field", .type = atom_def}
     };
@@ -25,14 +26,10 @@ static int check_with_single_field_interpolator(
     };
     rage_InitialisedInterpolator ii = interpolator_for(
         &td, points, n_points, 1);
-    if (RAGE_FAILED(ii)) {
-        printf("Interpolator init failed: %s", RAGE_FAILURE_VALUE(ii));
-        return 2;
-    }
-    rage_Interpolator * interpolator = RAGE_SUCCESS_VALUE(ii);
-    int rv = checker(rage_interpolator_get_view(interpolator, 0));
+    RAGE_EXTRACT_VALUE(rage_Error, ii, rage_Interpolator * interpolator)
+    rage_Error err = checker(rage_interpolator_get_view(interpolator, 0));
     rage_interpolator_free(&td, interpolator);
-    return rv;
+    return err;
 }
 
 #define RAGE_EQUALITY_CHECK(type, member, fmt) \
@@ -49,32 +46,31 @@ static int check_with_single_field_interpolator(
 
 RAGE_EQUALITY_CHECK(float, f, "%f")
 
-static int float_checks(rage_InterpolatedView * v) {
+static rage_Error float_checks(rage_InterpolatedView * v) {
     if (f_check(v, 0.0))
-        return 1;
+        RAGE_ERROR("Mismatch at t=0")
     rage_interpolated_view_advance(v, 1);
     if (f_check(v, 0.5))
-        return 1;
+        RAGE_ERROR("Mismatch at t=1")
     rage_interpolated_view_advance(v, 1);
     if (f_check(v, 1.0))
-        return 1;
+        RAGE_ERROR("Mismatch at t=2")
     rage_interpolated_view_advance(v, 1);
     if (f_check(v, 1.0))
-        return 1;
+        RAGE_ERROR("Mismatch at t=3")
     rage_interpolated_view_advance(v, 1);
     if (f_check(v, 2.0))
-        return 1;
+        RAGE_ERROR("Mismatch at t=4")
     rage_interpolated_view_advance(v, 1);
     if (f_check(v, 2.0))
-        return 1;
-    rage_interpolated_view_advance(v, 1);
-    return 0;
+        RAGE_ERROR("Mismatch at t=5")
+    RAGE_OK
 }
 
 static rage_AtomDef const unconstrained_float = {
     .type = RAGE_ATOM_FLOAT, .name = "float", .constraints = {}};
 
-static int interpolator_float_test() {
+static rage_Error interpolator_float_test() {
     rage_Atom vals[] = {{.f = 0}, {.f = 1}, {.f = 2}};
     rage_TimePoint tps[] = {
         {
@@ -99,25 +95,25 @@ static int interpolator_float_test() {
 
 RAGE_EQUALITY_CHECK(uint32_t, frame_no, "%u")
 
-static int time_checks(rage_InterpolatedView * v) {
+static rage_Error time_checks(rage_InterpolatedView * v) {
     if (frame_no_check(v, 0))
-        return 1;
+        RAGE_ERROR("Mismatch at t=0")
     rage_interpolated_view_advance(v, 1);
     if (frame_no_check(v, 1))
-        return 1;
+        RAGE_ERROR("Mismatch at t=1")
     rage_interpolated_view_advance(v, 2);
     if (frame_no_check(v, 3))
-        return 1;
+        RAGE_ERROR("Mismatch at t=3")
     rage_interpolated_view_advance(v, 1);
     if (frame_no_check(v, 1))
-        return 1;
+        RAGE_ERROR("Mismatch at t=4")
     rage_interpolated_view_advance(v, 120);
     if (frame_no_check(v, 121))
-        return 1;
-    return 0;
+        RAGE_ERROR("Mismatch at t=124")
+    RAGE_OK
 }
 
-static int interpolator_time_test() {
+static rage_Error interpolator_time_test() {
     rage_AtomDef const unconstrained_time = {
         .type = RAGE_ATOM_TIME, .name = "time", .constraints = {}};
     rage_Atom vals[] = {
@@ -140,7 +136,7 @@ static int interpolator_time_test() {
         &unconstrained_time, tps, 2, time_checks);
 }
 
-static int interpolator_immediate_change_test() {
+static rage_Error interpolator_immediate_change_test() {
     rage_Atom val = {.f = 0};
     rage_TimePoint tps[] = {
         {
@@ -160,16 +156,13 @@ static int interpolator_immediate_change_test() {
         .items = fields
     };
     rage_InitialisedInterpolator ii = interpolator_for(&td, tps, 1, 1);
-    if (RAGE_FAILED(ii)) {
-        return 2;
-    }
-    int rval = 0;
-    rage_Interpolator * interpolator = RAGE_SUCCESS_VALUE(ii);
+    RAGE_EXTRACT_VALUE(rage_Error, ii, rage_Interpolator * interpolator)
+    char * err = NULL;
     rage_InterpolatedView * iv = rage_interpolator_get_view(interpolator, 0);
     rage_InterpolatedValue const * obtained = rage_interpolated_view_value(iv);
     // TODO: checks on valid_for
     if (obtained->value[0].f != val.f) {
-        rval += 1;
+        err = "Incorrect interpolated value";
     } else {
         val.f = 1;
         rage_TimeSeries ts = {
@@ -181,22 +174,18 @@ static int interpolator_immediate_change_test() {
         obtained = rage_interpolated_view_value(iv);
         rage_finaliser_wait(change_complete);
         if (obtained->value[0].f != val.f) {
-            rval += 2;
+            printf("%f != %f\n", obtained->value[0].f, val.f);
+            err = "Incorrect interpolated value after TS change";
         }
     }
     rage_interpolator_free(&td, interpolator);
-    return rval;
+    if (err != NULL) {
+        RAGE_ERROR(err)
+    } else {
+        RAGE_OK
+    }
 }
 
 // TODO: multiple views test
 
-// FIXME: use normal test main
-int main() {
-    int i = interpolator_float_test();
-    if (i)
-        return i;
-    i = interpolator_time_test();
-    if (i)
-        return i;
-    return interpolator_immediate_change_test();
-}
+TEST_MAIN(interpolator_float_test, interpolator_time_test, interpolator_immediate_change_test)
