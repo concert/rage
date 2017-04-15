@@ -171,6 +171,8 @@ static rage_Error interpolator_immediate_change_test() {
         };
         rage_Finaliser * change_complete = rage_interpolator_change_timeseries(
             interpolator, &ts, 0);
+        // FIXME: should reading the value trigger a seek?
+        rage_interpolated_view_advance(iv, 0);
         obtained = rage_interpolated_view_value(iv);
         rage_finaliser_wait(change_complete);
         if (obtained->value[0].f != val.f) {

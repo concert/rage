@@ -299,7 +299,7 @@ typedef struct {
 
 static void rage_finalise_timeseries_change(void * p) {
     rage_TimeSeriesChange * tsc = p;
-    rage_countdown_timed_wait(tsc->fs->c, 500); // FIXME: ERROR HANDLING!
+    rage_countdown_timed_wait(tsc->fs->c, 1000); // FIXME: ERROR HANDLING!
     sem_post(tsc->change_sem);
     frameseries_free(tsc->type, tsc->fs);
 }
