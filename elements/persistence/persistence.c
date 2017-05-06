@@ -360,7 +360,7 @@ rage_Error elem_clear(void * state, rage_InterpolatedView ** controls, rage_Fram
     rage_FrameNo consumed, to_erase = 0;
     while (to_present) {
         chunk = rage_interpolated_view_value(controls[0]);
-        consumed = (consumed < chunk->valid_for) ? consumed : chunk->valid_for;
+        consumed = (to_present < chunk->valid_for) ? to_present : chunk->valid_for;
         switch ((PersistanceMode) chunk->value[0].e) {
             case PLAY:
                 to_erase += consumed;
