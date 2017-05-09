@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "loader.h"
+#include "pdls.c"
 
 static void new_stream_buffers(rage_Ports * ports, rage_ProcessRequirements requirements) {
     uint32_t i;
@@ -52,8 +53,8 @@ rage_Error test() {
         rage_ElementTypeLoadResult et_ = rage_element_loader_load(
             el, element_type_names.items[i]);
         RAGE_EXTRACT_VALUE(rage_Error, et_, rage_ElementType * et)
-        rage_Atom * tup = rage_tuple_generate(et->parameters);
-        rage_ElementNewResult elem_ = rage_element_new(et, 44100, 256, tup);
+        rage_Atom ** tups = generate_tuples(et->parameters);
+        rage_ElementNewResult elem_ = rage_element_new(et, 44100, 256, tups);
         RAGE_EXTRACT_VALUE(rage_Error, elem_, rage_Element * elem)
         rage_Ports ports = rage_ports_new(&elem->requirements);
         new_stream_buffers(&ports, elem->requirements);
@@ -64,7 +65,7 @@ rage_Error test() {
         free_stream_buffers(&ports, elem->requirements);
         rage_ports_free(ports);
         rage_element_free(elem);
-        free(tup);
+        free_tuples(et->parameters, tups);
         rage_element_loader_unload(el, et);
     }
     rage_element_loader_free(el);

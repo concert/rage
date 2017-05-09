@@ -1,5 +1,6 @@
 #include "countdown.h"
 #include "srt.h"
+#include "pdls.c"
 
 typedef struct {
     rage_ElementLoader * loader;
@@ -18,9 +19,9 @@ rage_NewTestElem new_test_elem() {
         RAGE_FAIL(rage_NewTestElem, RAGE_FAILURE_VALUE(et_));
     }
     rage_ElementType * et = RAGE_SUCCESS_VALUE(et_);
-    rage_Atom * tup = rage_tuple_generate(et->parameters);
-    rage_ElementNewResult elem_ = rage_element_new(et, 44100, 256, tup);
-    free(tup);
+    rage_Atom ** tups = generate_tuples(et->parameters);
+    rage_ElementNewResult elem_ = rage_element_new(et, 44100, 256, tups);
+    free_tuples(et->parameters, tups);
     if (RAGE_FAILED(elem_)) {
         rage_element_loader_unload(el, et);
         rage_element_loader_free(el);

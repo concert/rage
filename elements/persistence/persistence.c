@@ -22,12 +22,17 @@ static rage_FieldDef const param_fields[] = {
     {.name = "channels", .type = &n_channels}
 };
 
-rage_TupleDef const init_params = {
+rage_TupleDef const init_param = {
     .name = "persistence",
     .description = "Store/Replay Audio Streams",
     .liberty = RAGE_LIBERTY_MUST_PROVIDE,
     .len = 1,
     .items = param_fields
+};
+
+rage_ParamDefList const init_params = {
+    .len = 1,
+    .items = &init_param
 };
 
 static rage_AtomDef const path_atom = {
@@ -66,17 +71,18 @@ static rage_TupleDef const tst_def = {
     .items = tst_fields
 };
 
-rage_ProcessRequirements elem_describe_ports(rage_Atom * params) {
+rage_ProcessRequirements elem_describe_ports(rage_Atom ** params) {
+    int const n_channels = params[0][0].i;
     rage_ProcessRequirements rval;
     rval.controls.len = 1;
     rval.controls.items = &tst_def;
-    rage_StreamDef * stream_defs = calloc(params[0].i, sizeof(rage_StreamDef));
-    for (unsigned i = 0; i < params[0].i; i++) {
+    rage_StreamDef * stream_defs = calloc(n_channels, sizeof(rage_StreamDef));
+    for (unsigned i = 0; i < n_channels; i++) {
         stream_defs[i] = RAGE_STREAM_AUDIO;
     }
-    rval.inputs.len = params[0].i;
+    rval.inputs.len = n_channels;
     rval.inputs.items = stream_defs;
-    rval.outputs.len = params[0].i;
+    rval.outputs.len = n_channels;
     rval.outputs.items = stream_defs;
     return rval;
 }
@@ -104,10 +110,10 @@ typedef struct {
 } persist_state;
 
 rage_NewElementState elem_new(
-        uint32_t sample_rate, uint32_t frame_size, rage_Atom * params) {
+        uint32_t sample_rate, uint32_t frame_size, rage_Atom ** params) {
     persist_state * ad = malloc(sizeof(persist_state));
     // Not sure I like way the indices tie up here
-    ad->n_channels = params[0].i;
+    ad->n_channels = params[0][0].i;
     ad->frame_size = frame_size;
     ad->sample_rate = sample_rate;
     ad->rec_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));

@@ -2,6 +2,9 @@
 #include "time.h"
 #include "macros.h"
 
+// FIXME: liberty is not a thing in the engine, there may be defaults and it
+// doesn't make sense for the engine to use cannot (as this implies a RO
+// derived data source)
 typedef enum {
     RAGE_LIBERTY_CANNOT_PROVIDE,
     RAGE_LIBERTY_MAY_PROVIDE,

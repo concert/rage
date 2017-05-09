@@ -8,9 +8,10 @@
 
 typedef RAGE_OR_ERROR(void *) rage_NewElementState;
 typedef rage_NewElementState (*rage_ElementStateNew)(
-    uint32_t sample_rate, uint32_t frame_size, rage_Atom * params);
+    uint32_t sample_rate, uint32_t frame_size, rage_Atom ** params);
 typedef void (*rage_ElementStateFree)(void * state);
-typedef rage_ProcessRequirements (*rage_ElementGetPortsDescription)(rage_Atom * params);
+typedef rage_ProcessRequirements (*rage_ElementGetPortsDescription)(rage_Atom ** params);
+// FIXME: below can fail
 typedef void (*rage_ElementFreePortsDescription)(rage_ProcessRequirements);
 typedef rage_Error (*rage_ElementProcess)(
     void * state, rage_TransportState const transport_state,
@@ -24,9 +25,11 @@ typedef rage_Error (*rage_ElementClear)(
 typedef rage_PreparedFrames (*rage_ElementClean)(
     void * state, rage_InterpolatedView ** controls);
 
+typedef RAGE_ARRAY(rage_TupleDef const) rage_ParamDefList;
+
 typedef struct {
     // Mandatory:
-    rage_TupleDef const * const parameters;
+    rage_ParamDefList const * const parameters;
     rage_ElementGetPortsDescription const get_ports;
     rage_ElementFreePortsDescription const free_ports;
     rage_ElementStateNew const state_new;
