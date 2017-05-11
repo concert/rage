@@ -18,7 +18,7 @@ static rage_FieldDef const param_fields[] = {
 rage_TupleDef const param_tup = {
     .name = "amp",
     .description = "Amplifier",
-    .liberty = RAGE_LIBERTY_MUST_PROVIDE,
+    .default_value = NULL,
     .len = 1,
     .items = param_fields
 };
@@ -37,10 +37,14 @@ static rage_FieldDef const gain_fields[] = {
     {.name = "gain", .type = &gain_float}
 };
 
+static rage_Atom const gain_default[] = {
+    {.f = 1.0}
+};
+
 static rage_TupleDef const gain_def = {
     .name = "gain",
     .description = "Loudness",
-    .liberty = RAGE_LIBERTY_MAY_PROVIDE,
+    .default_value = gain_default,
     .len = 1,
     .items = gain_fields
 };

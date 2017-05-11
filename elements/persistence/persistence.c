@@ -25,7 +25,7 @@ static rage_FieldDef const param_fields[] = {
 rage_TupleDef const init_param = {
     .name = "persistence",
     .description = "Store/Replay Audio Streams",
-    .liberty = RAGE_LIBERTY_MUST_PROVIDE,
+    .default_value = NULL,
     .len = 1,
     .items = param_fields
 };
@@ -66,7 +66,7 @@ static rage_FieldDef const tst_fields[] = {
 static rage_TupleDef const tst_def = {
     .name = "audio_chunk",
     .description = "A section of audio from/to a file",
-    .liberty = RAGE_LIBERTY_MAY_PROVIDE,
+    .default_value = NULL,
     .len = 3,
     .items = tst_fields
 };

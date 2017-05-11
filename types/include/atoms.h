@@ -2,14 +2,14 @@
 #include "time.h"
 #include "macros.h"
 
-// FIXME: liberty is not a thing in the engine, there may be defaults and it
-// doesn't make sense for the engine to use cannot (as this implies a RO
-// derived data source)
-typedef enum {
-    RAGE_LIBERTY_CANNOT_PROVIDE,
-    RAGE_LIBERTY_MAY_PROVIDE,
-    RAGE_LIBERTY_MUST_PROVIDE
-} rage_Liberty;
+typedef union {
+    int i;
+    float f;
+    rage_Time t;
+    char * s;
+    int e;
+    rage_FrameNo frame_no;
+} rage_Atom;
 
 #define RAGE_MINMAX(type) \
     struct { \
@@ -58,20 +58,11 @@ typedef struct {
 } rage_FieldDef;
 
 typedef struct {
-    char * name;
-    char * description;
-    rage_Liberty liberty;
+    char const * name;
+    char const * description;
+    rage_Atom const * default_value;
     RAGE_ARRAY(rage_FieldDef const);
 } rage_TupleDef;
-
-typedef union {
-    int i;
-    float f;
-    rage_Time t;
-    char * s;
-    int e;
-    rage_FrameNo frame_no;
-} rage_Atom;
 
 rage_Atom * rage_tuple_generate(rage_TupleDef const * const td);
 rage_Atom * rage_tuple_copy(rage_TupleDef const * const td, rage_Atom const * const tup);
