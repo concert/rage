@@ -5,8 +5,9 @@
 #include "proc_block.h"
 
 int main() {
+    uint32_t sample_rate;
     printf("Example started\n");
-    rage_NewProcBlock npb = rage_proc_block_new();
+    rage_NewProcBlock npb = rage_proc_block_new(&sample_rate);
     if (RAGE_FAILED(npb)) {
         printf("Proc block creation failed: %s\n", RAGE_FAILURE_VALUE(npb));
         return 1;
@@ -17,7 +18,8 @@ int main() {
     //rage_ElementTypes element_type_names = rage_element_loader_list(el);
     // FIXME: loading super busted
     rage_ElementTypeLoadResult et_ = rage_element_loader_load(
-        el, "./build/libamp.so");
+    //    el, "./build/libamp.so");
+        el, "./build/libpersist.so");
     if (RAGE_FAILED(et_)) {
         printf("Element type load failed: %s\n", RAGE_FAILURE_VALUE(et_));
         rage_proc_block_free(pb);
@@ -30,7 +32,7 @@ int main() {
         {.i=1}
     };
     // FIXME: not working out frame size or anything
-    rage_ElementNewResult elem_ = rage_element_new(et, 44100, 1024, tup);
+    rage_ElementNewResult elem_ = rage_element_new(et, sample_rate, 1024, (rage_Atom **) &tup);
     if (RAGE_FAILED(elem_)) {
         printf("Element load failed: %s\n", RAGE_FAILURE_VALUE(elem_));
         rage_proc_block_free(pb);
@@ -39,19 +41,44 @@ int main() {
     }
     rage_Element * const elem = RAGE_SUCCESS_VALUE(elem_);
     printf("Element loaded\n");
-    rage_Atom vals[] = {{.f = 1.0}};
+    //rage_Atom vals[] = {{.f = 1.0}};
+    rage_Atom vals[] = {
+        {.e = 1},
+        {.s = "day1.wav"},
+        {.t = (rage_Time) {}}
+    };
+    rage_Atom recbit[] = {
+        {.e = 2},
+        {.s = "rechere.wav"},
+        {.t = (rage_Time) {}}
+    };
+    rage_Atom terminus[] = {
+        {.e = 0},
+        {.s = ""},
+        {.t = (rage_Time) {}}
+    };
     rage_TimePoint tps[] = {
         {
             .time = {.second = 0},
             .value = &(vals[0]),
             .mode = RAGE_INTERPOLATION_CONST
+        },
+        {
+            .time = {.second = 1},
+            .value = &(recbit[0]),
+            .mode = RAGE_INTERPOLATION_CONST
+        },
+        {
+            .time = {.second = 7},
+            .value = &(terminus[0]),
+            .mode = RAGE_INTERPOLATION_CONST
         }
     };
     rage_TimeSeries ts = {
-        .len = 1,
+        .len = 3,
         .items = tps
     };
-    rage_MountResult mr = rage_proc_block_mount(pb, elem, &ts, "amp");
+    rage_MountResult mr = rage_proc_block_mount(pb, elem, &ts, "persistance");
     if (RAGE_FAILED(mr)) {
         printf("Mount failed\n");
         rage_element_free(elem);
@@ -67,8 +94,10 @@ int main() {
     if (RAGE_FAILED(en_st)) {
         printf("Start failed: %s\n", RAGE_FAILURE_VALUE(en_st));
     } else {
+        printf("Hitting play\n");
+        rage_proc_block_set_transport_state(pb, RAGE_TRANSPORT_ROLLING);
         printf("Sleeping...\n");
-        sleep(90);
+        sleep(9);
         rage_proc_block_stop(pb);
     }
     rage_proc_block_unmount(harness);
