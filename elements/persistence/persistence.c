@@ -71,7 +71,7 @@ static rage_TupleDef const tst_def = {
     .items = tst_fields
 };
 
-rage_ProcessRequirements elem_describe_ports(rage_Atom ** params) {
+rage_NewProcessRequirements elem_describe_ports(rage_Atom ** params) {
     int const n_channels = params[0][0].i;
     rage_ProcessRequirements rval;
     rval.controls.len = 1;
@@ -84,7 +84,7 @@ rage_ProcessRequirements elem_describe_ports(rage_Atom ** params) {
     rval.inputs.items = stream_defs;
     rval.outputs.len = n_channels;
     rval.outputs.items = stream_defs;
-    return rval;
+    RAGE_SUCCEED(rage_NewProcessRequirements, rval)
 }
 
 void elem_free_port_description(rage_ProcessRequirements pr) {
