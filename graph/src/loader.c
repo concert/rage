@@ -117,8 +117,8 @@ void rage_element_free(rage_Element * elem) {
     free(elem);
 }
 
-rage_Error rage_element_process(
+void rage_element_process(
         rage_Element const * const elem,
         rage_TransportState const transport_state, rage_Ports const * ports) {
-    return elem->type->process(elem->state, transport_state, ports);
+    elem->type->process(elem->state, transport_state, ports);
 }

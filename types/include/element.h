@@ -13,7 +13,7 @@ typedef void (*rage_ElementStateFree)(void * state);
 typedef RAGE_OR_ERROR(rage_ProcessRequirements) rage_NewProcessRequirements;
 typedef rage_NewProcessRequirements (*rage_ElementGetPortsDescription)(rage_Atom ** params);
 typedef void (*rage_ElementFreePortsDescription)(rage_ProcessRequirements);
-typedef rage_Error (*rage_ElementProcess)(
+typedef void (*rage_ElementProcess)(
     void * state, rage_TransportState const transport_state,
     rage_Ports const * ports);
 

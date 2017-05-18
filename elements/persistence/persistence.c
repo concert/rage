@@ -143,7 +143,7 @@ void elem_free(void * state) {
     free(ad);
 }
 
-rage_Error elem_process(void * state, rage_TransportState const transport_state, rage_Ports const * ports) {
+void elem_process(void * state, rage_TransportState const transport_state, rage_Ports const * ports) {
     persist_state const * const data = (persist_state *) state;
     rage_InterpolatedValue const * chunk;
     uint32_t step_frames, remaining = data->frame_size;
@@ -154,7 +154,7 @@ rage_Error elem_process(void * state, rage_TransportState const transport_state,
         for (c = 0; c < data->n_channels; c++) {
             memset(ports->outputs[c], 0x00, data->frame_size * sizeof(float));
         }
-        RAGE_OK
+        return;
     }
     while (remaining) {
         chunk = rage_interpolated_view_value(ports->controls[0]);
@@ -188,7 +188,6 @@ rage_Error elem_process(void * state, rage_TransportState const transport_state,
         remaining -= step_frames;
         rage_interpolated_view_advance(ports->controls[0], step_frames);
     }
-    RAGE_OK
 }
 
 // FIXME: some comonality with the writing version

@@ -88,7 +88,7 @@ void elem_free(void * state) {
     free(state);
 }
 
-rage_Error elem_process(
+void elem_process(
         void * state, rage_TransportState const transport_state, rage_Ports const * ports) {
     amp_data const * const data = (amp_data *) state;
     rage_InterpolatedValue const * val = rage_interpolated_view_value(ports->controls[0]);
@@ -118,7 +118,6 @@ rage_Error elem_process(
             break;
         }
     }
-    RAGE_OK
 }
 
 rage_ElementType const elem_info = {
