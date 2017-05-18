@@ -108,6 +108,7 @@ rage_ElementNewResult rage_element_new(
     elem->type = type;
     elem->state = state;
     rage_NewProcessRequirements new_ports = type->get_ports(state);
+    // FIXME: leak on failure
     RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_ports, elem->requirements)
     RAGE_SUCCEED(rage_ElementNewResult, elem);
 }
