@@ -1,6 +1,6 @@
 # Realtime Audio Graph Engine
 
-Roughly this library is divided into 2 parts, "elements" and a host.
+This library is conceptually divided into 2 parts, "elements" and a host.
 Elements do all the audio processing, the host tries to make their job easy.
 
 ## Elements
@@ -41,8 +41,6 @@ Wishlist (that I believe this architecture will allow):
 - Different sections of the audio flow graph to run at different period sizes
   (e.g. prerecorded segments run in large periods whilst live audio processing
   runs with lower latency).
-- Arbitrarily placed bounces (since a persistance element can be put anywhere,
-  even half way through what would traditionally be a "plugin rack").
 - Automatic static analysis and testing (especially of elements), since the
   functions that should be RT safe are explicitly known and the parameters are
   introspectable and some sane output invariants can be chosen allowing some
