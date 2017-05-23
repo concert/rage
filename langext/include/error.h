@@ -5,7 +5,7 @@
 #define RAGE_FAIL(et, s) return (et) {.half=RAGE_EITHER_LEFT, .left=s};
 #define RAGE_SUCCEED(et, v) return (et) {.half=RAGE_EITHER_RIGHT, .right=v};
 
-#define RAGE_FAILED(e) e.half == RAGE_EITHER_LEFT
+#define RAGE_FAILED(e) (e.half == RAGE_EITHER_LEFT)
 #define RAGE_FAILURE_VALUE(e) e.left
 #define RAGE_SUCCESS_VALUE(e) e.right
 
