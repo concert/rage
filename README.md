@@ -1,39 +1,61 @@
-# Realtime Audio Graph Engine
+# Realtime Audio Graph Engine (RAGE)
 
-This library is conceptually divided into 2 parts, "elements" and a host.
-Elements do all the audio processing, the host tries to make their job easy.
+This library provides abstract audio processing capabilities. Units of audio
+processing can be described by defining "elements" that are executed in a host
+"audio engine". The engine routes audio between elements using a flow graph.
+
+We use the term "element" rather than "plugin" because elements in the audio
+graph can have a wider processing remit than the pure data transformation
+typically associated with the term "plugin". For example, we may want an audio
+source in our graph to be produced from a file, so we have to coordinate the
+soft realtime constraints of disk IO alongside the hard realtime constraints of
+filling the audio buffers.
+
+This library is conceptually divided into two parts: elements and a host engine.
+Elements do all the audio processing, while the host engine makes their job
+easier.
+
+Some high-level features of our architecture:
+- Sample-accurate control data interpolation
+- Soft realtime updates of control data
+- Dynamic plugin loading
+
 
 ## Elements
 
-In contrast to LV2 plugins elements may have initialisation parameters from
+In contrast to LV2 plugins, elements may have initialisation parameters from
 which they can generate their runtime interfaces.
 
-Elements have 2 "play time" threads, one that runs in a "soft" context (which
-is allowed to do IO), and another that runs in a stricter real time context
-(and isn't allowed to do anything RT hazardous).
+Elements have two "play time" threads: one that runs in a "soft" context (which
+is allowed to do IO), and another that runs in a stricter realtime context
+(and isn't allowed to do anything realtime-hazardous).
 
-Both threads of an element are provided with an identical sample accurate
-interpolated view of the time series of the element instance's parameters. The
-"soft" thread runs first in order to prepare a buffer of data for the RT
+Both threads of an element are provided with identical sample-accurate
+interpolated views of the element instance's parameter series. The
+"soft" thread runs first in order to prepare a buffer of data for the realtime
 thread. This preparation reports how many frames may be consumed before it is
 called again (allowing for efficient, batched, interleaved scheduling).
 
-This buffer may be arbitrarily long in session time. For instance a file
-playing (persistance) element may know it doesn't need to play anything for 10
-minutes, but can buffers up the first second of audio it would need at that
-point in the future to minimise context switches.
+This buffer may be arbitrarily long in session time. For instance, a [file
+playing element](https://github.com/foolswood/rage/blob/master/elements/persistence/persistence.c)
+may know it doesn't need to play anything for ten minutes, but can buffer up the
+first second of audio it would need in ten minutes' time to minimise
+context switches.
 
-In order for parameter changes to be applied in a somewhat timely manner,
-without leaving the RT thread short a mechanism to (potentially partially)
-rewind the prepared data in this buffer is used.
+When a change in the series of control values is made, the engine has to
+substitute the new data in a timely fashion without disrupting the audio
+flow. To achieve this, the engine may instruct elements to rewind their prepared
+state to a point in time before the new control data is to be applied.
 
-## Host
 
-The job of the host is to manage the scheduling of the element hooks
-efficiently and to expose out a simpler, asynchronous, interface for managing
-elements and changing timeseries. The host also contains a loader which allows
-elements to be loaded dynamically, at some point the intention is to make a
+## Host Engine
+
+The host engine manages the scheduling of the element hooks efficiently and
+exposes a high-level, asynchronous interface for managing elements and changing
+contral data series. The host engine also contains a loader which allows
+elements to be loaded dynamically; at some point the intention is to make a
 loader that wraps LV2 in order to support existing plugins.
+
 
 ## Hopes, dreams and pet peeve avoidance
 
