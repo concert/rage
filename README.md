@@ -1,8 +1,9 @@
 # Realtime Audio Graph Engine (RAGE)
 
 This library provides abstract audio processing capabilities. Units of audio
-processing can be described by defining "elements" that are executed in a host
-"audio engine". The engine routes audio between elements using a flow graph.
+processing can be described by defining "elements" that are executed in a host.
+Taken together these form an audio "engine" that executes an abstract graph
+representation of audio processing.
 
 We use the term "element" rather than "plugin" because elements in the audio
 graph can have a wider processing remit than the pure data transformation
@@ -13,7 +14,8 @@ filling the audio buffers.
 
 This library is conceptually divided into two parts: elements and a host engine.
 Elements do all the audio processing, while the host engine makes their job
-easier.
+easier by relieving them of having to work out how to handle parameter changes
+gracefully.
 
 Some high-level features of our architecture:
 - Sample-accurate control data interpolation
@@ -42,19 +44,19 @@ may know it doesn't need to play anything for ten minutes, but can buffer up the
 first second of audio it would need in ten minutes' time to minimise
 context switches.
 
-When a change in the series of control values is made, the engine has to
+When a change in the series of control values is made, the host has to
 substitute the new data in a timely fashion without disrupting the audio
-flow. To achieve this, the engine may instruct elements to rewind their prepared
+flow. To achieve this, the host may instruct elements to rewind their prepared
 state to a point in time before the new control data is to be applied.
 
 
 ## Host Engine
 
-The host engine manages the scheduling of the element hooks efficiently and
-exposes a high-level, asynchronous interface for managing elements and changing
-contral data series. The host engine also contains a loader which allows
-elements to be loaded dynamically; at some point the intention is to make a
-loader that wraps LV2 in order to support existing plugins.
+The host manages the scheduling of the element hooks efficiently and exposes a
+high-level, asynchronous interface for managing elements and changing contral
+data series. The host also contains a loader which allows elements to be loaded
+dynamically; at some point the intention is to make a loader that wraps LV2 in
+order to support existing plugins.
 
 
 ## Hopes, dreams and pet peeve avoidance
