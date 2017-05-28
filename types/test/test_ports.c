@@ -14,7 +14,7 @@ int main() {
         .len = 1,
         .items = fields
     };
-    rage_ProcessRequirements pd;
+    rage_InstanceSpec pd;
     pd.controls.items = &td;
     pd.controls.len = 1;
     pd.inputs.len = 2;

@@ -10,8 +10,8 @@ typedef struct {
     rage_ElementType * type;
     void * state;
     union {
-        rage_ProcessRequirements;
-        rage_ProcessRequirements requirements;
+        rage_InstanceSpec;
+        rage_InstanceSpec spec;
     };
 } rage_Element;
 

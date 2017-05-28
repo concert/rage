@@ -1,11 +1,11 @@
 #include <stdlib.h>
 #include "ports.h"
 
-rage_Ports rage_ports_new(rage_ProcessRequirements const * const requirements) {
+rage_Ports rage_ports_new(rage_InstanceSpec const * const spec) {
     rage_Ports ports;
-    ports.controls = calloc(requirements->controls.len, sizeof(rage_InterpolatedView *));
-    ports.inputs = calloc(requirements->inputs.len, sizeof(rage_InStream));
-    ports.outputs = calloc(requirements->outputs.len, sizeof(rage_OutStream));
+    ports.controls = calloc(spec->controls.len, sizeof(rage_InterpolatedView *));
+    ports.inputs = calloc(spec->inputs.len, sizeof(rage_InStream));
+    ports.outputs = calloc(spec->outputs.len, sizeof(rage_OutStream));
     return ports;
 }
 

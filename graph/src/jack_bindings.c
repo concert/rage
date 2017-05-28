@@ -109,7 +109,7 @@ rage_JackHarness * rage_jack_binding_mount(
         rage_InterpolatedView ** view, char const * name) {
     rage_JackHarness * const harness = malloc(sizeof(rage_JackHarness));
     harness->jack_binding = jack_binding;
-    harness->ports = rage_ports_new(&elem->requirements);
+    harness->ports = rage_ports_new(&elem->spec);
     size_t const name_size = jack_port_name_size();
     char * const port_name = malloc(name_size);
     harness->jack_inputs = calloc(elem->inputs.len, sizeof(jack_port_t *));

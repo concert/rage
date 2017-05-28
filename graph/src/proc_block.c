@@ -60,9 +60,9 @@ typedef RAGE_OR_ERROR(rage_Interpolator **) InterpolatorsForResult;
 
 static InterpolatorsForResult interpolators_for(
         uint32_t sample_rate,
-        rage_ProcessRequirementsControls const * control_requirements,
+        rage_InstanceSpecControls const * control_spec,
         rage_TimeSeries * const control_values, uint8_t const n_views) {
-    uint32_t const n_controls = control_requirements->len;
+    uint32_t const n_controls = control_spec->len;
     rage_Interpolator ** new_interpolators = calloc(
         n_controls, sizeof(rage_Interpolator *));
     if (new_interpolators == NULL) {
@@ -73,14 +73,14 @@ static InterpolatorsForResult interpolators_for(
     for (uint32_t i = 0; i < n_controls; i++) {
         // FIXME: const sample rate
         rage_InitialisedInterpolator ii = rage_interpolator_new(
-            &control_requirements->items[i], &control_values[i], sample_rate,
+            &control_spec->items[i], &control_values[i], sample_rate,
             n_views);
         if (RAGE_FAILED(ii)) {
             if (i) {
                 do {
                     i--;
                     rage_interpolator_free(
-                        &control_requirements->items[i], new_interpolators[i]);
+                        &control_spec->items[i], new_interpolators[i]);
                 } while (i > 0);
             }
             free(new_interpolators);

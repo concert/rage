@@ -71,9 +71,9 @@ static rage_TupleDef const tst_def = {
     .items = tst_fields
 };
 
-rage_NewProcessRequirements elem_describe_ports(rage_Atom ** params) {
+rage_NewInstanceSpec elem_describe_ports(rage_Atom ** params) {
     int const n_channels = params[0][0].i;
-    rage_ProcessRequirements rval;
+    rage_InstanceSpec rval;
     rval.controls.len = 1;
     rval.controls.items = &tst_def;
     rage_StreamDef * stream_defs = calloc(n_channels, sizeof(rage_StreamDef));
@@ -84,10 +84,10 @@ rage_NewProcessRequirements elem_describe_ports(rage_Atom ** params) {
     rval.inputs.items = stream_defs;
     rval.outputs.len = n_channels;
     rval.outputs.items = stream_defs;
-    RAGE_SUCCEED(rage_NewProcessRequirements, rval)
+    RAGE_SUCCEED(rage_NewInstanceSpec, rval)
 }
 
-void elem_free_port_description(rage_ProcessRequirements pr) {
+void elem_free_port_description(rage_InstanceSpec pr) {
     // FIXME: too const requiring cast?
     free((void *) pr.inputs.items);
 }

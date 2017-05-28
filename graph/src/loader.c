@@ -107,9 +107,9 @@ rage_ElementNewResult rage_element_new(
     rage_Element * const elem = malloc(sizeof(rage_Element));
     elem->type = type;
     elem->state = state;
-    rage_NewProcessRequirements new_ports = type->get_ports(state);
+    rage_NewInstanceSpec new_ports = type->get_ports(state);
     // FIXME: leak on failure
-    RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_ports, elem->requirements)
+    RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_ports, elem->spec)
     RAGE_SUCCEED(rage_ElementNewResult, elem);
 }
 

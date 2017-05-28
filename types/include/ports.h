@@ -8,13 +8,13 @@ typedef enum {
     RAGE_STREAM_AUDIO
 } rage_StreamDef;
 
-typedef RAGE_ARRAY(rage_TupleDef const) rage_ProcessRequirementsControls;
-typedef RAGE_ARRAY(rage_StreamDef const) rage_ProcessRequirementsStreams;
+typedef RAGE_ARRAY(rage_TupleDef const) rage_InstanceSpecControls;
+typedef RAGE_ARRAY(rage_StreamDef const) rage_InstanceSpecStreams;
 typedef struct {
-    rage_ProcessRequirementsControls controls;
-    rage_ProcessRequirementsStreams inputs;
-    rage_ProcessRequirementsStreams outputs;
-} rage_ProcessRequirements;
+    rage_InstanceSpecControls controls;
+    rage_InstanceSpecStreams inputs;
+    rage_InstanceSpecStreams outputs;
+} rage_InstanceSpec;
 
 // FIXME: typedeffed pointers
 typedef float const * rage_InStream;
@@ -26,5 +26,5 @@ typedef struct {
     rage_OutStream * outputs;
 } rage_Ports;
 
-rage_Ports rage_ports_new(rage_ProcessRequirements const * const requirements);
+rage_Ports rage_ports_new(rage_InstanceSpec const * const spec);
 void rage_ports_free(rage_Ports ports);
