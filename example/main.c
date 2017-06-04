@@ -43,8 +43,8 @@ int main() {
     printf("Element loaded\n");
     //rage_Atom vals[] = {{.f = 1.0}};
     rage_Atom vals[] = {
-        {.e = 1},
-        {.s = "day1.wav"},
+        {.e = 0},
+        {.s = ""},
         {.t = (rage_Time) {}}
     };
     rage_Atom recbit[] = {
