@@ -26,39 +26,50 @@ static rage_Error basic(bool does_fail) {
 }
 
 int main() {
+    int rval = 0;
+    printf("1..3\n");
     err_or_float e = wrapper(false);
     if (RAGE_FAILED(e)) {
-        printf("Unexpectedly failed: %s\n", RAGE_FAILURE_VALUE(e));
-        return 1;
+        printf("not ok 0 Unexpectedly failed: %s\n", RAGE_FAILURE_VALUE(e));
+        rval = 1;
     } else {
         if (RAGE_SUCCESS_VALUE(e) != 1.5) {
-            printf("Incorrect success value %f != 1.5\n", RAGE_SUCCESS_VALUE(e));
-            return 2;
+            printf("not ok 0 Incorrect success value %f != 1.5\n", RAGE_SUCCESS_VALUE(e));
+            rval = 2;
+        } else {
+            printf("ok 0 wrapped success\n");
         }
     }
     e = wrapper(true);
     if (!RAGE_FAILED(e)) {
-        printf("Unexpectedly succeeded: %f\n", RAGE_SUCCESS_VALUE(e));
-        return 3;
+        printf("not ok 1 Unexpectedly succeeded: %f\n", RAGE_SUCCESS_VALUE(e));
+        rval = 3;
     } else {
         if (strcmp(RAGE_FAILURE_VALUE(e), "sad times") != 0) {
-            printf("Incorrect failure value %s != \"sad times\"\n", RAGE_FAILURE_VALUE(e));
-            return 4;
+            printf("not ok 1 Incorrect failure value %s != \"sad times\"\n", RAGE_FAILURE_VALUE(e));
+            rval = 4;
+        } else {
+            printf("ok 1 wrapped failure\n");
         }
     }
     rage_Error err = basic(false);
     if (RAGE_FAILED(err)) {
-        printf("Basic unexpectedly failed\n");
-        return 5;
+        printf("not ok 2 Basic unexpectedly failed\n");
+        rval = 5;
+    } else {
+        printf("ok 2 basic success\n");
     }
     err = basic(true);
     if (!RAGE_FAILED(err)) {
-        printf("Basic unexpectedly succeeded\n");
-        return 6;
+        printf("not ok 3 Basic unexpectedly succeeded\n");
+        rval = 6;
     } else {
         if (strcmp(RAGE_FAILURE_VALUE(err), "at life") != 0) {
-            printf("Basic incorrect failure value %s\n", RAGE_FAILURE_VALUE(err));
-            return 7;
+            printf("not ok 3 Basic incorrect failure value %s\n", RAGE_FAILURE_VALUE(err));
+            rval = 7;
+        } else {
+            printf("ok 3 basic failure\n");
         }
     }
+    return rval;
 }
