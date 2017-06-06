@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 int main() {
+    // FIXME: This isn't really a test.
     rage_AtomDef const unconstrained_float = {
         .type = RAGE_ATOM_FLOAT, .name = "float", .constraints = {}
     };
