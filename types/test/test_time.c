@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include "testing.h"
 #include "error.h"
 #include "time.h"
 
@@ -58,12 +59,4 @@ rage_Error test_time_after() {
     RAGE_OK
 }
 
-int main() {
-    int rv = error_context(test_time_delta);
-    rage_Error err = test_time_after();
-    if (RAGE_FAILED(err)) {
-        printf("Time after failed: %s\n", RAGE_FAILURE_VALUE(err));
-        rv += 1;
-    }
-    return rv;
-}
+TEST_MAIN(test_time_after)
