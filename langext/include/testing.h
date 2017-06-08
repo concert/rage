@@ -7,6 +7,10 @@
 
 typedef rage_Error (*rage_TestFunc)();
 
+/*
+ * Produce a TAP compatible test running main() that runs the rage_TestFunc
+ * tests passed as arguments.
+ */
 #define TEST_MAIN(...) \
     int main() { \
         rage_TestFunc const tests[] = {__VA_ARGS__}; \
