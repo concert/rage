@@ -4,6 +4,9 @@
 #include "interpolation.h"
 #include "transport_state.h"
 
+/*
+ * Stream definition types.
+ */
 typedef enum {
     RAGE_STREAM_AUDIO
 } rage_StreamDef;
