@@ -34,7 +34,7 @@ sources = [
     'types/src/ports.c',
     'types/src/interpolation.c',
     'types/src/time.c',
-    'types/src/time_series.c',
+    'types/src/test_factories.c',
     'types/src/atoms.c'
 ]
 

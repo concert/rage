@@ -28,10 +28,3 @@ typedef struct {
  * An array of rage_TimePoint instances that cover all time in the session.
  */
 typedef RAGE_ARRAY(rage_TimePoint) rage_TimeSeries;
-
-/*
- * Makes a single time point time series based on the given discription.
- * NOTE: This seems to be used in one test and should probably be moved.
- */
-rage_TimeSeries rage_time_series_new(rage_TupleDef const * const item_def);
-void rage_time_series_free(rage_TimeSeries ts);

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "loader.h"
+#include "test_factories.h"
 #include "pdls.c"
 
 static void new_stream_buffers(rage_Ports * ports, rage_InstanceSpec spec) {
