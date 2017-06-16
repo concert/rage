@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <stdlib.h>
 
 /*
  * Enumeration for identifying which half of an either type is currently in
