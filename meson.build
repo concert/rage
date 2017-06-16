@@ -42,6 +42,7 @@ rage_types = shared_library(
     'rage_types', sources, include_directories: [types_inc, langext_inc],
     link_with: langext, dependencies: [sem])
 
+# FIXME: this proliferation of test executables is getting silly
 test_interpolation = executable(
     'test_interpolation', 'types/test/test_interpolation.c',
     include_directories: [types_inc, langext_inc], link_with: rage_types)
@@ -51,9 +52,13 @@ test_time = executable(
 test_ports = executable(
     'test_ports', ['types/test/test_ports.c'], include_directories: [types_inc, langext_inc],
     link_with: rage_types)
+test_factories = executable(
+    'test_factories', ['types/test/test_test_factories.c'], include_directories: [types_inc, langext_inc],
+    link_with: rage_types)
 test('interpolation', test_interpolation)
 test('time', test_time)
 test('ports', test_ports)
+test('factories', test_factories)
 
 # Graph
 

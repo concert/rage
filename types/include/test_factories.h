@@ -1,4 +1,5 @@
 #pragma once
+#include "time_series.h"
 
 /*
  * Makes a single time point time series based on the given discription.
