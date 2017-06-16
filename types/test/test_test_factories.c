@@ -46,7 +46,7 @@ rage_Error test_time_series_new() {
     if ((err == NULL) && tp->value[0].i != 12) {
         err = "integer has taken unexpected value";
     }
-    if ((err == NULL) && !strcmp(tp->value[1].s, "")) {
+    if ((err == NULL) && strcmp(tp->value[1].s, "")) {
         err = "wasn't an empty string";
     }
     rage_time_series_free(ts);
