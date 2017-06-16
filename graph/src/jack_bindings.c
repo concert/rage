@@ -68,10 +68,11 @@ rage_NewJackBinding rage_jack_binding_new(
         rage_Countdown * countdown, uint32_t * sample_rate) {
     // FIXME: Error handling etc.
     jack_client_t * client = jack_client_open("rage", JackNoStartServer, NULL);
-    *sample_rate = jack_get_sample_rate(client);
     if (client == NULL) {
         RAGE_FAIL(rage_NewJackBinding, "Could not create jack client")
     }
+    // FIXME: Sample rate should go into (not out of) this function
+    *sample_rate = jack_get_sample_rate(client);
     rage_JackBinding * e = malloc(sizeof(rage_JackBinding));
     e->desired_transport = e->rt_transport = RAGE_TRANSPORT_STOPPED;
     sem_init(&e->transport_synced, 0, 0);
