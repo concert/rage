@@ -64,6 +64,5 @@ typedef struct {
     RAGE_ARRAY(rage_FieldDef const);
 } rage_TupleDef;
 
-rage_Atom * rage_tuple_generate(rage_TupleDef const * const td);
 rage_Atom * rage_tuple_copy(rage_TupleDef const * const td, rage_Atom const * const tup);
 void rage_tuple_free(rage_TupleDef const * const td, rage_Atom * const tup);
