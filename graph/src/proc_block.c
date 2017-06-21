@@ -7,7 +7,7 @@ struct rage_ProcBlock {
     rage_Countdown * countdown;
     rage_JackBinding * jack_binding;
     rage_SupportConvoy * convoy;
-    uint32_t * sample_rate;
+    uint32_t sample_rate;
 };
 
 struct rage_Harness {
@@ -16,7 +16,7 @@ struct rage_Harness {
     rage_Interpolator ** interpolators;
 };
 
-rage_NewProcBlock rage_proc_block_new(uint32_t * sample_rate) {
+rage_NewProcBlock rage_proc_block_new(uint32_t sample_rate) {
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_NewJackBinding njb = rage_jack_binding_new(countdown, sample_rate);
     if (RAGE_FAILED(njb)) {
@@ -106,7 +106,7 @@ rage_MountResult rage_proc_block_mount(
         n_views++;
     }
     harness->interpolators = RAGE_SUCCESS_VALUE(interpolators_for(
-        *pb->sample_rate, &elem->controls, controls, n_views));
+        pb->sample_rate, &elem->controls, controls, n_views));
     rage_InterpolatedView ** rt_views = calloc(
         elem->controls.len, sizeof(rage_InterpolatedView *));
     rage_InterpolatedView ** prep_views, ** clean_views;

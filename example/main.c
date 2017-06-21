@@ -5,9 +5,9 @@
 #include "proc_block.h"
 
 int main() {
-    uint32_t sample_rate;
+    uint32_t const sample_rate = 44100;
     printf("Example started\n");
-    rage_NewProcBlock npb = rage_proc_block_new(&sample_rate);
+    rage_NewProcBlock npb = rage_proc_block_new(sample_rate);
     if (RAGE_FAILED(npb)) {
         printf("Proc block creation failed: %s\n", RAGE_FAILURE_VALUE(npb));
         return 1;

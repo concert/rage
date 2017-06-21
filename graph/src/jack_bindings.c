@@ -65,14 +65,17 @@ static int process(jack_nframes_t nframes, void * arg) {
 }
 
 rage_NewJackBinding rage_jack_binding_new(
-        rage_Countdown * countdown, uint32_t * sample_rate) {
+        rage_Countdown * countdown, uint32_t sample_rate) {
     // FIXME: Error handling etc.
     jack_client_t * client = jack_client_open("rage", JackNoStartServer, NULL);
     if (client == NULL) {
         RAGE_FAIL(rage_NewJackBinding, "Could not create jack client")
     }
-    // FIXME: Sample rate should go into (not out of) this function
-    *sample_rate = jack_get_sample_rate(client);
+    uint32_t jack_sample_rate = jack_get_sample_rate(client);
+    if (jack_sample_rate != sample_rate) {
+        jack_client_close(client);
+        RAGE_FAIL(rage_NewJackBinding, "Engine and jack sample rates do not match")
+    }
     rage_JackBinding * e = malloc(sizeof(rage_JackBinding));
     e->desired_transport = e->rt_transport = RAGE_TRANSPORT_STOPPED;
     sem_init(&e->transport_synced, 0, 0);
