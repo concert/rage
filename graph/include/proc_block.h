@@ -15,7 +15,7 @@ rage_Error rage_proc_block_start(rage_ProcBlock * pb);
 rage_Error rage_proc_block_stop(rage_ProcBlock * pb);
 
 rage_MountResult rage_proc_block_mount(
-    rage_ProcBlock * pb, rage_Element * elem, rage_TimeSeries * controls,
+    rage_ProcBlock * pb, rage_Element * elem, rage_TimeSeries const * controls,
     char const * name);
 void rage_proc_block_unmount(rage_Harness * harness);
 

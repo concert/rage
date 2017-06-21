@@ -61,7 +61,7 @@ typedef RAGE_OR_ERROR(rage_Interpolator **) InterpolatorsForResult;
 static InterpolatorsForResult interpolators_for(
         uint32_t sample_rate,
         rage_InstanceSpecControls const * control_spec,
-        rage_TimeSeries * const control_values, uint8_t const n_views) {
+        rage_TimeSeries const * const control_values, uint8_t const n_views) {
     uint32_t const n_controls = control_spec->len;
     rage_Interpolator ** new_interpolators = calloc(
         n_controls, sizeof(rage_Interpolator *));
@@ -94,8 +94,8 @@ static InterpolatorsForResult interpolators_for(
 }
 
 rage_MountResult rage_proc_block_mount(
-        rage_ProcBlock * pb, rage_Element * elem, rage_TimeSeries * controls,
-        char const * name) {
+        rage_ProcBlock * pb, rage_Element * elem,
+        rage_TimeSeries const * controls, char const * name) {
     rage_Harness * harness = malloc(sizeof(rage_Harness));
     // FIXME: Error handling
     uint8_t n_views = 1;
