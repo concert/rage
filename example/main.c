@@ -28,6 +28,7 @@ int main() {
     rage_Atom tup[] = {
         {.i=1}
     };
+    rage_Atom * tupp = tup;
     //rage_Atom vals[] = {{.f = 1.0}};
     rage_Atom vals[] = {
         {.e = 0},
@@ -66,7 +67,7 @@ int main() {
         .items = tps
     };
     rage_NewGraphNode new_node = rage_graph_add_node(
-        graph, et, (rage_Atom **) &tup, "persistance", &ts);
+        graph, et, &tupp, "persistance", &ts);
     if (RAGE_FAILED(new_node)) {
         printf("Node creation failed: %s\n", RAGE_FAILURE_VALUE(new_node));
         rage_graph_free(graph);
@@ -79,7 +80,7 @@ int main() {
     if (RAGE_FAILED(en_st)) {
         printf("Start failed: %s\n", RAGE_FAILURE_VALUE(en_st));
     } else {
-        printf("Hitting play\n");
+        printf("Recording...\n");
         rage_graph_set_transport_state(graph, RAGE_TRANSPORT_ROLLING);
         printf("Sleeping...\n");
         sleep(9);
