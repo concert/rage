@@ -4,4 +4,4 @@
 #include "test_jack_bindings.c"
 #include "test_srt.c"
 
-TEST_MAIN(test, test_jack_bindings, test_srt)
+TEST_MAIN(test, test_jack_bindings, test_srt, test_srt_fake_elem)
