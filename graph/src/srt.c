@@ -139,7 +139,10 @@ rage_Error rage_support_convoy_start(rage_SupportConvoy * convoy) {
 
 rage_Error rage_support_convoy_stop(rage_SupportConvoy * convoy) {
     assert(convoy->running);
+    pthread_mutex_lock(&convoy->active);
     convoy->running = false;
+    rage_countdown_unblock_wait(convoy->countdown);
+    pthread_mutex_unlock(&convoy->active);
     char const * err;
     if (pthread_join(convoy->worker_thread, (void **) &err)) {
         RAGE_ERROR("Failed to join worker thread")

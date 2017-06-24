@@ -48,3 +48,7 @@ int rage_countdown_add(rage_Countdown * c, int delta) {
     }
     return val;
 }
+
+void rage_countdown_unblock_wait(rage_Countdown * c) {
+    sem_post(&c->sig);
+}

@@ -120,9 +120,6 @@ rage_Error test_srt_fake_elem() {
             rage_countdown_add(countdown, -1);
             err_str = counter_checks(&sync_sem, &fes, 2, 1);
         }
-        // FIXME: this is required to avoid stop blocking indefinitely ATM, but
-        // should probably be handled by stop
-        rage_countdown_add(countdown, -1);
         err = rage_support_convoy_stop(convoy);
     }
     rage_support_convoy_unmount(truck);
