@@ -84,6 +84,7 @@ int main() {
         rage_graph_set_transport_state(graph, RAGE_TRANSPORT_ROLLING);
         printf("Sleeping...\n");
         sleep(9);
+        printf("Stopping...\n");
         rage_graph_stop_processing(graph);
     }
     rage_graph_remove_node(graph, RAGE_SUCCESS_VALUE(new_node));
