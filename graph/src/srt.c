@@ -19,7 +19,7 @@ struct rage_SupportConvoy {
     pthread_t worker_thread;
     uint32_t period_size;
     uint32_t invalid_after;
-    pthread_mutex_t active;
+    pthread_mutex_t active;  // FIXME: Explain what the heck this does
     rage_Countdown * countdown;
     rage_Trucks trucks;
 };
