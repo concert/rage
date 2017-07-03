@@ -165,7 +165,6 @@ static rage_Error immediate_change_checks(rage_Interpolator * interpolator) {
         obtained = rage_interpolated_view_value(iv);
         rage_finaliser_wait(change_complete);
         if (obtained->value[0].f != val.f) {
-            printf("%f != %f\n", obtained->value[0].f, val.f);
             RAGE_ERROR("Incorrect interpolated value after TS change")
         }
     }
