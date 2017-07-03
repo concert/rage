@@ -45,16 +45,16 @@ rage_types = shared_library(
 # FIXME: this proliferation of test executables is getting silly
 test_interpolation = executable(
     'test_interpolation', 'types/test/test_interpolation.c',
-    include_directories: [types_inc, langext_inc], link_with: rage_types)
+    include_directories: [types_inc, langext_inc], link_with: [rage_types, langext])
 test_time = executable(
     'test_time', 'types/test/test_time.c', include_directories: [types_inc, langext_inc],
-    link_with: rage_types)
+    link_with: [rage_types, langext])
 test_ports = executable(
     'test_ports', ['types/test/test_ports.c'], include_directories: [types_inc, langext_inc],
-    link_with: rage_types)
+    link_with: [rage_types, langext])
 test_factories = executable(
     'test_factories', ['types/test/test_test_factories.c'], include_directories: [types_inc, langext_inc],
-    link_with: rage_types)
+    link_with: [rage_types, langext])
 test('interpolation', test_interpolation)
 test('time', test_time)
 test('ports', test_ports)
@@ -69,22 +69,21 @@ jack = dependency('jack')
 
 graph_inc = include_directories('graph/include')
 
-# At some point this should become an executable:
-rage_graph = static_library(
+rage_graph = shared_library(
     'rage_graph',
     [
         'graph/src/loader.c', 'graph/src/jack_bindings.c', 'graph/src/srt.c',
         'graph/src/proc_block.c', 'graph/src/graph.c'
     ],
     include_directories: [graph_inc, types_inc, langext_inc],
-    dependencies: [dyn_load],
-    link_with: rage_types)
+    dependencies: [dyn_load, jack],
+    link_with: [langext, rage_types])
 
 test_graph = executable(
     'test_graph', 'graph/test/main.c',
     include_directories: [graph_inc, types_inc, langext_inc],
-    dependencies: [jack],
-    link_with: rage_graph)
+    dependencies: [sem],
+    link_with: [langext, rage_types, rage_graph])
 test('graph', test_graph)
 
 # Elements
@@ -107,4 +106,4 @@ persist = shared_library(
 example_sources = ['example/main.c']
 example = executable(
     'example', example_sources, include_directories: [langext_inc, types_inc, graph_inc],
-    link_with: [rage_types, rage_graph], dependencies: [jack])
+    link_with: [langext, rage_types, rage_graph], dependencies: [jack])
