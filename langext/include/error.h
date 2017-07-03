@@ -10,13 +10,13 @@
  * et - Either type.
  * s - String describing the error.
  */
-#define RAGE_FAIL(et, s) return (et) {.half=RAGE_EITHER_LEFT, .left=s};
+#define RAGE_FAIL(et, s) (et) {.half=RAGE_EITHER_LEFT, .left=s}
 /*
  * Return a success value (not sure if the return is smart).
  * et - Either type.
  * v - Successful return value..
  */
-#define RAGE_SUCCEED(et, v) return (et) {.half=RAGE_EITHER_RIGHT, .right=v};
+#define RAGE_SUCCEED(et, v) (et) {.half=RAGE_EITHER_RIGHT, .right=v}
 
 /*
  * Boolean check for whether the error type instance e failed.
@@ -39,7 +39,7 @@
  */
 #define RAGE_EXTRACT_VALUE(et, e, target) \
     if (RAGE_FAILED(e)) \
-        RAGE_FAIL(et, RAGE_FAILURE_VALUE(e)); \
+        return RAGE_FAIL(et, RAGE_FAILURE_VALUE(e)); \
     target = RAGE_SUCCESS_VALUE(e);
 
 /*
@@ -49,8 +49,8 @@ typedef RAGE_OR_ERROR(void *) rage_Error;
 /*
  * Return succeeded.
  */
-#define RAGE_OK RAGE_SUCCEED(rage_Error, NULL)
+#define RAGE_OK return RAGE_SUCCEED(rage_Error, NULL);
 /*
  * Return a failure string message.
  */
-#define RAGE_ERROR(msg) RAGE_FAIL(rage_Error, msg)
+#define RAGE_ERROR(msg) return RAGE_FAIL(rage_Error, msg);

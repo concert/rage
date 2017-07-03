@@ -62,7 +62,7 @@ rage_NewInstanceSpec elem_describe_ports(rage_Atom ** params) {
     rval.inputs.items = stream_defs;
     rval.outputs.len = n_channels;
     rval.outputs.items = stream_defs;
-    RAGE_SUCCEED(rage_NewInstanceSpec, rval)
+    return RAGE_SUCCEED(rage_NewInstanceSpec, rval);
 }
 
 void elem_free_port_description(rage_InstanceSpec pr) {
@@ -81,7 +81,7 @@ rage_NewElementState elem_new(
     // Not sure I like way the indices tie up here
     ad->n_channels = params[0][0].i;
     ad->period_size = period_size;
-    RAGE_SUCCEED(rage_NewElementState, (void *) ad);
+    return RAGE_SUCCEED(rage_NewElementState, (void *) ad);
 }
 
 void elem_free(void * state) {

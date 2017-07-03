@@ -56,7 +56,7 @@ static rage_PreparedFrames prepare(rage_Trucks * trucks) {
         RAGE_EXTRACT_VALUE(rage_PreparedFrames, prepared, uint32_t n_prepared)
         min_prepared = (n_prepared < min_prepared) ? n_prepared : min_prepared;
     }
-    RAGE_SUCCEED(rage_PreparedFrames, min_prepared)
+    return RAGE_SUCCEED(rage_PreparedFrames, min_prepared);
 }
 
 // FIXME: this is similar to prepare
@@ -72,7 +72,7 @@ static rage_PreparedFrames clean(rage_Trucks * trucks) {
         RAGE_EXTRACT_VALUE(rage_PreparedFrames, prepared, uint32_t n_prepared)
         min_prepared = (n_prepared < min_prepared) ? n_prepared : min_prepared;
     }
-    RAGE_SUCCEED(rage_PreparedFrames, min_prepared)
+    return RAGE_SUCCEED(rage_PreparedFrames, min_prepared);
 }
 
 static rage_Error clear(rage_Trucks * trucks, uint32_t preserve) {

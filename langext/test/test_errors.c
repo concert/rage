@@ -7,8 +7,8 @@ typedef RAGE_OR_ERROR(int) err_or_int;
 
 static err_or_int may_fail(bool does_fail) {
     if (does_fail)
-        RAGE_FAIL(err_or_int, "sad times")
-    RAGE_SUCCEED(err_or_int, 3)
+        return RAGE_FAIL(err_or_int, "sad times");
+    return RAGE_SUCCEED(err_or_int, 3);
 }
 
 typedef RAGE_OR_ERROR(float) err_or_float;
@@ -16,7 +16,7 @@ typedef RAGE_OR_ERROR(float) err_or_float;
 static err_or_float wrapper(bool does_fail) {
     err_or_int e = may_fail(does_fail);
     RAGE_EXTRACT_VALUE(err_or_float, e, int i)
-    RAGE_SUCCEED(err_or_float, i/2.0)
+    return RAGE_SUCCEED(err_or_float, i/2.0);
 }
 
 static rage_Error basic(bool does_fail) {
