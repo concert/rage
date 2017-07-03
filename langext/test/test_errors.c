@@ -21,8 +21,8 @@ static err_or_float wrapper(bool does_fail) {
 
 static rage_Error basic(bool does_fail) {
     if (does_fail)
-        RAGE_ERROR("at life")
-    RAGE_OK
+        return RAGE_ERROR("at life");
+    return RAGE_OK;
 }
 
 int main() {

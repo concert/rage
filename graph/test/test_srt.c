@@ -127,7 +127,7 @@ rage_Error test_srt_fake_elem() {
     rage_countdown_free(countdown);
     sem_destroy(&sync_sem);
     if (!RAGE_FAILED(err) && err_str != NULL) {
-        RAGE_ERROR(err_str);  // FIXME: The implicit return in this has to go, it's unhelpful
+        return RAGE_ERROR(err_str);  // FIXME: The structure of this is silly now the implicit return is gone
     } else {
         return err;
     }

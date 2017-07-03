@@ -96,16 +96,16 @@ void rage_jack_binding_free(rage_JackBinding * jack_binding) {
 
 rage_Error rage_jack_binding_start(rage_JackBinding * jack_binding) {
     if (jack_activate(jack_binding->jack_client)) {
-        RAGE_ERROR("Unable to activate jack client");
+        return RAGE_ERROR("Unable to activate jack client");
     }
-    RAGE_OK
+    return RAGE_OK;
 }
 
 rage_Error rage_jack_binding_stop(rage_JackBinding * jack_binding) {
     if (jack_deactivate(jack_binding->jack_client)) {
-        RAGE_ERROR("Jack deactivation failed")
+        return RAGE_ERROR("Jack deactivation failed");
     }
-    RAGE_OK
+    return RAGE_OK;
 }
 
 rage_JackHarness * rage_jack_binding_mount(

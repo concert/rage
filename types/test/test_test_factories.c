@@ -51,9 +51,9 @@ rage_Error test_time_series_new() {
     }
     rage_time_series_free(ts);
     if (err == NULL) {
-        RAGE_OK
+        return RAGE_OK;
     } else {
-        RAGE_ERROR(err)
+        return RAGE_ERROR(err);  // FIXME: This structure is silly due to old implicit return
     }
 }
 

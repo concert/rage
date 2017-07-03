@@ -25,9 +25,9 @@ rage_Error test_countdown() {
     }
     rage_countdown_free(c);
     if (rval != NULL) {
-        RAGE_ERROR(rval)
+        return RAGE_ERROR(rval);
     } else {
-        RAGE_OK
+        return RAGE_OK;
     }
 }
 

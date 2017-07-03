@@ -49,23 +49,23 @@ RAGE_EQUALITY_CHECK(float, f, "%f")
 static rage_Error float_checks(rage_Interpolator * interpolator) {
     rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
     if (f_check(v, 0.0))
-        RAGE_ERROR("Mismatch at t=0")
+        return RAGE_ERROR("Mismatch at t=0");
     rage_interpolated_view_advance(v, 1);
     if (f_check(v, 0.5))
-        RAGE_ERROR("Mismatch at t=1")
+        return RAGE_ERROR("Mismatch at t=1");
     rage_interpolated_view_advance(v, 1);
     if (f_check(v, 1.0))
-        RAGE_ERROR("Mismatch at t=2")
+        return RAGE_ERROR("Mismatch at t=2");
     rage_interpolated_view_advance(v, 1);
     if (f_check(v, 1.0))
-        RAGE_ERROR("Mismatch at t=3")
+        return RAGE_ERROR("Mismatch at t=3");
     rage_interpolated_view_advance(v, 1);
     if (f_check(v, 2.0))
-        RAGE_ERROR("Mismatch at t=4")
+        return RAGE_ERROR("Mismatch at t=4");
     rage_interpolated_view_advance(v, 1);
     if (f_check(v, 2.0))
-        RAGE_ERROR("Mismatch at t=5")
-    RAGE_OK
+        return RAGE_ERROR("Mismatch at t=5");
+    return RAGE_OK;
 }
 
 static rage_AtomDef const unconstrained_float = {
@@ -99,20 +99,20 @@ RAGE_EQUALITY_CHECK(uint32_t, frame_no, "%u")
 static rage_Error time_checks(rage_Interpolator * interpolator) {
     rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
     if (frame_no_check(v, 0))
-        RAGE_ERROR("Mismatch at t=0")
+        return RAGE_ERROR("Mismatch at t=0");
     rage_interpolated_view_advance(v, 1);
     if (frame_no_check(v, 1))
-        RAGE_ERROR("Mismatch at t=1")
+        return RAGE_ERROR("Mismatch at t=1");
     rage_interpolated_view_advance(v, 2);
     if (frame_no_check(v, 3))
-        RAGE_ERROR("Mismatch at t=3")
+        return RAGE_ERROR("Mismatch at t=3");
     rage_interpolated_view_advance(v, 1);
     if (frame_no_check(v, 1))
-        RAGE_ERROR("Mismatch at t=4")
+        return RAGE_ERROR("Mismatch at t=4");
     rage_interpolated_view_advance(v, 120);
     if (frame_no_check(v, 121))
-        RAGE_ERROR("Mismatch at t=124")
-    RAGE_OK
+        return RAGE_ERROR("Mismatch at t=124");
+    return RAGE_OK;
 }
 
 static rage_Error interpolator_time_test() {
@@ -142,9 +142,9 @@ static rage_Error immediate_change_checks(rage_Interpolator * interpolator) {
     rage_InterpolatedView * iv = rage_interpolator_get_view(interpolator, 0);
     rage_InterpolatedValue const * obtained = rage_interpolated_view_value(iv);
     if (obtained->valid_for != UINT32_MAX) {
-        RAGE_ERROR("Incorrect validity duration")
+        return RAGE_ERROR("Incorrect validity duration");
     } else if (obtained->value[0].f != 0) {
-        RAGE_ERROR("Incorrect interpolated value")
+        return RAGE_ERROR("Incorrect interpolated value");
     } else {
         rage_Atom val = {.f = 1};
         rage_TimePoint tps[] = {
@@ -165,10 +165,10 @@ static rage_Error immediate_change_checks(rage_Interpolator * interpolator) {
         obtained = rage_interpolated_view_value(iv);
         rage_finaliser_wait(change_complete);
         if (obtained->value[0].f != val.f) {
-            RAGE_ERROR("Incorrect interpolated value after TS change")
+            return RAGE_ERROR("Incorrect interpolated value after TS change");
         }
     }
-    RAGE_OK
+    return RAGE_OK;
 }
 
 static rage_Error interpolator_immediate_change_test() {

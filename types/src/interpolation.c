@@ -79,24 +79,24 @@ static int as_interpolation_mask(rage_InterpolationMode m) {
 static rage_Error validate_time_series(
 	rage_TimeSeries const * points, rage_InterpolationMode allowed_modes) {
     if (points->len == 0) {
-        RAGE_ERROR("No points in time series");
+        return RAGE_ERROR("No points in time series");
     }
     rage_TimePoint const * point = &points->items[0];
     rage_Time const * t = &point->time;
     if (t->second || t->fraction) {
-        RAGE_ERROR("First value is not at start of time series");
+        return RAGE_ERROR("First value is not at start of time series");
     }
     for (uint32_t i = 0; i < points->len; i++) {
         point = &points->items[i];
         if (!(as_interpolation_mask(point->mode) & allowed_modes && unambiguous_mode(point->mode))) {
-            RAGE_ERROR("Unsupported interpolation mode");
+            return RAGE_ERROR("Unsupported interpolation mode");
         }
         if (i && !rage_time_after(point->time, *t)) {
-            RAGE_ERROR("Times are not monotonicly increasing");
+            return RAGE_ERROR("Times are not monotonicly increasing");
         }
         t = &point->time;
     }
-    RAGE_OK
+    return RAGE_OK;
 }
 
 static rage_FrameSeries * as_frameseries(

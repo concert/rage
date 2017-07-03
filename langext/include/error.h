@@ -49,8 +49,8 @@ typedef RAGE_OR_ERROR(void *) rage_Error;
 /*
  * Return succeeded.
  */
-#define RAGE_OK return RAGE_SUCCESS(rage_Error, NULL);
+#define RAGE_OK RAGE_SUCCESS(rage_Error, NULL)
 /*
  * Return a failure string message.
  */
-#define RAGE_ERROR(msg) return RAGE_FAILURE(rage_Error, msg);
+#define RAGE_ERROR(msg) RAGE_FAILURE(rage_Error, msg)

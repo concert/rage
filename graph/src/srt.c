@@ -83,7 +83,7 @@ static rage_Error clear(rage_Trucks * trucks, uint32_t preserve) {
             return err;
         }
     }
-    RAGE_OK
+    return RAGE_OK;
 }
 
 static void * rage_support_convoy_worker(void * ptr) {
@@ -132,9 +132,9 @@ rage_Error rage_support_convoy_start(rage_SupportConvoy * convoy) {
     if (pthread_create(
             &convoy->worker_thread, NULL,
             rage_support_convoy_worker, convoy)) {
-        RAGE_ERROR("Failed to create worker thread");
+        return RAGE_ERROR("Failed to create worker thread");
     }
-    RAGE_OK
+    return RAGE_OK;
 }
 
 rage_Error rage_support_convoy_stop(rage_SupportConvoy * convoy) {
@@ -145,12 +145,12 @@ rage_Error rage_support_convoy_stop(rage_SupportConvoy * convoy) {
     pthread_mutex_unlock(&convoy->active);
     char const * err;
     if (pthread_join(convoy->worker_thread, (void **) &err)) {
-        RAGE_ERROR("Failed to join worker thread")
+        return RAGE_ERROR("Failed to join worker thread");
     }
     if (err != NULL) {
-        RAGE_ERROR(err)
+        return RAGE_ERROR(err);
     }
-    RAGE_OK
+    return RAGE_OK;
 }
 
 // UGH, going to need a different handle as this can't be used to remove again

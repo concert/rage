@@ -27,7 +27,7 @@ void rage_countdown_free(rage_Countdown * c) {
 rage_Error rage_countdown_timed_wait(rage_Countdown * c, unsigned millis) {
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
-        RAGE_ERROR("Unable to get current time")
+        return RAGE_ERROR("Unable to get current time");
     }
     ts.tv_sec += millis / 1000;
     ts.tv_nsec += (millis % 1000) * 1000000;
@@ -36,9 +36,9 @@ rage_Error rage_countdown_timed_wait(rage_Countdown * c, unsigned millis) {
         ts.tv_nsec -= 1000000000;
     }
     if (sem_timedwait(&c->sig, &ts) == -1) {
-        RAGE_ERROR("Timed out waiting")
+        return RAGE_ERROR("Timed out waiting");
     }
-    RAGE_OK
+    return RAGE_OK;
 }
 
 int rage_countdown_add(rage_Countdown * c, int delta) {

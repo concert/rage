@@ -70,5 +70,5 @@ rage_Error test() {
         rage_element_loader_unload(el, et);
     }
     rage_element_loader_free(el);
-    RAGE_OK
+    return RAGE_OK;
 }

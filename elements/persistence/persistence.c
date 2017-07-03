@@ -380,7 +380,7 @@ rage_Error elem_clear(void * state, rage_InterpolatedView ** controls, rage_Fram
         // Roll back the write pointer
         jack_ringbuffer_write_advance(rb, -to_erase);
     }
-    RAGE_OK
+    return RAGE_OK;
 }
 
 rage_ElementType const elem_info = {
