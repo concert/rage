@@ -14,7 +14,7 @@ static rage_InitialisedInterpolator interpolator_for(
 
 static rage_Error check_with_single_field_interpolator(
         rage_AtomDef const * atom_def, rage_TimePoint * points,
-        unsigned n_points, rage_Error (*checker)(rage_InterpolatedView *)) {
+        unsigned n_points, rage_Error (*checker)(rage_Interpolator *)) {
     rage_FieldDef fields[] = {
         {.name = "field", .type = atom_def}
     };
@@ -27,7 +27,7 @@ static rage_Error check_with_single_field_interpolator(
     rage_InitialisedInterpolator ii = interpolator_for(
         &td, points, n_points, 1);
     RAGE_EXTRACT_VALUE(rage_Error, ii, rage_Interpolator * interpolator)
-    rage_Error err = checker(rage_interpolator_get_view(interpolator, 0));
+    rage_Error err = checker(interpolator);
     rage_interpolator_free(&td, interpolator);
     return err;
 }
@@ -46,7 +46,8 @@ static rage_Error check_with_single_field_interpolator(
 
 RAGE_EQUALITY_CHECK(float, f, "%f")
 
-static rage_Error float_checks(rage_InterpolatedView * v) {
+static rage_Error float_checks(rage_Interpolator * interpolator) {
+    rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
     if (f_check(v, 0.0))
         RAGE_ERROR("Mismatch at t=0")
     rage_interpolated_view_advance(v, 1);
@@ -95,7 +96,8 @@ static rage_Error interpolator_float_test() {
 
 RAGE_EQUALITY_CHECK(uint32_t, frame_no, "%u")
 
-static rage_Error time_checks(rage_InterpolatedView * v) {
+static rage_Error time_checks(rage_Interpolator * interpolator) {
+    rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
     if (frame_no_check(v, 0))
         RAGE_ERROR("Mismatch at t=0")
     rage_interpolated_view_advance(v, 1);
@@ -136,36 +138,22 @@ static rage_Error interpolator_time_test() {
         &unconstrained_time, tps, 2, time_checks);
 }
 
-static rage_Error interpolator_immediate_change_test() {
-    rage_Atom val = {.f = 0};
-    rage_TimePoint tps[] = {
-        {
-            .time = {.second = 0},
-            .value = &val,
-            .mode = RAGE_INTERPOLATION_CONST
-        },
-    };
-    // FIXME: following 2 are same as in check_with_single_field
-    rage_FieldDef fields[] = {
-        {.name = "field", .type = &unconstrained_float}
-    };
-    rage_TupleDef td = {
-        .name = "Interpolation Test",
-        .description = "Testing's great",
-        .len = 1,
-        .items = fields
-    };
-    rage_InitialisedInterpolator ii = interpolator_for(&td, tps, 1, 1);
-    RAGE_EXTRACT_VALUE(rage_Error, ii, rage_Interpolator * interpolator)
-    char * err = NULL;
+static rage_Error immediate_change_checks(rage_Interpolator * interpolator) {
     rage_InterpolatedView * iv = rage_interpolator_get_view(interpolator, 0);
     rage_InterpolatedValue const * obtained = rage_interpolated_view_value(iv);
     if (obtained->valid_for != UINT32_MAX) {
-        err = "Incorrect validity duration";
-    } else if (obtained->value[0].f != val.f) {
-        err = "Incorrect interpolated value";
+        RAGE_ERROR("Incorrect validity duration")
+    } else if (obtained->value[0].f != 0) {
+        RAGE_ERROR("Incorrect interpolated value")
     } else {
-        val.f = 1;
+        rage_Atom val = {.f = 1};
+        rage_TimePoint tps[] = {
+            {
+                .time = {.second = 0},
+                .value = &val,
+                .mode = RAGE_INTERPOLATION_CONST
+            },
+        };
         rage_TimeSeries ts = {
             .len = 1,
             .items = tps
@@ -178,17 +166,26 @@ static rage_Error interpolator_immediate_change_test() {
         rage_finaliser_wait(change_complete);
         if (obtained->value[0].f != val.f) {
             printf("%f != %f\n", obtained->value[0].f, val.f);
-            err = "Incorrect interpolated value after TS change";
+            RAGE_ERROR("Incorrect interpolated value after TS change")
         }
     }
-    rage_interpolator_free(&td, interpolator);
-    if (err != NULL) {
-        RAGE_ERROR(err)
-    } else {
-        RAGE_OK
-    }
+    RAGE_OK
 }
 
+static rage_Error interpolator_immediate_change_test() {
+    rage_Atom val = {.f = 0};
+    rage_TimePoint tps[] = {
+        {
+            .time = {.second = 0},
+            .value = &val,
+            .mode = RAGE_INTERPOLATION_CONST
+        },
+    };
+    return check_with_single_field_interpolator(
+        &unconstrained_float, tps, 1, immediate_change_checks);
+}
+
+// TODO: change part way through
 // TODO: multiple views test
 
 TEST_MAIN(interpolator_float_test, interpolator_time_test, interpolator_immediate_change_test)
