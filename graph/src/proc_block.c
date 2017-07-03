@@ -21,7 +21,7 @@ rage_NewProcBlock rage_proc_block_new(uint32_t sample_rate) {
     rage_NewJackBinding njb = rage_jack_binding_new(countdown, sample_rate);
     if (RAGE_FAILED(njb)) {
         rage_countdown_free(countdown);
-        return RAGE_FAIL(rage_NewProcBlock, RAGE_FAILURE_VALUE(njb));
+        return RAGE_FAILURE(rage_NewProcBlock, RAGE_FAILURE_VALUE(njb));
     } else {
         rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
         pb->jack_binding = RAGE_SUCCESS_VALUE(njb);
@@ -29,7 +29,7 @@ rage_NewProcBlock rage_proc_block_new(uint32_t sample_rate) {
         // The success value should probably be some kind of handy struct
         pb->convoy = rage_support_convoy_new(1024, countdown);
         pb->countdown = countdown;
-        return RAGE_SUCCEED(rage_NewProcBlock, pb);
+        return RAGE_SUCCESS(rage_NewProcBlock, pb);
     }
 }
 
@@ -66,7 +66,7 @@ static InterpolatorsForResult interpolators_for(
     rage_Interpolator ** new_interpolators = calloc(
         n_controls, sizeof(rage_Interpolator *));
     if (new_interpolators == NULL) {
-        return RAGE_FAIL(
+        return RAGE_FAILURE(
             InterpolatorsForResult,
             "Unable to allocate memory for new interpolators");
     }
@@ -84,13 +84,13 @@ static InterpolatorsForResult interpolators_for(
                 } while (i > 0);
             }
             free(new_interpolators);
-            return RAGE_FAIL(InterpolatorsForResult, RAGE_FAILURE_VALUE(ii));
+            return RAGE_FAILURE(InterpolatorsForResult, RAGE_FAILURE_VALUE(ii));
             break;
         } else {
             new_interpolators[i] = RAGE_SUCCESS_VALUE(ii);
         }
     }
-    return RAGE_SUCCEED(InterpolatorsForResult, new_interpolators);
+    return RAGE_SUCCESS(InterpolatorsForResult, new_interpolators);
 }
 
 rage_MountResult rage_proc_block_mount(
@@ -140,7 +140,7 @@ rage_MountResult rage_proc_block_mount(
         pb->convoy, elem, prep_views, clean_views);
     harness->jack_harness = rage_jack_binding_mount(
         pb->jack_binding, elem, rt_views, name);
-    return RAGE_SUCCEED(rage_MountResult, harness);
+    return RAGE_SUCCESS(rage_MountResult, harness);
 }
 
 void rage_proc_block_unmount(rage_Harness * harness) {

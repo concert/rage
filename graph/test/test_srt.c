@@ -18,7 +18,7 @@ rage_NewTestElem new_test_elem() {
         el, "./libamp.so");
     if (RAGE_FAILED(et_)) {
         rage_element_loader_free(el);
-        return RAGE_FAIL(rage_NewTestElem, RAGE_FAILURE_VALUE(et_));
+        return RAGE_FAILURE(rage_NewTestElem, RAGE_FAILURE_VALUE(et_));
     }
     rage_ElementType * et = RAGE_SUCCESS_VALUE(et_);
     rage_Atom ** tups = generate_tuples(et->parameters);
@@ -27,11 +27,11 @@ rage_NewTestElem new_test_elem() {
     if (RAGE_FAILED(elem_)) {
         rage_element_loader_unload(el, et);
         rage_element_loader_free(el);
-        return RAGE_FAIL(rage_NewTestElem, RAGE_FAILURE_VALUE(elem_));
+        return RAGE_FAILURE(rage_NewTestElem, RAGE_FAILURE_VALUE(elem_));
     }
     rage_TestElem rv = {
         .loader=el, .type=et, .elem=RAGE_SUCCESS_VALUE(elem_)};
-    return RAGE_SUCCEED(rage_NewTestElem, rv);
+    return RAGE_SUCCESS(rage_NewTestElem, rv);
 }
 
 void free_test_elem(rage_TestElem te) {
@@ -68,14 +68,14 @@ static rage_PreparedFrames fake_elem_prep(
     FakeElementState * fes = state;
     fes->prep_counter++;
     sem_post(fes->processed);
-    return RAGE_SUCCEED(rage_PreparedFrames, 1024);
+    return RAGE_SUCCESS(rage_PreparedFrames, 1024);
 }
 
 static rage_PreparedFrames fake_elem_clean(
         void * state, rage_InterpolatedView ** controls) {
     FakeElementState * fes = state;
     fes->clean_counter++;
-    return RAGE_SUCCEED(rage_PreparedFrames, 1024);
+    return RAGE_SUCCESS(rage_PreparedFrames, 1024);
 }
 
 static rage_ElementType fake_element_type = {

@@ -37,7 +37,7 @@ static rage_Interpolators new_interpolators(rage_Ports * ports, rage_InstanceSpe
         RAGE_EXTRACT_VALUE(rage_Interpolators, ii, interpolators.items[i])
         ports->controls[i] = rage_interpolator_get_view(interpolators.items[i], 0);
     }
-    return RAGE_SUCCEED(rage_Interpolators, interpolators);
+    return RAGE_SUCCESS(rage_Interpolators, interpolators);
 }
 
 static void free_interpolators(rage_InterpolatorArray interpolators, rage_InstanceSpec spec) {

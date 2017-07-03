@@ -84,7 +84,7 @@ rage_NewInstanceSpec elem_describe_ports(rage_Atom ** params) {
     rval.inputs.items = stream_defs;
     rval.outputs.len = n_channels;
     rval.outputs.items = stream_defs;
-    return RAGE_SUCCEED(rage_NewInstanceSpec, rval);
+    return RAGE_SUCCESS(rage_NewInstanceSpec, rval);
 }
 
 void elem_free_port_description(rage_InstanceSpec pr) {
@@ -125,7 +125,7 @@ rage_NewElementState elem_new(
     ad->sf = NULL;
     ad->rb_vec = calloc(2 * ad->n_channels, sizeof(float *));
     ad->interleaved_buffer = calloc(ad->n_channels * 2 * frame_size, sizeof(float));
-    return RAGE_SUCCEED(rage_NewElementState, (void *) ad);
+    return RAGE_SUCCESS(rage_NewElementState, (void *) ad);
 }
 
 void elem_free(void * state) {
@@ -247,7 +247,7 @@ rage_PreparedFrames elem_prepare(void * state, rage_InterpolatedView ** controls
                 sf_count_t const read = read_prep_sndfile(
                     data, chunk->value[1].s, chunk->value[2].frame_no, to_read);
                 if (read < to_read) {
-                    return RAGE_FAIL(rage_PreparedFrames, "Insufficient data in file");
+                    return RAGE_FAILURE(rage_PreparedFrames, "Insufficient data in file");
                 }
                 deinterleave(data->interleaved_buffer, (float**) data->rb_vec, data->n_channels, slabs[0]);
                 deinterleave(
@@ -260,7 +260,7 @@ rage_PreparedFrames elem_prepare(void * state, rage_InterpolatedView ** controls
                 n_prepared_frames += read;
                 if (rb_space <= chunk->valid_for) {
                     rage_interpolated_view_advance(controls[0], n_prepared_frames);
-                    return RAGE_SUCCEED(rage_PreparedFrames, n_prepared_frames);
+                    return RAGE_SUCCESS(rage_PreparedFrames, n_prepared_frames);
                 }
                 break;
             case IDLE:
@@ -273,7 +273,7 @@ rage_PreparedFrames elem_prepare(void * state, rage_InterpolatedView ** controls
         chunk = rage_interpolated_view_value(controls[0]);
     }
     assert(chunk->value[0].e == IDLE);
-    return RAGE_SUCCEED(rage_PreparedFrames, UINT32_MAX);
+    return RAGE_SUCCESS(rage_PreparedFrames, UINT32_MAX);
 }
 
 static void interleave(
@@ -336,7 +336,7 @@ rage_PreparedFrames elem_cleanup(void * state, rage_InterpolatedView ** controls
                 sf_count_t const written = write_buffer_to_file(
                     data, chunk->value[1].s, chunk->value[2].frame_no, to_write);
                 if (written < to_write) {
-                    return RAGE_FAIL(rage_PreparedFrames, "Unable to write all data to file");
+                    return RAGE_FAILURE(rage_PreparedFrames, "Unable to write all data to file");
                 }
                 for (uint32_t c = 0; c < data->n_channels; c++) {
                     jack_ringbuffer_read_advance(data->rec_buffs[c], written * sizeof(float));
@@ -351,7 +351,7 @@ rage_PreparedFrames elem_cleanup(void * state, rage_InterpolatedView ** controls
     if (chunk->valid_for == UINT32_MAX) {
         frames_until_buffer_full = UINT32_MAX;
     }
-    return RAGE_SUCCEED(rage_PreparedFrames, frames_until_buffer_full);
+    return RAGE_SUCCESS(rage_PreparedFrames, frames_until_buffer_full);
 }
 
 rage_Error elem_clear(void * state, rage_InterpolatedView ** controls, rage_FrameNo to_present) {

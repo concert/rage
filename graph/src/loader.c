@@ -53,11 +53,11 @@ rage_ElementTypeLoadResult rage_element_loader_load(
         rage_ElementLoader * el, char const * type_name) {
     void * handle = dlopen(type_name, RTLD_LAZY);
     if (handle == NULL)
-        return RAGE_FAIL(rage_ElementTypeLoadResult, dlerror());
+        return RAGE_FAILURE(rage_ElementTypeLoadResult, dlerror());
     rage_ElementType * type = dlsym(handle, "elem_info");
     #define RAGE_ETL_BAIL(msg) \
         dlclose(handle); \
-        return RAGE_FAIL(rage_ElementTypeLoadResult, msg);
+        return RAGE_FAILURE(rage_ElementTypeLoadResult, msg);
     char const * err = dlerror();
     if (err != NULL) {
         RAGE_ETL_BAIL(err)
@@ -78,7 +78,7 @@ rage_ElementTypeLoadResult rage_element_loader_load(
     }
     #undef RAGE_ETL_BAIL
     type_handle_append(&el->type_handle, handle, type);
-    return RAGE_SUCCEED(rage_ElementTypeLoadResult, type);
+    return RAGE_SUCCESS(rage_ElementTypeLoadResult, type);
 }
 
 void rage_element_loader_unload(
@@ -110,7 +110,7 @@ rage_ElementNewResult rage_element_new(
     rage_NewInstanceSpec new_ports = type->get_ports(params);
     // FIXME: leak on failure
     RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_ports, elem->spec)
-    return RAGE_SUCCEED(rage_ElementNewResult, elem);
+    return RAGE_SUCCESS(rage_ElementNewResult, elem);
 }
 
 void rage_element_free(rage_Element * elem) {

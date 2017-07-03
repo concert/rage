@@ -10,12 +10,12 @@ struct rage_Graph {
 rage_NewGraph rage_graph_new(uint32_t sample_rate) {
     rage_NewProcBlock npb = rage_proc_block_new(sample_rate);
     if (RAGE_FAILED(npb)) {
-        return RAGE_FAIL(rage_NewGraph, RAGE_FAILURE_VALUE(npb));
+        return RAGE_FAILURE(rage_NewGraph, RAGE_FAILURE_VALUE(npb));
     }
     rage_Graph * g = malloc(sizeof(rage_Graph));
     g->sample_rate = sample_rate;
     g->pb = RAGE_SUCCESS_VALUE(npb);
-    return RAGE_SUCCEED(rage_NewGraph, g);
+    return RAGE_SUCCESS(rage_NewGraph, g);
 }
 
 void rage_graph_free(rage_Graph * g) {
@@ -48,7 +48,7 @@ rage_NewGraphNode rage_graph_add_node(
     rage_ElementNewResult new_elem = rage_element_new(
         et, g->sample_rate, 1024, type_params);
     if (RAGE_FAILED(new_elem)) {
-        return RAGE_FAIL(rage_NewGraphNode, RAGE_FAILURE_VALUE(new_elem));
+        return RAGE_FAILURE(rage_NewGraphNode, RAGE_FAILURE_VALUE(new_elem));
     }
     rage_Element * elem = RAGE_SUCCESS_VALUE(new_elem);
     rage_MountResult mr = rage_proc_block_mount(g->pb, elem, ts, name);
@@ -58,7 +58,7 @@ rage_NewGraphNode rage_graph_add_node(
     rage_GraphNode * node = malloc(sizeof(rage_GraphNode));
     node->mount = RAGE_SUCCESS_VALUE(mr);
     node->elem = elem;
-    return RAGE_SUCCEED(rage_NewGraphNode, node);
+    return RAGE_SUCCESS(rage_NewGraphNode, node);
 }
 
 void rage_graph_remove_node(rage_Graph * g, rage_GraphNode * n) {
