@@ -160,8 +160,9 @@ static rage_Error interpolator_immediate_change_test() {
     char * err = NULL;
     rage_InterpolatedView * iv = rage_interpolator_get_view(interpolator, 0);
     rage_InterpolatedValue const * obtained = rage_interpolated_view_value(iv);
-    // TODO: checks on valid_for
-    if (obtained->value[0].f != val.f) {
+    if (obtained->valid_for != UINT32_MAX) {
+        err = "Incorrect validity duration";
+    } else if (obtained->value[0].f != val.f) {
         err = "Incorrect interpolated value";
     } else {
         val.f = 1;
