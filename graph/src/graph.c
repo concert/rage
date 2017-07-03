@@ -5,7 +5,6 @@
 struct rage_Graph {
     uint32_t sample_rate;
     rage_ProcBlock * pb;
-    rage_ElementLoader * el;
 };
 
 rage_NewGraph rage_graph_new(uint32_t sample_rate) {
@@ -16,13 +15,11 @@ rage_NewGraph rage_graph_new(uint32_t sample_rate) {
     rage_Graph * g = malloc(sizeof(rage_Graph));
     g->sample_rate = sample_rate;
     g->pb = RAGE_SUCCESS_VALUE(npb);
-    g->el = rage_element_loader_new();
     RAGE_SUCCEED(rage_NewGraph, g)
 }
 
 void rage_graph_free(rage_Graph * g) {
     rage_proc_block_free(g->pb);
-    rage_element_loader_free(g->el);
     free(g);
 }
 
@@ -36,11 +33,6 @@ void rage_graph_stop_processing(rage_Graph * g) {
 
 void rage_graph_set_transport_state(rage_Graph * g, rage_TransportState s) {
     rage_proc_block_set_transport_state(g->pb, s);
-}
-
-// FIXME: should this be exposing the loader directly?
-rage_ElementLoader * rage_graph_get_loader(rage_Graph * g) {
-    return g->el;
 }
 
 struct rage_GraphNode {

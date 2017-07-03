@@ -2,6 +2,7 @@
 #include <unistd.h> // for sleep
 #include "error.h"
 #include "graph.h"
+#include "loader.h"
 
 int main() {
     printf("Example started\n");
@@ -11,7 +12,7 @@ int main() {
         return 1;
     }
     rage_Graph * graph = RAGE_SUCCESS_VALUE(new_graph);
-    rage_ElementLoader * el = rage_graph_get_loader(graph);
+    rage_ElementLoader * el = rage_element_loader_new();
     //rage_ElementTypes element_type_names = rage_element_loader_list(el);
     // FIXME: loading super busted
     rage_ElementTypeLoadResult et_ = rage_element_loader_load(
@@ -20,6 +21,7 @@ int main() {
     if (RAGE_FAILED(et_)) {
         printf("Element type load failed: %s\n", RAGE_FAILURE_VALUE(et_));
         rage_graph_free(graph);
+        rage_element_loader_free(el);
         return 2;
     }
     rage_ElementType * const et = RAGE_SUCCESS_VALUE(et_);
@@ -71,6 +73,7 @@ int main() {
     if (RAGE_FAILED(new_node)) {
         printf("Node creation failed: %s\n", RAGE_FAILURE_VALUE(new_node));
         rage_graph_free(graph);
+        rage_element_loader_free(el);
         return 3;
     }
     printf("Element loaded\n");
@@ -92,4 +95,5 @@ int main() {
     rage_element_loader_unload(el, et);
     printf("Elem type freed\n");
     rage_graph_free(graph);
+    rage_element_loader_free(el);
 }
