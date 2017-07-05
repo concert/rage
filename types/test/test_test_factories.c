@@ -29,32 +29,25 @@ rage_Error test_time_series_new() {
         .len = 2
     };
     rage_TimeSeries ts = rage_time_series_new(&td);
-    char * err = NULL;
+    rage_Error rval = RAGE_OK;
     if (ts.len != 1) {
-        err = "timeseries is not 1 point long";
-    }
-    if ((err == NULL) && ts.items == NULL) {
-        err = "timeseries items is NULL";
-    }
-    rage_TimePoint * tp = ts.items;
-    if ((err == NULL) && (tp->time.second || tp->time.fraction)) {
-        err = "timeseries does not start at t=0";
-    }
-    if ((err == NULL) && tp->mode != RAGE_INTERPOLATION_CONST) {
-        err = "final time point has non-constant interpolation";
-    }
-    if ((err == NULL) && tp->value[0].i != 12) {
-        err = "integer has taken unexpected value";
-    }
-    if ((err == NULL) && strcmp(tp->value[1].s, "")) {
-        err = "wasn't an empty string";
+        rval = RAGE_ERROR("timeseries is not 1 point long");
+    } else if (ts.items == NULL) {
+        rval = RAGE_ERROR("timeseries items is NULL");
+    } else {
+        rage_TimePoint * tp = ts.items;
+        if (tp->time.second || tp->time.fraction) {
+            rval = RAGE_ERROR("timeseries does not start at t=0");
+        } else if (tp->mode != RAGE_INTERPOLATION_CONST) {
+            rval = RAGE_ERROR("final time point has non-constant interpolation");
+        } else if (tp->value[0].i != 12) {
+            rval = RAGE_ERROR("integer has taken unexpected value");
+        } else if (strcmp(tp->value[1].s, "")) {
+            rval = RAGE_ERROR("wasn't an empty string");
+        }
     }
     rage_time_series_free(ts);
-    if (err == NULL) {
-        return RAGE_OK;
-    } else {
-        return RAGE_ERROR(err);  // FIXME: This structure is silly due to old implicit return
-    }
+    return rval;
 }
 
 TEST_MAIN(test_time_series_new)
