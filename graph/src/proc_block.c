@@ -71,7 +71,6 @@ static InterpolatorsForResult interpolators_for(
             "Unable to allocate memory for new interpolators");
     }
     for (uint32_t i = 0; i < n_controls; i++) {
-        // FIXME: const sample rate
         rage_InitialisedInterpolator ii = rage_interpolator_new(
             &control_spec->items[i], &control_values[i], sample_rate,
             n_views);
