@@ -83,17 +83,17 @@ static rage_ElementType fake_element_type = {
     .clean = fake_elem_clean
 };
 
-static char * counter_checks(
+static rage_Error counter_checks(
         sem_t * sync_sem, FakeElementState * fes, int expected_prep,
         int expected_clean) {
     sem_wait(sync_sem);
     if (fes->prep_counter != expected_prep) {
-        return "Unexpected prep count";
+        return RAGE_ERROR("Unexpected prep count");
     }
     if (fes->clean_counter != expected_clean) {
-        return "Unexpected clean count";
+        return RAGE_ERROR("Unexpected clean count");
     }
-    return NULL;
+    return RAGE_OK;
 }
 
 rage_Error test_srt_fake_elem() {
@@ -103,7 +103,6 @@ rage_Error test_srt_fake_elem() {
         .prep_counter = 0,
         .clean_counter = 0,
         .processed = &sync_sem};
-    char * err_str = NULL;
     rage_Element fake_elem = {
         .type = &fake_element_type,
         .state = &fes};
@@ -114,11 +113,12 @@ rage_Error test_srt_fake_elem() {
     // FIXME: ATM don't know (without our sem) when initial prep is done (which
     // is dodgy)
     rage_Error err = rage_support_convoy_start(convoy);
+    rage_Error assertion_err = RAGE_OK;
     if (!RAGE_FAILED(err)) {
-        err_str = counter_checks(&sync_sem, &fes, 1, 0);
-        if (err_str == NULL) {
+        assertion_err = counter_checks(&sync_sem, &fes, 1, 0);
+        if (!RAGE_FAILED(assertion_err)) {
             rage_countdown_add(countdown, -1);
-            err_str = counter_checks(&sync_sem, &fes, 2, 1);
+            assertion_err = counter_checks(&sync_sem, &fes, 2, 1);
         }
         err = rage_support_convoy_stop(convoy);
     }
@@ -126,9 +126,9 @@ rage_Error test_srt_fake_elem() {
     rage_support_convoy_free(convoy);
     rage_countdown_free(countdown);
     sem_destroy(&sync_sem);
-    if (!RAGE_FAILED(err) && err_str != NULL) {
-        return RAGE_ERROR(err_str);  // FIXME: The structure of this is silly now the implicit return is gone
-    } else {
+    if (RAGE_FAILED(err)) {
         return err;
+    } else {
+        return assertion_err;
     }
 }
