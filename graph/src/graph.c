@@ -37,7 +37,7 @@ void rage_graph_set_transport_state(rage_Graph * g, rage_TransportState s) {
 
 struct rage_GraphNode {
     rage_Element * elem;
-    rage_Harness * mount;  // FIXME: smells of dodgy naming
+    rage_Harness * harness;
 };
 
 rage_NewGraphNode rage_graph_add_node(
@@ -56,13 +56,13 @@ rage_NewGraphNode rage_graph_add_node(
         rage_element_free(elem);
     }
     rage_GraphNode * node = malloc(sizeof(rage_GraphNode));
-    node->mount = RAGE_SUCCESS_VALUE(mr);
+    node->harness = RAGE_SUCCESS_VALUE(mr);
     node->elem = elem;
     return RAGE_SUCCESS(rage_NewGraphNode, node);
 }
 
 void rage_graph_remove_node(rage_Graph * g, rage_GraphNode * n) {
-    rage_proc_block_unmount(n->mount);
+    rage_proc_block_unmount(n->harness);
     rage_element_free(n->elem);
     free(n);
 }
