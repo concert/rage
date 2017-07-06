@@ -108,9 +108,15 @@ rage_ElementNewResult rage_element_new(
     elem->type = type;
     elem->state = state;
     rage_NewInstanceSpec new_ports = type->get_ports(params);
-    // FIXME: leak on failure
-    RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_ports, elem->spec)
-    return RAGE_SUCCESS(rage_ElementNewResult, elem);
+    if (RAGE_FAILED(new_ports)) {
+        elem->type->state_free(elem->state);
+        free(elem);
+        return RAGE_FAILURE(
+            rage_ElementNewResult, RAGE_FAILURE_VALUE(new_ports));
+    } else {
+        elem->spec = RAGE_SUCCESS_VALUE(new_ports);
+        return RAGE_SUCCESS(rage_ElementNewResult, elem);
+    }
 }
 
 void rage_element_free(rage_Element * elem) {
