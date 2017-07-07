@@ -8,7 +8,7 @@
 
 typedef struct {
     rage_ElementType * type;
-    void * state;
+    rage_ElementState * state;
     union {
         rage_InstanceSpec;
         rage_InstanceSpec spec;

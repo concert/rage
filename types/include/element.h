@@ -6,24 +6,26 @@
 #include "error.h"
 #include "interpolation.h"
 
-typedef RAGE_OR_ERROR(void *) rage_NewElementState;
+typedef struct rage_ElementState rage_ElementState;
+
+typedef RAGE_OR_ERROR(rage_ElementState *) rage_NewElementState;
 typedef rage_NewElementState (*rage_ElementStateNew)(
     uint32_t sample_rate, uint32_t frame_size, rage_Atom ** params);
-typedef void (*rage_ElementStateFree)(void * state);
+typedef void (*rage_ElementStateFree)(rage_ElementState * state);
 typedef RAGE_OR_ERROR(rage_InstanceSpec) rage_NewInstanceSpec;
 typedef rage_NewInstanceSpec (*rage_ElementGetPortsDescription)(rage_Atom ** params);
 typedef void (*rage_ElementFreePortsDescription)(rage_InstanceSpec);
 typedef void (*rage_ElementProcess)(
-    void * state, rage_TransportState const transport_state,
+    rage_ElementState * state, rage_TransportState const transport_state,
     rage_Ports const * ports);
 
 typedef RAGE_OR_ERROR(uint32_t) rage_PreparedFrames;
 typedef rage_PreparedFrames (*rage_ElementPrepare)(
-    void * state, rage_InterpolatedView ** controls);
+    rage_ElementState * state, rage_InterpolatedView ** controls);
 typedef rage_Error (*rage_ElementClear)(
-    void * state, rage_InterpolatedView ** controls, rage_FrameNo const preserve);
+    rage_ElementState * state, rage_InterpolatedView ** controls, rage_FrameNo const preserve);
 typedef rage_PreparedFrames (*rage_ElementClean)(
-    void * state, rage_InterpolatedView ** controls);
+    rage_ElementState * state, rage_InterpolatedView ** controls);
 
 typedef RAGE_ARRAY(rage_TupleDef const) rage_ParamDefList;
 

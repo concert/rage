@@ -97,7 +97,7 @@ typedef struct {
     char * path;
 } sndfile_status;
 
-typedef struct {
+struct rage_ElementState {
     unsigned n_channels;
     uint32_t frame_size; // Doesn't everyone HAVE to do this?
     uint32_t sample_rate;
@@ -107,11 +107,11 @@ typedef struct {
     SNDFILE * sf;
     SF_INFO sf_info;
     float * interleaved_buffer;
-} persist_state;
+};
 
 rage_NewElementState elem_new(
         uint32_t sample_rate, uint32_t frame_size, rage_Atom ** params) {
-    persist_state * ad = malloc(sizeof(persist_state));
+    rage_ElementState * ad = malloc(sizeof(rage_ElementState));
     // Not sure I like way the indices tie up here
     ad->n_channels = params[0][0].i;
     ad->frame_size = frame_size;
@@ -125,11 +125,10 @@ rage_NewElementState elem_new(
     ad->sf = NULL;
     ad->rb_vec = calloc(2 * ad->n_channels, sizeof(float *));
     ad->interleaved_buffer = calloc(ad->n_channels * 2 * frame_size, sizeof(float));
-    return RAGE_SUCCESS(rage_NewElementState, (void *) ad);
+    return RAGE_SUCCESS(rage_NewElementState, ad);
 }
 
-void elem_free(void * state) {
-    persist_state * ad = state;
+void elem_free(rage_ElementState * ad) {
     for (uint32_t c = 0; c < ad->n_channels; c++) {
         jack_ringbuffer_free(ad->rec_buffs[c]);
         jack_ringbuffer_free(ad->play_buffs[c]);
@@ -143,8 +142,7 @@ void elem_free(void * state) {
     free(ad);
 }
 
-void elem_process(void * state, rage_TransportState const transport_state, rage_Ports const * ports) {
-    persist_state const * const data = (persist_state *) state;
+void elem_process(rage_ElementState * data, rage_TransportState const transport_state, rage_Ports const * ports) {
     rage_InterpolatedValue const * chunk;
     uint32_t step_frames, remaining = data->frame_size;
     uint32_t c, frame_pos = 0;
@@ -192,7 +190,7 @@ void elem_process(void * state, rage_TransportState const transport_state, rage_
 
 // FIXME: some comonality with the writing version
 static sf_count_t read_prep_sndfile(
-        persist_state * data, char const * path, size_t pos,
+        rage_ElementState * data, char const * path, size_t pos,
         uint32_t to_read) {
     if (data->sf != NULL) {
         sf_close(data->sf);
@@ -231,8 +229,7 @@ static void populate_slabs(
     }
 }
 
-rage_PreparedFrames elem_prepare(void * state, rage_InterpolatedView ** controls) {
-    persist_state * const data = (persist_state *) state;
+rage_PreparedFrames elem_prepare(rage_ElementState * data, rage_InterpolatedView ** controls) {
     uint32_t n_prepared_frames = 0;
     size_t slabs[2];
     rage_InterpolatedValue const * chunk = rage_interpolated_view_value(controls[0]);
@@ -288,7 +285,7 @@ static void interleave(
 
 // FIXME: this takes an overly broad first arg
 static sf_count_t write_buffer_to_file(
-        persist_state * const data, char const * const path, uint32_t pos,
+        rage_ElementState * const data, char const * const path, uint32_t pos,
         uint32_t to_write) {
     if (data->sf != NULL) {
         sf_close(data->sf);
@@ -304,8 +301,7 @@ static sf_count_t write_buffer_to_file(
         data->sf, data->interleaved_buffer, to_write);
 }
 
-rage_PreparedFrames elem_cleanup(void * state, rage_InterpolatedView ** controls) {
-    persist_state * const data = (persist_state *) state;
+rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView ** controls) {
     uint32_t frames_until_buffer_full = 0;
     size_t slabs[2] = {};
     size_t rb_left = 0;
@@ -354,10 +350,9 @@ rage_PreparedFrames elem_cleanup(void * state, rage_InterpolatedView ** controls
     return RAGE_SUCCESS(rage_PreparedFrames, frames_until_buffer_full);
 }
 
-rage_Error elem_clear(void * state, rage_InterpolatedView ** controls, rage_FrameNo to_present) {
+rage_Error elem_clear(rage_ElementState * data, rage_InterpolatedView ** controls, rage_FrameNo to_present) {
     // Controls are initialised at the start of the section to clear
     // to_present is the number of frames between that start point and the position after the last write
-    persist_state * const data = (persist_state *) state;
     // ! Do NOT look at the read pointer, it will be moving during this.
     rage_InterpolatedValue const * chunk;
     // Work out the number of frames that have been inserted in the cleared

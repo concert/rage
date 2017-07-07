@@ -57,24 +57,22 @@ rage_Error test_srt() {
     return err;
 }
 
-typedef struct {
+struct rage_ElementState {
     int prep_counter;
     int clean_counter;
     sem_t * processed;
-} FakeElementState;
+};
 
 static rage_PreparedFrames fake_elem_prep(
-        void * state, rage_InterpolatedView ** controls) {
-    FakeElementState * fes = state;
-    fes->prep_counter++;
-    sem_post(fes->processed);
+        rage_ElementState * state, rage_InterpolatedView ** controls) {
+    state->prep_counter++;
+    sem_post(state->processed);
     return RAGE_SUCCESS(rage_PreparedFrames, 1024);
 }
 
 static rage_PreparedFrames fake_elem_clean(
-        void * state, rage_InterpolatedView ** controls) {
-    FakeElementState * fes = state;
-    fes->clean_counter++;
+        rage_ElementState * state, rage_InterpolatedView ** controls) {
+    state->clean_counter++;
     return RAGE_SUCCESS(rage_PreparedFrames, 1024);
 }
 
@@ -84,7 +82,7 @@ static rage_ElementType fake_element_type = {
 };
 
 static rage_Error counter_checks(
-        sem_t * sync_sem, FakeElementState * fes, int expected_prep,
+        sem_t * sync_sem, rage_ElementState * fes, int expected_prep,
         int expected_clean) {
     sem_wait(sync_sem);
     if (fes->prep_counter != expected_prep) {
@@ -99,7 +97,7 @@ static rage_Error counter_checks(
 rage_Error test_srt_fake_elem() {
     sem_t sync_sem;
     sem_init(&sync_sem, 0, 0);
-    FakeElementState fes = {
+    rage_ElementState fes = {
         .prep_counter = 0,
         .clean_counter = 0,
         .processed = &sync_sem};

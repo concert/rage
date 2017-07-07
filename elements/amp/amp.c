@@ -70,41 +70,40 @@ void elem_free_port_description(rage_InstanceSpec pr) {
     free((void *) pr.inputs.items);
 }
 
-typedef struct {
+struct rage_ElementState {
     unsigned n_channels;
     uint32_t period_size; // Doesn't everyone HAVE to do this?
-} amp_data;
+};
 
 rage_NewElementState elem_new(
         uint32_t sample_rate, uint32_t period_size, rage_Atom ** params) {
-    amp_data * ad = malloc(sizeof(amp_data));
+    rage_ElementState * ad = malloc(sizeof(rage_ElementState));
     // Not sure I like way the indices tie up here
     ad->n_channels = params[0][0].i;
     ad->period_size = period_size;
-    return RAGE_SUCCESS(rage_NewElementState, (void *) ad);
+    return RAGE_SUCCESS(rage_NewElementState, ad);
 }
 
-void elem_free(void * state) {
+void elem_free(rage_ElementState * state) {
     free(state);
 }
 
 void elem_process(
-        void * state, rage_TransportState const transport_state, rage_Ports const * ports) {
-    amp_data const * const data = (amp_data *) state;
+        rage_ElementState * state, rage_TransportState const transport_state, rage_Ports const * ports) {
     rage_InterpolatedValue const * val = rage_interpolated_view_value(ports->controls[0]);
-    uint32_t n_to_change, remaining = data->period_size;
+    uint32_t n_to_change, remaining = state->period_size;
     switch (transport_state) {
         case RAGE_TRANSPORT_STOPPED:
-            n_to_change = data->period_size;
+            n_to_change = state->period_size;
             break;
         case RAGE_TRANSPORT_ROLLING:
-            n_to_change = (data->period_size < val->valid_for) ?
-                data->period_size : val->valid_for;
+            n_to_change = (state->period_size < val->valid_for) ?
+                state->period_size : val->valid_for;
             break;
     }
     while (1) {
         for (unsigned s = 0; s < n_to_change; s++) {
-            for (unsigned c = 0; c < data->n_channels; c++) {
+            for (unsigned c = 0; c < state->n_channels; c++) {
                 ports->outputs[c][s] = ports->inputs[c][s] * val->value[0].f;
             }
         }
@@ -112,8 +111,8 @@ void elem_process(
         remaining -= n_to_change;
         if (remaining) {
             val = rage_interpolated_view_value(ports->controls[0]);
-            n_to_change = (data->period_size < val->valid_for) ?
-                data->period_size : val->valid_for;
+            n_to_change = (state->period_size < val->valid_for) ?
+                state->period_size : val->valid_for;
         } else {
             break;
         }
