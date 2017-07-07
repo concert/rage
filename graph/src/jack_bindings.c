@@ -66,7 +66,6 @@ static int process(jack_nframes_t nframes, void * arg) {
 
 rage_NewJackBinding rage_jack_binding_new(
         rage_Countdown * countdown, uint32_t sample_rate) {
-    // FIXME: Error handling etc.
     jack_client_t * client = jack_client_open("rage", JackNoStartServer, NULL);
     if (client == NULL) {
         return RAGE_FAILURE(rage_NewJackBinding, "Could not create jack client");
@@ -83,7 +82,10 @@ rage_NewJackBinding rage_jack_binding_new(
     e->rolling_countdown = countdown;
     e->harnesses.items = NULL;
     e->harnesses.len = 0;
-    jack_set_process_callback(e->jack_client, process, e);
+    if (jack_set_process_callback(e->jack_client, process, e)) {
+        rage_jack_binding_free(e);
+        return RAGE_FAILURE(rage_NewJackBinding, "Process callback setting failed");
+    }
     return RAGE_SUCCESS(rage_NewJackBinding, e);
 }
 
@@ -91,6 +93,7 @@ void rage_jack_binding_free(rage_JackBinding * jack_binding) {
     // FIXME: this is probably a hint that starting and stopping should be
     // elsewhere as the close has a return code
     jack_client_close(jack_binding->jack_client);
+    sem_close(&jack_binding->transport_synced);
     free(jack_binding);
 }
 
