@@ -1,5 +1,4 @@
 #include "error.h"
-#include "testing.h"
 #include "countdown.h"
 
 rage_Error test_countdown() {
@@ -30,5 +29,3 @@ rage_Error test_countdown() {
         return RAGE_OK;
     }
 }
-
-TEST_MAIN(test_countdown)

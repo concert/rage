@@ -21,10 +21,10 @@ test_errors = executable(
     'test_errors', 'langext/test/test_errors.c', include_directories: [langext_inc],
     link_with: langext)
 test('errors', test_errors)
-test_synchronisation_primitives = executable(
-    'test_synchronisation_primitives', 'langext/test/test_synchronisation_primitives.c',
+test_langext = executable(
+    'test_langext', 'langext/test/main.c',
     include_directories: [langext_inc], link_with: langext, dependencies: [sem])
-test('countdown', test_synchronisation_primitives)
+test('langext', test_langext)
 
 # Types
 
