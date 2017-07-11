@@ -6,9 +6,13 @@
 #include <jack/jack.h>
 #include <semaphore.h>
 
+typedef RAGE_ARRAY(rage_JackHarness *) rage_JackHarnesses;
+
+static RAGE_POINTER_ARRAY_APPEND_FUNC_DEF(rage_JackHarnesses, rage_JackHarness, rage_append_harness)
+
 struct rage_JackBinding {
     jack_client_t * jack_client;
-    RAGE_ARRAY(rage_JackHarness) harnesses;
+    rage_JackHarnesses * harnesses;
     rage_TransportState desired_transport;
     rage_TransportState rt_transport;
     sem_t transport_synced;
@@ -35,8 +39,8 @@ static int process(jack_nframes_t nframes, void * arg) {
     // Could use trylock if required.
     bool transport_changed = e->desired_transport != e->rt_transport;
     e->rt_transport = e->desired_transport;
-    for (uint32_t hid = 0; hid < e->harnesses.len; hid++) {
-        rage_JackHarness * harness = &e->harnesses.items[hid];
+    for (uint32_t hid = 0; hid < e->harnesses->len; hid++) {
+        rage_JackHarness * harness = e->harnesses->items[hid];
         for (i = 0; i < harness->n_inputs; i++) {
             harness->inputs[i] = jack_port_get_buffer(harness->jack_inputs[i], nframes);
         }
@@ -52,6 +56,8 @@ static int process(jack_nframes_t nframes, void * arg) {
             break;
         case RAGE_TRANSPORT_STOPPED:
             if (transport_changed) {
+                // FIXME: might be able to make this simpler using the "release
+                // now" thihg, equally might not need to do this at all.
                 int countdown_value = rage_countdown_add(
                     e->rolling_countdown, -1);
                 rage_countdown_add(e->rolling_countdown, -countdown_value);
@@ -80,8 +86,9 @@ rage_NewJackBinding rage_jack_binding_new(
     sem_init(&e->transport_synced, 0, 0);
     e->jack_client = client;
     e->rolling_countdown = countdown;
-    e->harnesses.items = NULL;
-    e->harnesses.len = 0;
+    e->harnesses = malloc(sizeof(rage_JackHarnesses));
+    e->harnesses->items = NULL;
+    e->harnesses->len = 0;
     if (jack_set_process_callback(e->jack_client, process, e)) {
         rage_jack_binding_free(e);
         return RAGE_FAILURE(rage_NewJackBinding, "Process callback setting failed");
@@ -89,10 +96,29 @@ rage_NewJackBinding rage_jack_binding_new(
     return RAGE_SUCCESS(rage_NewJackBinding, e);
 }
 
+static void free_harness(rage_JackHarness * harness) {
+    rage_ports_free(harness->ports);
+    for (uint32_t i = 0; i < harness->n_inputs; i++) {
+        // FIXME: ignoring error codes of this
+        jack_port_unregister(harness->jack_binding->jack_client, harness->jack_inputs[i]);
+    }
+    for (uint32_t i = 0; i < harness->n_outputs; i++) {
+        // FIXME: ignoring error codes of this
+        jack_port_unregister(harness->jack_binding->jack_client, harness->jack_outputs[i]);
+    }
+    free(harness->jack_inputs);
+    free(harness->jack_outputs);
+    free(harness);
+}
+
 void rage_jack_binding_free(rage_JackBinding * jack_binding) {
     // FIXME: this is probably a hint that starting and stopping should be
     // elsewhere as the close has a return code
     jack_client_close(jack_binding->jack_client);
+    for (unsigned i=0; i < jack_binding->harnesses->len; i++) {
+        free_harness(jack_binding->harnesses->items[i]);
+    }
+    free(jack_binding->harnesses);
     sem_close(&jack_binding->transport_synced);
     free(jack_binding);
 }
@@ -144,28 +170,19 @@ rage_JackHarness * rage_jack_binding_mount(
     harness->n_inputs = elem->inputs.len;
     harness->n_outputs = elem->outputs.len;
     harness->ports.controls = view;
-    // FIXME: proper appending
-    jack_binding->harnesses.items = harness;
-    jack_binding->harnesses.len = 1;
+    rage_JackHarnesses * old_harnesses = jack_binding->harnesses;
+    jack_binding->harnesses = rage_append_harness(old_harnesses, harness);
+    // FIXME: thread sync for free, this is racy as
+    free(old_harnesses);
     return harness;
 }
 
 void rage_jack_binding_unmount(rage_JackHarness * harness) {
+    // FIXME: proper array element removal
     // FIXME: potential races here :(
-    harness->jack_binding->harnesses.len = 0;
-    harness->jack_binding->harnesses.items = NULL;
-    rage_ports_free(harness->ports);
-    for (uint32_t i = 0; i < harness->n_inputs; i++) {
-        // FIXME: ignoring error codes of this
-        jack_port_unregister(harness->jack_binding->jack_client, harness->jack_inputs[i]);
-    }
-    for (uint32_t i = 0; i < harness->n_outputs; i++) {
-        // FIXME: ignoring error codes of this
-        jack_port_unregister(harness->jack_binding->jack_client, harness->jack_outputs[i]);
-    }
-    free(harness->jack_inputs);
-    free(harness->jack_outputs);
-    free(harness);
+    harness->jack_binding->harnesses->len = 0;
+    harness->jack_binding->harnesses->items = NULL;
+    free_harness(harness);
 }
 
 void rage_jack_binding_set_transport_state(rage_JackBinding * binding, rage_TransportState state) {

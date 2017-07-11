@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 /*
  * Enumeration for identifying which half of an either type is currently in
@@ -53,3 +54,16 @@ typedef enum {
     (var)->len = length; \
     (var)->items = calloc(sizeof(__typeof__(*(var)->items)), (var)->len); \
     for (uint32_t index=0; index < (var)->len; index++)
+
+/*
+ * Define a function to make an extended copy of an array.
+ */
+#define RAGE_POINTER_ARRAY_APPEND_FUNC_DEF(array_type, item_type, func_name) \
+    array_type * func_name(array_type * old_array, item_type * item) { \
+        array_type * new_array = malloc(sizeof(array_type)); \
+        new_array->len = old_array->len + 1; \
+        new_array->items = calloc(sizeof(item_type *), new_array->len); \
+        memcpy(new_array->items, old_array->items, sizeof(item_type *) * old_array->len); \
+        new_array->items[old_array->len] = item; \
+        return new_array; \
+    }
