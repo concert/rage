@@ -9,6 +9,7 @@
 typedef RAGE_ARRAY(rage_JackHarness *) rage_JackHarnesses;
 
 static RAGE_POINTER_ARRAY_APPEND_FUNC_DEF(rage_JackHarnesses, rage_JackHarness, rage_append_harness)
+static RAGE_POINTER_ARRAY_REMOVE_FUNC_DEF(rage_JackHarnesses, rage_JackHarness, rage_remove_harness)
 
 struct rage_JackBinding {
     jack_client_t * jack_client;
@@ -178,10 +179,10 @@ rage_JackHarness * rage_jack_binding_mount(
 }
 
 void rage_jack_binding_unmount(rage_JackHarness * harness) {
-    // FIXME: proper array element removal
     // FIXME: potential races here :(
-    harness->jack_binding->harnesses->len = 0;
-    harness->jack_binding->harnesses->items = NULL;
+    rage_JackHarnesses * old_harnesses = harness->jack_binding->harnesses;
+    harness->jack_binding->harnesses = rage_remove_harness(old_harnesses, harness);
+    free(old_harnesses);
     free_harness(harness);
 }
 
