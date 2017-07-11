@@ -33,8 +33,7 @@ rage_Error test_array_append() {
             err = RAGE_ERROR("Issues with extending from empty");
         }
     }
-    free(ext->items);
-    free(ext);
+    RAGE_ARRAY_FREE(ext);
     return err;
 }
 
@@ -55,7 +54,6 @@ rage_Error test_array_remove() {
             err = RAGE_ERROR("Removal not as expected");
         }
     }
-    free(rem->items);
-    free(rem);
+    RAGE_ARRAY_FREE(rem);
     return err;
 }
