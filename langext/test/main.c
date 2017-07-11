@@ -2,4 +2,4 @@
 #include "test_array.c"
 #include "test_synchronisation_primitives.c"
 
-TEST_MAIN(test_countdown, test_array_init)
+TEST_MAIN(test_countdown, test_array_init, test_array_append)
