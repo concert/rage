@@ -67,3 +67,20 @@ typedef enum {
         new_array->items[old_array->len] = item; \
         return new_array; \
     }
+
+/*
+ * Define a function to make a copy of an array with an element removed.
+ */
+#define RAGE_POINTER_ARRAY_REMOVE_FUNC_DEF(array_type, item_type, func_name) \
+    array_type * func_name(array_type * old_array, item_type * item) { \
+        array_type * new_array = malloc(sizeof(array_type)); \
+        new_array->len = old_array->len - 1; \
+        new_array->items = calloc(sizeof(item_type *), new_array->len); \
+        uint32_t j = 0; \
+        for (uint32_t i=0; i < old_array->len; i++) { \
+            if (old_array->items[i] != item) { \
+                new_array->items[j++] = old_array->items[i]; \
+            } \
+        } \
+        return new_array; \
+    }

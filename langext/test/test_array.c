@@ -37,3 +37,25 @@ rage_Error test_array_append() {
     free(ext);
     return err;
 }
+
+static RAGE_POINTER_ARRAY_REMOVE_FUNC_DEF(StringArray, char const, remove_string)
+
+rage_Error test_array_remove() {
+    char const * strings[] = {"This", "failed to", "pass"};
+    StringArray arr = {.len=3, .items=strings};
+    StringArray * rem = remove_string(&arr, strings[1]);
+    rage_Error err = RAGE_OK;
+    if (arr.len != 3 || arr.items != strings) {
+        err = RAGE_ERROR("Original array mutated");
+    } else {
+        if (
+                rem->len != 2 ||
+                rem->items[0] != strings[0] ||
+                rem->items[1] != strings[2]) {
+            err = RAGE_ERROR("Removal not as expected");
+        }
+    }
+    free(rem->items);
+    free(rem);
+    return err;
+}
