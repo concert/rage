@@ -174,7 +174,7 @@ rage_JackHarness * rage_jack_binding_mount(
     rage_JackHarnesses * old_harnesses = jack_binding->harnesses;
     jack_binding->harnesses = rage_append_harness(old_harnesses, harness);
     // FIXME: thread sync for free, this is racy as
-    free(old_harnesses);
+    RAGE_ARRAY_FREE(old_harnesses);
     return harness;
 }
 
@@ -182,7 +182,7 @@ void rage_jack_binding_unmount(rage_JackHarness * harness) {
     // FIXME: potential races here :(
     rage_JackHarnesses * old_harnesses = harness->jack_binding->harnesses;
     harness->jack_binding->harnesses = rage_remove_harness(old_harnesses, harness);
-    free(old_harnesses);
+    RAGE_ARRAY_FREE(old_harnesses);
     free_harness(harness);
 }
 
