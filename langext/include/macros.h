@@ -55,6 +55,9 @@ typedef enum {
     (var)->items = calloc(sizeof(__typeof__(*(var)->items)), (var)->len); \
     for (uint32_t index=0; index < (var)->len; index++)
 
+/*
+ * Free a heap allocated array.
+ */
 #define RAGE_ARRAY_FREE(arr) free(arr->items); free(arr);
 
 /*
