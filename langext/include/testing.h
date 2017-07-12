@@ -21,6 +21,7 @@ typedef rage_Error (*rage_TestFunc)();
         char * test_name = strtok_r(test_names, delimiters, &saveptr); \
         printf("1..%u\n", n_tests); \
         for (unsigned i=0; i < n_tests; i++) { \
+            fflush(stdout); \
             rage_Error e = tests[i](); \
             if (RAGE_FAILED(e)) { \
                 printf("not ok %u %s\n", i, test_name); \
