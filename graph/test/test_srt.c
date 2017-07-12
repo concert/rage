@@ -107,7 +107,8 @@ rage_Error test_srt_fake_elem() {
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_SupportConvoy * convoy = rage_support_convoy_new(1024, countdown);
     rage_SupportTruck * truck = rage_support_convoy_mount(
-        convoy, &fake_elem, (rage_InterpolatedView **) 1, (rage_InterpolatedView **) 1);
+        convoy, &fake_elem, (rage_InterpolatedView **) 1,
+        (rage_InterpolatedView **) 1);
     // FIXME: ATM don't know (without our sem) when initial prep is done (which
     // is dodgy)
     rage_Error err = rage_support_convoy_start(convoy);
