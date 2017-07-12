@@ -12,7 +12,9 @@ struct rage_SupportTruck {
     rage_InterpolatedView ** clean_view;
 };
 
-typedef RAGE_ARRAY(rage_SupportTruck) rage_Trucks;
+typedef RAGE_ARRAY(rage_SupportTruck *) rage_Trucks;
+static RAGE_POINTER_ARRAY_APPEND_FUNC_DEF(rage_Trucks, rage_SupportTruck, truck_append)
+static RAGE_POINTER_ARRAY_REMOVE_FUNC_DEF(rage_Trucks, rage_SupportTruck, truck_remove)
 
 struct rage_SupportConvoy {
     bool running;
@@ -21,7 +23,7 @@ struct rage_SupportConvoy {
     uint32_t invalid_after;
     pthread_mutex_t active;  // FIXME: Explain what the heck this does
     rage_Countdown * countdown;
-    rage_Trucks trucks;
+    rage_Trucks * trucks;
 };
 
 rage_SupportConvoy * rage_support_convoy_new(uint32_t period_size, rage_Countdown * countdown) {
@@ -32,22 +34,24 @@ rage_SupportConvoy * rage_support_convoy_new(uint32_t period_size, rage_Countdow
     // FIXME: can in theory fail
     pthread_mutex_init(&convoy->active, NULL);
     convoy->countdown = countdown;
-    convoy->trucks.len = 0;
-    convoy->trucks.items = NULL;
+    convoy->trucks = malloc(sizeof(rage_Trucks));
+    convoy->trucks->len = 0;
+    convoy->trucks->items = NULL;
     return convoy;
 }
 
 void rage_support_convoy_free(rage_SupportConvoy * convoy) {
     pthread_mutex_destroy(&convoy->active);
-    assert(convoy->trucks.len == 0);
+    assert(convoy->trucks->len == 0);
     assert(!convoy->running);
+    RAGE_ARRAY_FREE(convoy->trucks);
     free(convoy);
 }
 
 static rage_PreparedFrames prepare(rage_Trucks * trucks) {
     uint32_t min_prepared = UINT32_MAX;
     for (unsigned i = 0; i < trucks->len; i++) {
-        rage_SupportTruck * truck = trucks->items + i;
+        rage_SupportTruck * truck = trucks->items[i];
         if (truck->prep_view == NULL) {
             // FIXME: having to work out what to skip each iteration is inefficient
             continue;
@@ -63,7 +67,7 @@ static rage_PreparedFrames prepare(rage_Trucks * trucks) {
 static rage_PreparedFrames clean(rage_Trucks * trucks) {
     uint32_t min_prepared = UINT32_MAX;
     for (unsigned i = 0; i < trucks->len; i++) {
-        rage_SupportTruck * truck = trucks->items + i;
+        rage_SupportTruck * truck = trucks->items[i];
         if (truck->clean_view == NULL) {
             // FIXME: having to work out what to skip each iteration is inefficient
             continue;
@@ -77,7 +81,7 @@ static rage_PreparedFrames clean(rage_Trucks * trucks) {
 
 static rage_Error clear(rage_Trucks * trucks, uint32_t preserve) {
     for (unsigned i = 0; i < trucks->len; i++) {
-        rage_SupportTruck * truck = trucks->items + i;
+        rage_SupportTruck * truck = trucks->items[i];
         rage_Error err = RAGE_ELEM_CLEAR(truck->elem, truck->prep_view, preserve);
         if (RAGE_FAILED(err)) {
             return err;
@@ -100,9 +104,9 @@ static void * rage_support_convoy_worker(void * ptr) {
         } else
     while (convoy->running) {
         if (convoy->invalid_after != UINT32_MAX) {
-             clear(&convoy->trucks, convoy->invalid_after);
+             clear(convoy->trucks, convoy->invalid_after);
         }
-        frames_until_next = prepare(&convoy->trucks);
+        frames_until_next = prepare(convoy->trucks);
         RAGE_BAIL_ON_FAIL {
             n_frames_until_next = RAGE_SUCCESS_VALUE(frames_until_next);
             min_frames_wait = (min_frames_wait < n_frames_until_next) ?
@@ -116,7 +120,7 @@ static void * rage_support_convoy_worker(void * ptr) {
         }
         rage_countdown_timed_wait(convoy->countdown, UINT32_MAX);
         pthread_mutex_lock(&convoy->active);
-        frames_until_next = clean(&convoy->trucks);
+        frames_until_next = clean(convoy->trucks);
         RAGE_BAIL_ON_FAIL {
             min_frames_wait = RAGE_SUCCESS_VALUE(frames_until_next);
         }
@@ -160,29 +164,31 @@ rage_SupportTruck * rage_support_convoy_mount(
         rage_SupportConvoy * convoy, rage_Element * elem,
         rage_InterpolatedView ** prep_view,
         rage_InterpolatedView ** clean_view) {
-    uint32_t appended_len = convoy->trucks.len + 1;
-    rage_SupportTruck * appended_items = calloc(appended_len, sizeof(rage_SupportTruck));
-    memcpy(appended_items, convoy->trucks.items, sizeof(rage_SupportTruck) * convoy->trucks.len);
-    rage_SupportTruck * truck = appended_items + convoy->trucks.len;
+    rage_SupportTruck * truck = malloc(sizeof(rage_SupportTruck));
     truck->elem = elem;
     truck->prep_view = prep_view;
     truck->clean_view = clean_view;
     truck->convoy = convoy;
+    // FIXME: This is assuming a single control thread
+    rage_Trucks * old_trucks = convoy->trucks;
+    rage_Trucks * new_trucks = truck_append(old_trucks, truck);
     pthread_mutex_lock(&convoy->active);
-    convoy->trucks.items = appended_items;
-    convoy->trucks.len = appended_len;
+    convoy->trucks = new_trucks;
     pthread_mutex_unlock(&convoy->active);
+    RAGE_ARRAY_FREE(old_trucks);
     return truck;
 }
 
 void rage_support_convoy_unmount(rage_SupportTruck * truck) {
-    // FIXME: just empties everything!
+    // FIXME: This is assuming a single control thread
+    rage_SupportConvoy * convoy = truck->convoy;
+    rage_Trucks * old_trucks = convoy->trucks;
+    rage_Trucks * new_trucks = truck_remove(old_trucks, truck);
     pthread_mutex_lock(&truck->convoy->active);
-    rage_SupportTruck * old_items = truck->convoy->trucks.items;
-    truck->convoy->trucks.len = 0;
-    truck->convoy->trucks.items = NULL;
+    convoy->trucks = new_trucks;
     pthread_mutex_unlock(&truck->convoy->active);
-    free(old_items);
+    RAGE_ARRAY_FREE(old_trucks);
+    free(truck);
 }
 
 void rage_support_convoy_set_transport_state(
