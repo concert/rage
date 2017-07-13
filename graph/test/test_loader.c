@@ -26,6 +26,13 @@ static void free_stream_buffers(rage_Ports * ports, rage_InstanceSpec spec) {
 typedef RAGE_ARRAY(rage_Interpolator *) rage_InterpolatorArray;
 typedef RAGE_OR_ERROR(rage_InterpolatorArray) rage_Interpolators;
 
+static void free_interpolators(rage_InterpolatorArray interpolators, rage_InstanceSpec spec) {
+    for (uint32_t i = 0; i < interpolators.len; i++) {
+        rage_interpolator_free(&spec.controls.items[i], interpolators.items[i]);
+    }
+    free(interpolators.items);
+}
+
 static rage_Interpolators new_interpolators(rage_Ports * ports, rage_InstanceSpec spec) {
     rage_InterpolatorArray interpolators;
     RAGE_ARRAY_INIT(&interpolators, spec.controls.len, i) {
@@ -33,17 +40,16 @@ static rage_Interpolators new_interpolators(rage_Ports * ports, rage_InstanceSpe
         rage_InitialisedInterpolator ii = rage_interpolator_new(
             &spec.controls.items[i], &ts, 44100, 1);
         rage_time_series_free(ts);
-        // FIXME: unwinding memory frees etc
-        RAGE_EXTRACT_VALUE(rage_Interpolators, ii, interpolators.items[i])
+        if (RAGE_FAILED(ii)) {
+            interpolators.len = i;
+            free_interpolators(interpolators, spec);
+            return RAGE_FAILURE(rage_Interpolators, RAGE_FAILURE_VALUE(ii));
+        } else {
+            interpolators.items[i] = RAGE_SUCCESS_VALUE(ii);
+        }
         ports->controls[i] = rage_interpolator_get_view(interpolators.items[i], 0);
     }
     return RAGE_SUCCESS(rage_Interpolators, interpolators);
-}
-
-static void free_interpolators(rage_InterpolatorArray interpolators, rage_InstanceSpec spec) {
-    for (uint32_t i = 0; i < interpolators.len; i++) {
-        rage_interpolator_free(&spec.controls.items[i], interpolators.items[i]);
-    }
 }
 
 rage_Error test() {
