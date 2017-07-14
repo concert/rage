@@ -155,31 +155,26 @@ rage_Error rage_support_convoy_stop(rage_SupportConvoy * convoy) {
     return RAGE_OK;
 }
 
-rage_SupportTruck * rage_support_convoy_mount(
-        rage_SupportConvoy * convoy, rage_Element * elem,
-        rage_InterpolatedView ** prep_view,
-        rage_InterpolatedView ** clean_view) {
-    rage_SupportTruck * truck = malloc(sizeof(rage_SupportTruck));
-    truck->elem = elem;
-    truck->prep_view = prep_view;
-    truck->clean_view = clean_view;
-    truck->convoy = convoy;
+static void change_trucks(
+        rage_Trucks * (next_trucks)(rage_Trucks *, rage_SupportTruck * truck),
+        rage_SupportConvoy * convoy,
+        rage_SupportTruck * truck) {
     // FIXME: This is assuming a single control thread
     rage_Trucks
         * old_prep_trucks,
         * new_prep_trucks,
         * old_clean_trucks,
         * new_clean_trucks;
-    if (prep_view) {
+    if (truck->prep_view) {
         old_prep_trucks = convoy->prep_trucks;
-        new_prep_trucks = truck_append(old_prep_trucks, truck);
+        new_prep_trucks = next_trucks(old_prep_trucks, truck);
     } else {
         old_prep_trucks = NULL;
         new_prep_trucks = convoy->prep_trucks;
     }
-    if (clean_view) {
+    if (truck->clean_view) {
         old_clean_trucks = convoy->clean_trucks;
-        new_clean_trucks = truck_append(old_clean_trucks, truck);
+        new_clean_trucks = next_trucks(old_clean_trucks, truck);
     } else {
         old_clean_trucks = NULL;
         new_clean_trucks = convoy->clean_trucks;
@@ -194,41 +189,23 @@ rage_SupportTruck * rage_support_convoy_mount(
     if (old_clean_trucks != NULL) {
         RAGE_ARRAY_FREE(old_clean_trucks);
     }
+}
+
+rage_SupportTruck * rage_support_convoy_mount(
+        rage_SupportConvoy * convoy, rage_Element * elem,
+        rage_InterpolatedView ** prep_view,
+        rage_InterpolatedView ** clean_view) {
+    rage_SupportTruck * truck = malloc(sizeof(rage_SupportTruck));
+    truck->elem = elem;
+    truck->prep_view = prep_view;
+    truck->clean_view = clean_view;
+    truck->convoy = convoy;
+    change_trucks(truck_append, convoy, truck);
     return truck;
 }
 
 void rage_support_convoy_unmount(rage_SupportTruck * truck) {
-    // FIXME: This is assuming a single control thread
-    rage_SupportConvoy * convoy = truck->convoy;
-    rage_Trucks
-        * old_prep_trucks,
-        * new_prep_trucks,
-        * old_clean_trucks,
-        * new_clean_trucks;
-    if (truck->prep_view) {
-        old_prep_trucks = convoy->prep_trucks;
-        new_prep_trucks = truck_remove(old_prep_trucks, truck);
-    } else {
-        old_prep_trucks = NULL;
-        new_prep_trucks = convoy->prep_trucks;
-    }
-    if (truck->clean_view) {
-        old_clean_trucks = convoy->clean_trucks;
-        new_clean_trucks = truck_remove(old_clean_trucks, truck);
-    } else {
-        old_clean_trucks = NULL;
-        new_clean_trucks = convoy->clean_trucks;
-    }
-    pthread_mutex_lock(&truck->convoy->active);
-    convoy->prep_trucks = new_prep_trucks;
-    convoy->clean_trucks = new_clean_trucks;
-    pthread_mutex_unlock(&truck->convoy->active);
-    if (old_prep_trucks != NULL) {
-        RAGE_ARRAY_FREE(old_prep_trucks);
-    }
-    if (old_clean_trucks != NULL) {
-        RAGE_ARRAY_FREE(old_clean_trucks);
-    }
+    change_trucks(truck_remove, truck->convoy, truck);
     free(truck);
 }
 
