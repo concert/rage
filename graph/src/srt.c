@@ -54,23 +54,19 @@ void rage_support_convoy_free(rage_SupportConvoy * convoy) {
     free(convoy);
 }
 
-static rage_PreparedFrames prepare(rage_Trucks * trucks) {
-    uint32_t min_prepared = UINT32_MAX;
-    for (unsigned i = 0; i < trucks->len; i++) {
-        rage_SupportTruck * truck = trucks->items[i];
-        rage_PreparedFrames prepared = RAGE_ELEM_PREP(truck->elem, truck->prep_view);
-        RAGE_EXTRACT_VALUE(rage_PreparedFrames, prepared, uint32_t n_prepared)
-        min_prepared = (n_prepared < min_prepared) ? n_prepared : min_prepared;
-    }
-    return RAGE_SUCCESS(rage_PreparedFrames, min_prepared);
+static rage_PreparedFrames prep_truck(rage_SupportTruck * truck) {
+    return RAGE_ELEM_PREP(truck->elem, truck->prep_view);
 }
 
-// FIXME: this is similar to prepare
-static rage_PreparedFrames clean(rage_Trucks * trucks) {
+static rage_PreparedFrames clean_truck(rage_SupportTruck * truck) {
+    return RAGE_ELEM_CLEAN(truck->elem, truck->clean_view);
+}
+
+static rage_PreparedFrames apply_to_trucks(
+        rage_Trucks * trucks, rage_PreparedFrames (*op)(rage_SupportTruck *)) {
     uint32_t min_prepared = UINT32_MAX;
     for (unsigned i = 0; i < trucks->len; i++) {
-        rage_SupportTruck * truck = trucks->items[i];
-        rage_PreparedFrames prepared = RAGE_ELEM_CLEAN(truck->elem, truck->clean_view);
+        rage_PreparedFrames prepared = op(trucks->items[i]);
         RAGE_EXTRACT_VALUE(rage_PreparedFrames, prepared, uint32_t n_prepared)
         min_prepared = (n_prepared < min_prepared) ? n_prepared : min_prepared;
     }
@@ -104,7 +100,7 @@ static void * rage_support_convoy_worker(void * ptr) {
         if (convoy->invalid_after != UINT32_MAX) {
              clear(convoy->prep_trucks, convoy->invalid_after);
         }
-        frames_until_next = prepare(convoy->prep_trucks);
+        frames_until_next = apply_to_trucks(convoy->prep_trucks, prep_truck);
         RAGE_BAIL_ON_FAIL {
             n_frames_until_next = RAGE_SUCCESS_VALUE(frames_until_next);
             min_frames_wait = (min_frames_wait < n_frames_until_next) ?
@@ -118,7 +114,7 @@ static void * rage_support_convoy_worker(void * ptr) {
         }
         rage_countdown_timed_wait(convoy->countdown, UINT32_MAX);
         pthread_mutex_lock(&convoy->active);
-        frames_until_next = clean(convoy->clean_trucks);
+        frames_until_next = apply_to_trucks(convoy->clean_trucks, clean_truck);
         RAGE_BAIL_ON_FAIL {
             min_frames_wait = RAGE_SUCCESS_VALUE(frames_until_next);
         }
