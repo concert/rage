@@ -142,16 +142,22 @@ void elem_free(rage_ElementState * ad) {
     free(ad);
 }
 
+static inline void zero_fill_outputs(
+        rage_ElementState * data, rage_Ports const * ports, uint32_t frame_pos,
+        uint32_t chunk_size) {
+    for (uint32_t c = 0; c < data->n_channels; c++) {
+        memset(
+            &ports->outputs[c][frame_pos], 0x00, chunk_size);
+    }
+}
+
 void elem_process(rage_ElementState * data, rage_TransportState const transport_state, rage_Ports const * ports) {
     rage_InterpolatedValue const * chunk;
     uint32_t step_frames, remaining = data->frame_size;
     uint32_t c, frame_pos = 0;
     size_t chunk_size;
     if (transport_state == RAGE_TRANSPORT_STOPPED) {
-       // FIXME: V. similar to idle! 
-        for (c = 0; c < data->n_channels; c++) {
-            memset(ports->outputs[c], 0x00, data->frame_size * sizeof(float));
-        }
+        zero_fill_outputs(data, ports, 0, data->frame_size * sizeof(float));
         return;
     }
     while (remaining) {
@@ -177,10 +183,8 @@ void elem_process(rage_ElementState * data, rage_TransportState const transport_
                         chunk_size);
                 }
             case IDLE:
-                for (c = 0; c < data->n_channels; c++) {
-                    memset(
-                        &ports->outputs[c][frame_pos], 0x00, chunk_size);
-                }
+                zero_fill_outputs(
+                    data, ports, frame_pos, data->frame_size * sizeof(float));
                 break;
         }
         remaining -= step_frames;
