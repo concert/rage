@@ -52,29 +52,48 @@ static rage_Interpolators new_interpolators(rage_Ports * ports, rage_InstanceSpe
     return RAGE_SUCCESS(rage_Interpolators, interpolators);
 }
 
+#define RAGE_AS_ERROR(errorable) (RAGE_FAILED(errorable)) ? \
+    RAGE_ERROR(RAGE_FAILURE_VALUE(errorable)) : RAGE_OK
+
 rage_Error test() {
     // FIXME: Error handling (and memory in those cases)
     rage_ElementLoader * el = rage_element_loader_new();
     rage_ElementTypes element_type_names = rage_element_loader_list(el);
+    rage_Error err = RAGE_OK;
     for (unsigned i=0; i<element_type_names.len; i++) {
         rage_ElementTypeLoadResult et_ = rage_element_loader_load(
             el, element_type_names.items[i]);
-        RAGE_EXTRACT_VALUE(rage_Error, et_, rage_ElementType * et)
-        rage_Atom ** tups = generate_tuples(et->parameters);
-        rage_ElementNewResult elem_ = rage_element_new(et, 44100, 256, tups);
-        RAGE_EXTRACT_VALUE(rage_Error, elem_, rage_Element * elem)
-        rage_Ports ports = rage_ports_new(&elem->spec);
-        new_stream_buffers(&ports, elem->spec);
-        rage_Interpolators ii = new_interpolators(&ports, elem->spec);
-        RAGE_EXTRACT_VALUE(rage_Error, ii, rage_InterpolatorArray interpolators);
-        rage_element_process(elem, RAGE_TRANSPORT_ROLLING, &ports);
-        free_interpolators(interpolators, elem->spec);
-        free_stream_buffers(&ports, elem->spec);
-        rage_ports_free(ports);
-        rage_element_free(elem);
-        free_tuples(et->parameters, tups);
-        rage_element_loader_unload(el, et);
+        if (!RAGE_FAILED(et_)) {
+            rage_ElementType * et = RAGE_SUCCESS_VALUE(et_);
+            rage_Atom ** tups = generate_tuples(et->parameters);
+            rage_ElementNewResult elem_ = rage_element_new(et, 44100, 256, tups);
+            if (!RAGE_FAILED(elem_)) {
+                rage_Element * elem = RAGE_SUCCESS_VALUE(elem_);
+                rage_Ports ports = rage_ports_new(&elem->spec);
+                new_stream_buffers(&ports, elem->spec);
+                rage_Interpolators ii = new_interpolators(&ports, elem->spec);
+                if (!RAGE_FAILED(ii)) {
+                    rage_InterpolatorArray interpolators = RAGE_SUCCESS_VALUE(ii);
+                    rage_element_process(elem, RAGE_TRANSPORT_ROLLING, &ports);
+                    free_interpolators(interpolators, elem->spec);
+                } else {
+                    err = RAGE_AS_ERROR(ii);
+                }
+                free_stream_buffers(&ports, elem->spec);
+                rage_ports_free(ports);
+                rage_element_free(elem);
+            } else {
+                err = RAGE_AS_ERROR(elem_);
+            }
+            free_tuples(et->parameters, tups);
+            rage_element_loader_unload(el, et);
+        } else {
+            err = RAGE_AS_ERROR(et_);
+        }
+        if (RAGE_FAILED(err)) {
+            break;
+        }
     }
     rage_element_loader_free(el);
-    return RAGE_OK;
+    return err;
 }
