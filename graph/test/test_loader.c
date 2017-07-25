@@ -56,7 +56,6 @@ static rage_Interpolators new_interpolators(rage_Ports * ports, rage_InstanceSpe
     RAGE_ERROR(RAGE_FAILURE_VALUE(errorable)) : RAGE_OK
 
 rage_Error test() {
-    // FIXME: Error handling (and memory in those cases)
     rage_ElementLoader * el = rage_element_loader_new();
     rage_ElementTypes element_type_names = rage_element_loader_list(el);
     rage_Error err = RAGE_OK;
