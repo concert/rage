@@ -92,18 +92,23 @@ static InterpolatorsForResult interpolators_for(
     return RAGE_SUCCESS(InterpolatorsForResult, new_interpolators);
 }
 
+static inline uint8_t view_count_for_type(rage_ElementType const * const type) {
+    uint8_t n_views = 1;
+    if (type->prep != NULL) {
+        n_views++;
+    }
+    if (type->clean != NULL) {
+        n_views++;
+    }
+    return n_views;
+}
+
 rage_MountResult rage_proc_block_mount(
         rage_ProcBlock * pb, rage_Element * elem,
         rage_TimeSeries const * controls, char const * name) {
     rage_Harness * harness = malloc(sizeof(rage_Harness));
+    uint8_t n_views = view_count_for_type(elem->type);
     // FIXME: Error handling
-    uint8_t n_views = 1;
-    if (elem->type->prep != NULL) {
-        n_views++;
-    }
-    if (elem->type->clean != NULL) {
-        n_views++;
-    }
     harness->interpolators = RAGE_SUCCESS_VALUE(interpolators_for(
         pb->sample_rate, &elem->controls, controls, n_views));
     rage_InterpolatedView ** rt_views = calloc(
