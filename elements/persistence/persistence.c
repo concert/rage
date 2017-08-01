@@ -92,7 +92,6 @@ void elem_free_port_description(rage_InstanceSpec pr) {
     free((void *) pr.inputs.items);
 }
 
-// FIXME: use this or similar to improve efficiency
 typedef struct {
     SNDFILE * sf;
     SF_INFO sf_info;
