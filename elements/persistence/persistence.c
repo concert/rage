@@ -205,15 +205,26 @@ void elem_process(rage_ElementState * data, rage_TransportState const transport_
     }
 }
 
-// FIXME: some comonality with the writing version
+// FIXME: doesn't handle mode switching with same path, also could do more
+static bool file_path_changed(sndfile_status * const s, char const * const path) {
+    if (strcmp(path, s->open_path)) {
+        if (s->sf != NULL) {
+            sf_close(s->sf);
+        }
+        free(s->open_path);
+        s->open_path = strdup(path);
+        return true;
+    }
+    return false;
+}
+
 static sf_count_t read_prep_sndfile(
         sndfile_status * const s, char const * const path, size_t pos,
         uint32_t to_read, float * interleaved_buffer) {
-    if (s->sf != NULL) {
-        sf_close(s->sf);
+    if (file_path_changed(s, path)) {
+        s->sf = sf_open(path, SFM_READ, &s->sf_info);
     }
-    s->sf = sf_open(path, SFM_READ, &s->sf_info);
-    // FIXME: may fail
+    // FIXME: may fail (also could be more efficient)
     sf_seek(s->sf, pos, SEEK_SET);
     return sf_readf_float(
         s->sf, interleaved_buffer, to_read);
@@ -304,14 +315,13 @@ static sf_count_t write_buffer_to_file(
         sndfile_status * const s, char const * const path, uint32_t pos,
         uint32_t to_write, float * interleaved_buffer, uint32_t sample_rate,
         uint32_t n_channels) {
-    if (s->sf != NULL) {
-        sf_close(s->sf);
+    if (file_path_changed(s, path)) {
+        s->sf_info.samplerate = sample_rate;
+        s->sf_info.channels = n_channels;
+        s->sf_info.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
+        // FIXME: what if the file is incompatible with our info struct?
+        s->sf = sf_open(path, SFM_RDWR, &s->sf_info);
     }
-    s->sf_info.samplerate = sample_rate;
-    s->sf_info.channels = n_channels;
-    s->sf_info.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
-    // FIXME: what if the file is incompatible with our info struct?
-    s->sf = sf_open(path, SFM_RDWR, &s->sf_info);
     // FIXME: may fail
     sf_seek(s->sf, pos, SEEK_SET);
     return sf_writef_float(
