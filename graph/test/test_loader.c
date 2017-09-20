@@ -57,11 +57,11 @@ static rage_Interpolators new_interpolators(rage_Ports * ports, rage_InstanceSpe
 
 rage_Error test() {
     rage_ElementLoader * el = rage_element_loader_new();
-    rage_ElementTypes element_type_names = rage_element_loader_list(el);
+    rage_ElementTypes * element_type_names = rage_element_loader_list(el);
     rage_Error err = RAGE_OK;
-    for (unsigned i=0; i<element_type_names.len; i++) {
+    for (unsigned i=0; i<element_type_names->len; i++) {
         rage_ElementTypeLoadResult et_ = rage_element_loader_load(
-            el, element_type_names.items[i]);
+            el, element_type_names->items[i]);
         if (!RAGE_FAILED(et_)) {
             rage_ElementType * et = RAGE_SUCCESS_VALUE(et_);
             rage_Atom ** tups = generate_tuples(et->parameters);
@@ -93,6 +93,7 @@ rage_Error test() {
             break;
         }
     }
+    rage_element_types_free(element_type_names);
     rage_element_loader_free(el);
     return err;
 }

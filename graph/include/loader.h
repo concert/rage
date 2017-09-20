@@ -21,7 +21,9 @@ rage_ElementLoader * rage_element_loader_new();
 void rage_element_loader_free(rage_ElementLoader * el);
 
 typedef RAGE_ARRAY(char *) rage_ElementTypes;
-rage_ElementTypes rage_element_loader_list(rage_ElementLoader * el);
+rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el);
+void rage_element_types_free(rage_ElementTypes * types);
+
 typedef RAGE_OR_ERROR(rage_ElementType *) rage_ElementTypeLoadResult;
 rage_ElementTypeLoadResult rage_element_loader_load(
     rage_ElementLoader * el, char const * type_name);

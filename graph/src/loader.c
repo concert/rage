@@ -33,8 +33,15 @@ static char amp[] = "./libamp.so";
 static char persist[] = "./libpersist.so";
 static char * element_types[] = {amp, persist};
 
-rage_ElementTypes rage_element_loader_list(rage_ElementLoader * el) {
-    return (rage_ElementTypes) {.len=2, .items=element_types};
+rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
+    rage_ElementTypes * elems = malloc(sizeof(rage_ElementTypes));
+    elems->len = 2;
+    elems->items = element_types;
+    return elems;
+}
+
+void rage_element_types_free(rage_ElementTypes * t) {
+    free(t);
 }
 
 static void type_handle_append(
