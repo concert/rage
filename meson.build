@@ -76,7 +76,7 @@ rage_graph = shared_library(
         'graph/src/proc_block.c', 'graph/src/graph.c'
     ],
     include_directories: [graph_inc, types_inc, langext_inc],
-    dependencies: [dyn_load, jack],
+    dependencies: [dyn_load, jack, sem],
     link_with: [langext, rage_types])
 
 test_graph = executable(
