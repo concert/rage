@@ -2,7 +2,6 @@
 #include "atoms.h"
 #include "test_factories.h"
 #include "error.h"
-#include "testing.h"
 
 rage_Error test_time_series_new() {
     const rage_AtomDef int_type = {
@@ -49,5 +48,3 @@ rage_Error test_time_series_new() {
     rage_time_series_free(ts);
     return rval;
 }
-
-TEST_MAIN(test_time_series_new)

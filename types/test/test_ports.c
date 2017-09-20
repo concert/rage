@@ -1,4 +1,3 @@
-#include "testing.h"
 #include "error.h"
 #include "ports.h"
 #include <stdlib.h>
@@ -30,5 +29,3 @@ rage_Error test_ports() {
     rage_ports_free(ports);
     return rval;
 }
-
-TEST_MAIN(test_ports)

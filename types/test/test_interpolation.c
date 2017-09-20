@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "interpolation.h"
-#include "testing.h"
 
 static rage_InitialisedInterpolator interpolator_for(
         rage_TupleDef const * td, rage_TimePoint * points,
@@ -186,5 +185,3 @@ static rage_Error interpolator_immediate_change_test() {
 
 // TODO: change part way through
 // TODO: multiple views test
-
-TEST_MAIN(interpolator_float_test, interpolator_time_test, interpolator_immediate_change_test)

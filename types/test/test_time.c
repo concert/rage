@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "testing.h"
 #include "error.h"
 #include "time.h"
 
@@ -58,5 +57,3 @@ rage_Error test_time_after() {
         return RAGE_ERROR("Earlier frac");
     return RAGE_OK;
 }
-
-TEST_MAIN(test_time_after)
