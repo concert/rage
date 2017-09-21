@@ -8,6 +8,7 @@ addons:
       - gcc-5
       - libsndfile-dev
       - libjack-jackd2-dev
+      - jackd2
 before_install:
  - "travis_retry curl -L
     https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
@@ -19,4 +20,6 @@ before_install:
 install:
  - ninja -C build
 script:
- - ninja -C build  # test
+ - jackd -r -d dummy -r 44100 &
+ - ninja -C build test
+ - kill %1
