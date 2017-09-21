@@ -4,7 +4,6 @@
 #include "atoms.h"
 #include "macros.h"
 
-// FIXME: This feels like it should be coming from interpolation somehow?
 /*
  * The selected interpolation type of a rage_TimePoint.
  */
