@@ -1,5 +1,8 @@
 # Realtime Audio Graph Engine (RAGE)
 
+[![Build Status](https://travis-ci.org/concert/rage.svg?branch=master)](
+    https://travis-ci.org/concert/rage)
+
 RAGE provides an audio processing graph implementation tailored towards
 distributed audio workstations.
 The audio graph within RAGE is composed of processing _elements_ and connections
