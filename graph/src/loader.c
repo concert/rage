@@ -72,7 +72,7 @@ void rage_element_types_free(rage_ElementTypes * t) {
     for (uint32_t i = 0; i < t->len; i++) {
         free(t->items[i]);
     }
-    free(t);
+    RAGE_ARRAY_FREE(t)
 }
 
 static void type_handle_append(
