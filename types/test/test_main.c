@@ -3,7 +3,7 @@
 #include "test_interpolation.c"
 #include "test_ports.c"
 #include "test_test_factories.c"
-#include "test_time.c"
+#include "test_chronology.c"
 
 TEST_MAIN(
     interpolator_float_test,
