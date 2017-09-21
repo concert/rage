@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "error.h"
-#include "time.h"
+#include "chronology.h"
 
 typedef struct {
     unsigned size;
