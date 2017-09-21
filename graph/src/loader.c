@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include "loader.h"
 
 typedef struct rage_TypeHandle {
@@ -29,14 +31,49 @@ void rage_element_loader_free(rage_ElementLoader * el) {
 }
 
 // FIXME: Dynamism
+/*
 static char amp[] = "./libamp.so";
 static char persist[] = "./libpersist.so";
 static char * element_types[] = {amp, persist};
+*/
+
+static bool is_plugin(struct dirent * entry) {
+    struct stat s;
+    if (stat(entry->d_name, &s) == 0) {
+        return S_ISREG(s.st_mode);
+    }
+    return false;
+}
 
 rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
     rage_ElementTypes * elems = malloc(sizeof(rage_ElementTypes));
-    elems->len = 2;
-    elems->items = element_types;
+    elems->len = 0;
+    char const * rage_elements_path = getenv("RAGE_ELEMENTS_PATH");
+    if (rage_elements_path == NULL) {
+        return elems;
+    }
+    DIR * dir = opendir(rage_elements_path);
+    if (dir != NULL) {
+        struct dirent * entry;
+        while ((entry = readdir(dir)) != NULL) {
+            if (is_plugin(entry)) {
+                elems->len++;
+            }
+        }
+        rewinddir(dir);
+        elems->items = calloc(elems->len, sizeof(char *));
+        for (size_t i = 0; i < elems->len++; i++) {
+            entry = readdir(dir);
+            if (entry == NULL) {
+                elems->len = i;
+                break;
+            }
+            if (is_plugin(entry)) {
+                elems->items[i] = strdup(entry->d_name);
+            }
+        }
+        closedir(dir);
+    }
     return elems;
 }
 
