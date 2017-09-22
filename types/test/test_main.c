@@ -9,6 +9,7 @@ TEST_MAIN(
     interpolator_float_test,
     interpolator_int_test,
     interpolator_time_test,
+    interpolator_new_with_no_timepoints,
     interpolator_immediate_change_test,
     test_ports,
     test_time_series_new,

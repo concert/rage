@@ -173,6 +173,14 @@ static rage_Error interpolator_time_test() {
         &unconstrained_time, tps, 2, time_checks);
 }
 
+static rage_Error interpolator_new_with_no_timepoints() {
+    rage_Error err = check_with_single_field_interpolator(
+        &unconstrained_int, NULL, 0, NULL);
+    if (!RAGE_FAILED(err))
+        return RAGE_ERROR("Interpolator create did not fail");
+    return RAGE_OK;
+}
+
 static rage_Error immediate_change_checks(rage_Interpolator * interpolator) {
     rage_InterpolatedView * iv = rage_interpolator_get_view(interpolator, 0);
     rage_InterpolatedValue const * obtained = rage_interpolated_view_value(iv);
