@@ -24,3 +24,12 @@ script:
  - until jack_lsp; do sleep 0.01; done  # Wait for jackd
  - RAGE_ELEMENTS_PATH='.' ninja -C build test
  - kill %1
+notifications:
+  email: false
+  irc:
+    channels:
+     - "chat.freenode.net#concertdaw"
+    on_success: change
+    on_failure: change
+    template:
+     - "%{repository_name}/%{branch} %{result}: %{build_url}"
