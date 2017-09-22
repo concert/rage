@@ -97,6 +97,8 @@ RAGE_EQUALITY_CHECK(int, i, "%i")
 
 static rage_Error int_checks(rage_Interpolator * interpolator) {
     rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
+    if (rage_interpolated_view_get_pos(v) != 0)
+        return RAGE_ERROR("Not starting at the start");
     if (i_check(v, 10))
         return RAGE_ERROR("Incorrect initial value");
     rage_interpolated_view_advance(v, 5);
@@ -176,6 +178,75 @@ static rage_Error interpolator_time_test() {
 static rage_Error interpolator_new_with_no_timepoints() {
     rage_Error err = check_with_single_field_interpolator(
         &unconstrained_int, NULL, 0, NULL);
+    if (!RAGE_FAILED(err))
+        return RAGE_ERROR("Interpolator create did not fail");
+    return RAGE_OK;
+}
+
+static rage_Error interpolator_new_first_timepoint_not_start() {
+    rage_Atom vals[] = {
+        {.i = 0}
+    };
+    rage_TimePoint tps[] = {
+        {
+            .time = {.second = 20},
+            .value = &(vals[0]),
+            .mode = RAGE_INTERPOLATION_CONST
+        }
+    };
+    rage_Error err = check_with_single_field_interpolator(
+        &unconstrained_int, tps, 1, NULL);
+    if (!RAGE_FAILED(err))
+        return RAGE_ERROR("Interpolator create did not fail");
+    return RAGE_OK;
+}
+
+static rage_Error interpolator_ambiguous_interpolation_mode() {
+    rage_Atom vals[] = {
+        {.i = 0}
+    };
+    rage_TimePoint tps[] = {
+        {
+            .time = {.second = 0},
+            .value = &(vals[0]),
+            .mode = 300
+        },
+        {
+            .time = {.second = 1},
+            .value = &(vals[0]),
+            .mode = RAGE_INTERPOLATION_CONST
+        }
+    };
+    rage_Error err = check_with_single_field_interpolator(
+        &unconstrained_int, tps, 2, NULL);
+    if (!RAGE_FAILED(err))
+        return RAGE_ERROR("Interpolator create did not fail");
+    return RAGE_OK;
+}
+
+static rage_Error interpolator_timeseries_not_monotonic() {
+    rage_Atom vals[] = {
+        {.i = 0}
+    };
+    rage_TimePoint tps[] = {
+        {
+            .time = {.second = 0},
+            .value = &(vals[0]),
+            .mode = RAGE_INTERPOLATION_CONST
+        },
+        {
+            .time = {.second = 3},
+            .value = &(vals[0]),
+            .mode = RAGE_INTERPOLATION_CONST
+        },
+        {
+            .time = {.second = 2},
+            .value = &(vals[0]),
+            .mode = RAGE_INTERPOLATION_CONST
+        }
+    };
+    rage_Error err = check_with_single_field_interpolator(
+        &unconstrained_int, tps, 3, NULL);
     if (!RAGE_FAILED(err))
         return RAGE_ERROR("Interpolator create did not fail");
     return RAGE_OK;

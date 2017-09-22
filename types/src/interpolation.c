@@ -13,7 +13,7 @@ static rage_FrameNo rage_time_to_frame(rage_Time const * t, uint32_t sample_rate
 
 #define RAGE_INTERPOLATORS_N RAGE_INTERPOLATION_LINEAR + 1
 
-static bool unambiguous_mode(rage_InterpolationMode mode) {
+static bool recognised_interpolation_mode(rage_InterpolationMode mode) {
     switch (mode) {
         case (RAGE_INTERPOLATION_CONST):
         case (RAGE_INTERPOLATION_LINEAR):
@@ -88,7 +88,9 @@ static rage_Error validate_time_series(
     }
     for (uint32_t i = 0; i < points->len; i++) {
         point = &points->items[i];
-        if (!(as_interpolation_mask(point->mode) & allowed_modes && unambiguous_mode(point->mode))) {
+        if (
+                !recognised_interpolation_mode(point->mode) ||
+                !(as_interpolation_mask(point->mode) & allowed_modes)) {
             return RAGE_ERROR("Unsupported interpolation mode");
         }
         if (i && !rage_time_after(point->time, *t)) {
