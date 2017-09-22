@@ -63,6 +63,7 @@ rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
 	}
 	free(entries);
     } else {
+        elems->items = NULL;
         // FIXME: Do something on this failure!
     }
     return elems;
