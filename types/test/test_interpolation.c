@@ -93,6 +93,42 @@ static rage_Error interpolator_float_test() {
         &unconstrained_float, tps, 3, float_checks);
 }
 
+RAGE_EQUALITY_CHECK(int, i, "%i")
+
+static rage_Error int_checks(rage_Interpolator * interpolator) {
+    rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
+    if (i_check(v, 10))
+        return RAGE_ERROR("Incorrect initial value");
+    rage_interpolated_view_advance(v, 5);
+    if (i_check(v, 15))
+        return RAGE_ERROR("Incorrect halfway value");
+    rage_interpolated_view_advance(v, 100);
+    if (i_check(v, 20))
+        return RAGE_ERROR("Incorrect final value");
+    return RAGE_OK;
+}
+
+static rage_AtomDef const unconstrained_int = {
+    .type = RAGE_ATOM_INT, .name = "int", .constraints = {}};
+
+static rage_Error interpolator_int_test() {
+    rage_Atom vals[] = {{.i = 10}, {.i = 20}};
+    rage_TimePoint tps[] = {
+        {
+            .time = {.second = 0},
+            .value = &(vals[0]),
+            .mode = RAGE_INTERPOLATION_LINEAR
+        },
+        {
+            .time = {.second = 10},
+            .value = &(vals[1]),
+            .mode = RAGE_INTERPOLATION_CONST
+        }
+    };
+    return check_with_single_field_interpolator(
+        &unconstrained_int, tps, 2, int_checks);
+}
+
 RAGE_EQUALITY_CHECK(uint32_t, frame_no, "%u")
 
 static rage_Error time_checks(rage_Interpolator * interpolator) {
