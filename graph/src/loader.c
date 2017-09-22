@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include "loader.h"
 
 typedef struct rage_TypeHandle {
@@ -28,13 +30,50 @@ void rage_element_loader_free(rage_ElementLoader * el) {
     free(el);
 }
 
-// FIXME: Dynamism
-static char amp[] = "./libamp.so";
-static char persist[] = "./libpersist.so";
-static char * element_types[] = {amp, persist};
+static int is_plugin(const struct dirent * entry) {
+    struct stat s;
+    // TODO: remove this pathname match tat once in separate packages
+    if (strncmp(entry->d_name, "lib", 3) != 0) {
+        return false;
+    }
+    if (strncmp(entry->d_name, "librage", 7) == 0) {
+        return false;
+    }
+    if (stat(entry->d_name, &s) == 0) {
+        return S_ISREG(s.st_mode);
+    }
+    return false;
+}
 
-rage_ElementTypes rage_element_loader_list(rage_ElementLoader * el) {
-    return (rage_ElementTypes) {.len=2, .items=element_types};
+rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
+    rage_ElementTypes * elems = malloc(sizeof(rage_ElementTypes));
+    elems->len = 0;
+    char const * rage_elements_path = getenv("RAGE_ELEMENTS_PATH");
+    if (rage_elements_path == NULL) {
+        return elems;
+    }
+    struct dirent ** entries;
+    int n_items = scandir(rage_elements_path, &entries, is_plugin, NULL);
+    if (n_items >= 0) {
+        elems->len = n_items;
+        elems->items = calloc(n_items, sizeof(char *));
+        for (uint32_t i = 0; i < n_items; i++) {
+            elems->items[i] = strdup(entries[i]->d_name);
+            free(entries[i]);
+        }
+        free(entries);
+    } else {
+        elems->items = NULL;
+        // FIXME: Do something on this failure!
+    }
+    return elems;
+}
+
+void rage_element_types_free(rage_ElementTypes * t) {
+    for (uint32_t i = 0; i < t->len; i++) {
+        free(t->items[i]);
+    }
+    RAGE_ARRAY_FREE(t)
 }
 
 static void type_handle_append(
