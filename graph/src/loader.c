@@ -56,12 +56,12 @@ rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
     int n_items = scandir(rage_elements_path, &entries, is_plugin, NULL);
     if (n_items >= 0) {
         elems->len = n_items;
-	elems->items = calloc(n_items, sizeof(char *));
-	for (uint32_t i = 0; i < n_items; i++) {
-	    elems->items[i] = strdup(entries[i]->d_name);
-	    free(entries[i]);
-	}
-	free(entries);
+        elems->items = calloc(n_items, sizeof(char *));
+        for (uint32_t i = 0; i < n_items; i++) {
+            elems->items[i] = strdup(entries[i]->d_name);
+            free(entries[i]);
+        }
+        free(entries);
     } else {
         elems->items = NULL;
         // FIXME: Do something on this failure!
