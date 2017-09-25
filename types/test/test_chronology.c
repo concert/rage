@@ -8,16 +8,18 @@ typedef struct {
     char * buf;
 } StringBuffer;
 
-int error_context(rage_Error (*f)(StringBuffer b)) {
+// FIXME: This really either ought to go all the way to the top of the testing
+// or should go.
+static rage_Error error_context(rage_Error (*f)(StringBuffer b)) {
     const unsigned buf_size = 80;
     char buf[buf_size];
     StringBuffer sb = {.buf=buf, .size=buf_size};
     rage_Error e = f(sb);
     if (RAGE_FAILED(e)) {
         printf("%s\n", RAGE_FAILURE_VALUE(e));
-        return 1;
+	return RAGE_ERROR("Failed in error context");
     }
-    return 0;
+    return RAGE_OK;
 }
 
 #define ASSERT_EQUAL(a, b, msg) \
@@ -32,7 +34,8 @@ int error_context(rage_Error (*f)(StringBuffer b)) {
         return RAGE_ERROR(eb.buf); \
     }
 
-rage_Error test_time_delta(StringBuffer eb) {
+// FIXME: this seems to be the only thing exercising this code, remove?
+static rage_Error time_delta_checks(StringBuffer eb) {
     rage_Time a = {.fraction = UINT32_MAX * 0.1};
     ASSERT_EQUAL(rage_time_delta(a, a), 0.0, "Same time")
     rage_Time b = {.second = 1, .fraction = UINT32_MAX * 0.2};
@@ -41,7 +44,11 @@ rage_Error test_time_delta(StringBuffer eb) {
     return RAGE_OK;
 }
 
-rage_Error test_time_after() {
+static rage_Error test_time_delta() {
+    return error_context(time_delta_checks);
+}
+
+static rage_Error test_time_after() {
     rage_Time a = {.second = 2, .fraction = 200};
     if (rage_time_after(a, a))
         return RAGE_ERROR("Same time");
