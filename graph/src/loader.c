@@ -159,6 +159,7 @@ rage_ElementNewResult rage_element_new(
 }
 
 void rage_element_free(rage_Element * elem) {
+    elem->type->free_ports(elem->spec);
     elem->type->state_free(elem->state);
     free(elem);
 }
