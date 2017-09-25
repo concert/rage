@@ -31,7 +31,15 @@ int main() {
         {.i=1}
     };
     rage_Atom * tupp = tup;
-    // FIXME: error handling of next line
+    rage_NewConcreteElementType cet_ = rage_element_type_specialise(
+        et, &tupp);
+    if (RAGE_FAILED(cet_)) {
+        printf("Element type specialising failed: %s\n", RAGE_FAILURE_VALUE(cet_));
+        rage_graph_free(graph);
+        rage_element_loader_unload(el, et);
+        rage_element_loader_free(el);
+	return 3;
+    }
     rage_ConcreteElementType * cet = RAGE_SUCCESS_VALUE(
         rage_element_type_specialise(et, &tupp));
     //rage_Atom vals[] = {{.f = 1.0}};
@@ -77,7 +85,7 @@ int main() {
         printf("Node creation failed: %s\n", RAGE_FAILURE_VALUE(new_node));
         rage_graph_free(graph);
         rage_element_loader_free(el);
-        return 3;
+        return 4;
     }
     printf("Element loaded\n");
     //FIXME: handle errors (start/stop)
