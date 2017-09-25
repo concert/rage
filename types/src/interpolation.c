@@ -200,7 +200,7 @@ rage_InitialisedInterpolator rage_interpolator_new(
         uint32_t const sample_rate, uint8_t const n_views) {
     rage_Error err = validate_time_series(points, allowed_interpolators(type));
     if (RAGE_FAILED(err)) {
-        return RAGE_FAILURE(rage_InitialisedInterpolator, RAGE_FAILURE_VALUE(err));
+        return RAGE_FAILURE_CAST(rage_InitialisedInterpolator, err);
     }
     rage_Interpolator * state = malloc(sizeof(rage_Interpolator));
     sem_init(&state->change_sem, 0, 1);

@@ -32,6 +32,11 @@
  * Note: if you do this on a failure bad things may happen.
  */
 #define RAGE_SUCCESS_VALUE(e) e.right
+/*
+ * Cast one type of failure to another.
+ * Note: don't use this on a success, bad things will happen.
+ */
+#define RAGE_FAILURE_CAST(et, e) RAGE_FAILURE(et, RAGE_FAILURE_VALUE(e))
 
 /*
  * This is an experimental boilerplate reduction attempt.
@@ -39,7 +44,7 @@
  */
 #define RAGE_EXTRACT_VALUE(et, e, target) \
     if (RAGE_FAILED(e)) \
-        return RAGE_FAILURE(et, RAGE_FAILURE_VALUE(e)); \
+        return RAGE_FAILURE_CAST(et, e); \
     target = RAGE_SUCCESS_VALUE(e);
 
 /*
