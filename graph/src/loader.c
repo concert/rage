@@ -48,6 +48,7 @@ static int is_plugin(const struct dirent * entry) {
 rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
     rage_ElementTypes * elems = malloc(sizeof(rage_ElementTypes));
     elems->len = 0;
+    elems->items = NULL;
     char const * rage_elements_path = getenv("RAGE_ELEMENTS_PATH");
     if (rage_elements_path == NULL) {
         return elems;
@@ -63,7 +64,6 @@ rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
         }
         free(entries);
     } else {
-        elems->items = NULL;
         // FIXME: Do something on this failure!
     }
     return elems;
