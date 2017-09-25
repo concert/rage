@@ -41,12 +41,12 @@ struct rage_GraphNode {
 };
 
 rage_NewGraphNode rage_graph_add_node(
-        rage_Graph * g, rage_ElementType * et, rage_Atom ** type_params,
+        rage_Graph * g, rage_ConcreteElementType * cet,
         // Not sure I like that name seems to be required, is that a good idea?
         char const * name, rage_TimeSeries const * ts) {
     // FIXME: fixed frame size
     rage_ElementNewResult new_elem = rage_element_new(
-        et, g->sample_rate, 1024, type_params);
+        cet, g->sample_rate, 1024);
     if (RAGE_FAILED(new_elem)) {
         return RAGE_FAILURE(rage_NewGraphNode, RAGE_FAILURE_VALUE(new_elem));
     }

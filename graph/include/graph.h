@@ -1,7 +1,7 @@
 #pragma once
 #include "error.h"
 #include "atoms.h"
-#include "element.h"
+#include "loader.h"
 
 typedef struct rage_Graph rage_Graph;
 typedef RAGE_OR_ERROR(rage_Graph *) rage_NewGraph;
@@ -15,7 +15,7 @@ void rage_graph_set_transport_state(rage_Graph * g, rage_TransportState s);
 typedef struct rage_GraphNode rage_GraphNode;
 typedef RAGE_OR_ERROR(rage_GraphNode *) rage_NewGraphNode;
 rage_NewGraphNode rage_graph_add_node(
-        rage_Graph * g, rage_ElementType * et, rage_Atom ** type_params,
+        rage_Graph * g, rage_ConcreteElementType * cet,
         // Not sure I like that name seems to be required, is that a good idea?
         char const * name, rage_TimeSeries const * ts);
 void rage_graph_remove_node(rage_Graph * g, rage_GraphNode * n);

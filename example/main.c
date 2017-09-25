@@ -31,6 +31,9 @@ int main() {
         {.i=1}
     };
     rage_Atom * tupp = tup;
+    // FIXME: error handling of next line
+    rage_ConcreteElementType * cet = RAGE_SUCCESS_VALUE(
+        rage_element_type_specialise(et, &tupp));
     //rage_Atom vals[] = {{.f = 1.0}};
     rage_Atom vals[] = {
         {.e = 0},
@@ -69,7 +72,7 @@ int main() {
         .items = tps
     };
     rage_NewGraphNode new_node = rage_graph_add_node(
-        graph, et, &tupp, "persistance", &ts);
+        graph, cet, "persistance", &ts);
     if (RAGE_FAILED(new_node)) {
         printf("Node creation failed: %s\n", RAGE_FAILURE_VALUE(new_node));
         rage_graph_free(graph);
@@ -92,6 +95,7 @@ int main() {
     }
     rage_graph_remove_node(graph, RAGE_SUCCESS_VALUE(new_node));
     printf("Elem freed\n");
+    rage_concrete_element_type_free(cet);
     rage_element_loader_unload(el, et);
     printf("Elem type freed\n");
     rage_graph_free(graph);

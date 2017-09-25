@@ -137,25 +137,38 @@ void rage_element_loader_unload(
     }
 }
 
+// ConcreteElementType
+
+rage_NewConcreteElementType rage_element_type_specialise(
+        rage_ElementType * type, rage_Atom ** params) {
+    rage_NewInstanceSpec new_ports = type->get_ports(params);
+    RAGE_EXTRACT_VALUE(
+	rage_NewConcreteElementType, new_ports, rage_InstanceSpec spec)
+    rage_ConcreteElementType * cet = malloc(sizeof(rage_ConcreteElementType));
+    cet->type = type;
+    cet->params = params;
+    cet->spec = spec;
+    return RAGE_SUCCESS(rage_NewConcreteElementType, cet);
+}
+
+void rage_concrete_element_type_free(rage_ConcreteElementType * cet) {
+    cet->type->free_ports(cet->spec);
+    free(cet);
+}
+
+// Element
+
 rage_ElementNewResult rage_element_new(
-        rage_ElementType * type, uint32_t sample_rate, uint32_t frame_size,
-        rage_Atom ** params) {
-    rage_NewElementState new_state = type->state_new(
-        sample_rate, frame_size, params);
+        rage_ConcreteElementType * cet, uint32_t sample_rate,
+        uint32_t frame_size) {
+    rage_NewElementState new_state = cet->type->state_new(
+        sample_rate, frame_size, cet->params);
     RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_state, void * state)
     rage_Element * const elem = malloc(sizeof(rage_Element));
-    elem->type = type;
+    elem->type = cet->type;
     elem->state = state;
-    rage_NewInstanceSpec new_ports = type->get_ports(params);
-    if (RAGE_FAILED(new_ports)) {
-        elem->type->state_free(elem->state);
-        free(elem);
-        return RAGE_FAILURE(
-            rage_ElementNewResult, RAGE_FAILURE_VALUE(new_ports));
-    } else {
-        elem->spec = RAGE_SUCCESS_VALUE(new_ports);
-        return RAGE_SUCCESS(rage_ElementNewResult, elem);
-    }
+    elem->spec = cet->spec;
+    return RAGE_SUCCESS(rage_ElementNewResult, elem);
 }
 
 void rage_element_free(rage_Element * elem) {

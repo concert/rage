@@ -6,13 +6,24 @@
 #include "error.h"
 #include "macros.h"
 
+// Am I exposing too much of the internals?
 typedef struct {
     rage_ElementType * type;
-    rage_ElementState * state;
+    rage_Atom ** params;
     union {
         rage_InstanceSpec;
         rage_InstanceSpec spec;
     };
+} rage_ConcreteElementType;
+
+typedef struct {
+    rage_ElementType * type;
+    // Too much of concrete element stuff duplicated?
+    union {
+        rage_InstanceSpec;
+        rage_InstanceSpec spec;
+    };
+    rage_ElementState * state;
 } rage_Element;
 
 typedef struct rage_ElementLoader rage_ElementLoader;
@@ -30,10 +41,14 @@ rage_ElementTypeLoadResult rage_element_loader_load(
 void rage_element_loader_unload(
     rage_ElementLoader * el, rage_ElementType * type);
 
+typedef RAGE_OR_ERROR(rage_ConcreteElementType *) rage_NewConcreteElementType;
+rage_NewConcreteElementType rage_element_type_specialise(
+    rage_ElementType * et, rage_Atom ** params);
+void rage_concrete_element_type_free(rage_ConcreteElementType * ct);
+
 typedef RAGE_OR_ERROR(rage_Element *) rage_ElementNewResult;
 rage_ElementNewResult rage_element_new(
-    rage_ElementType * type, uint32_t sample_rate, uint32_t frame_size,
-    rage_Atom ** params);
+    rage_ConcreteElementType * type, uint32_t sample_rate, uint32_t frame_size);
 void rage_element_free(rage_Element * elem);
 void rage_element_process(
     rage_Element const * const elem, rage_TransportState const transport_state,
