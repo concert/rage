@@ -21,7 +21,7 @@ rage_NewProcBlock rage_proc_block_new(uint32_t sample_rate) {
     rage_NewJackBinding njb = rage_jack_binding_new(countdown, sample_rate);
     if (RAGE_FAILED(njb)) {
         rage_countdown_free(countdown);
-        return RAGE_FAILURE(rage_NewProcBlock, RAGE_FAILURE_VALUE(njb));
+        return RAGE_FAILURE_CAST(rage_NewProcBlock, njb);
     } else {
         rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
         pb->jack_binding = RAGE_SUCCESS_VALUE(njb);
@@ -83,7 +83,7 @@ static InterpolatorsForResult interpolators_for(
                 } while (i > 0);
             }
             free(new_interpolators);
-            return RAGE_FAILURE(InterpolatorsForResult, RAGE_FAILURE_VALUE(ii));
+            return RAGE_FAILURE_CAST(InterpolatorsForResult, ii);
             break;
         } else {
             new_interpolators[i] = RAGE_SUCCESS_VALUE(ii);
