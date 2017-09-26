@@ -73,6 +73,7 @@ rage_Error test_loader() {
                 rage_Interpolators ii = new_interpolators(&ports, elem->spec);
                 if (!RAGE_FAILED(ii)) {
                     rage_InterpolatorArray interpolators = RAGE_SUCCESS_VALUE(ii);
+                    rage_element_process(elem, RAGE_TRANSPORT_STOPPED, &ports);
                     rage_element_process(elem, RAGE_TRANSPORT_ROLLING, &ports);
                     free_interpolators(interpolators, elem->spec);
                 } else {
