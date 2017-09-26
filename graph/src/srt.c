@@ -68,7 +68,9 @@ static rage_PreparedFrames apply_to_trucks(
     uint32_t min_prepared = UINT32_MAX;
     for (unsigned i = 0; i < trucks->len; i++) {
         rage_PreparedFrames prepared = op(trucks->items[i]);
-        RAGE_EXTRACT_VALUE(rage_PreparedFrames, prepared, uint32_t n_prepared)
+        if (RAGE_FAILED(prepared))
+            return RAGE_FAILURE_CAST(rage_PreparedFrames, prepared);
+        uint32_t n_prepared = RAGE_SUCCESS_VALUE(prepared);
         min_prepared = (n_prepared < min_prepared) ? n_prepared : min_prepared;
     }
     return RAGE_SUCCESS(rage_PreparedFrames, min_prepared);
