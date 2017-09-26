@@ -143,11 +143,11 @@ rage_JackHarness * rage_jack_binding_mount(
         rage_InterpolatedView ** view, char const * name) {
     rage_JackHarness * const harness = malloc(sizeof(rage_JackHarness));
     harness->jack_binding = jack_binding;
-    harness->ports = rage_ports_new(&elem->spec);
+    harness->ports = rage_ports_new(&elem->cet->spec);
     size_t const name_size = jack_port_name_size();
     char * const port_name = malloc(name_size);
-    harness->jack_inputs = calloc(elem->inputs.len, sizeof(jack_port_t *));
-    for (uint32_t i = 0; i < elem->inputs.len; i++) {
+    harness->jack_inputs = calloc(elem->cet->inputs.len, sizeof(jack_port_t *));
+    for (uint32_t i = 0; i < elem->cet->inputs.len; i++) {
         snprintf(port_name, name_size, "%s_in%u", name, i);
         // FIXME other stream types
         harness->jack_inputs[i] = jack_port_register(
@@ -156,8 +156,9 @@ rage_JackHarness * rage_jack_binding_mount(
             JackPortIsInput,
             0);
     }
-    harness->jack_outputs = calloc(elem->outputs.len, sizeof(jack_port_t *));
-    for (uint32_t i = 0; i < elem->outputs.len; i++) {
+    harness->jack_outputs = calloc(
+        elem->cet->outputs.len, sizeof(jack_port_t *));
+    for (uint32_t i = 0; i < elem->cet->outputs.len; i++) {
         snprintf(port_name, name_size, "%s_out%u", name, i);
         // FIXME other stream types
         harness->jack_outputs[i] = jack_port_register(
@@ -168,8 +169,8 @@ rage_JackHarness * rage_jack_binding_mount(
     }
     free(port_name);
     harness->elem = elem;
-    harness->n_inputs = elem->inputs.len;
-    harness->n_outputs = elem->outputs.len;
+    harness->n_inputs = elem->cet->inputs.len;
+    harness->n_outputs = elem->cet->outputs.len;
     harness->ports.controls = view;
     rage_JackHarnesses * old_harnesses = jack_binding->harnesses;
     jack_binding->harnesses = rage_append_harness(old_harnesses, harness);

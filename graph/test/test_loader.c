@@ -70,18 +70,18 @@ rage_Error test_loader() {
             rage_ElementNewResult elem_ = rage_element_new(cet, 44100, 256);
             if (!RAGE_FAILED(elem_)) {
                 rage_Element * elem = RAGE_SUCCESS_VALUE(elem_);
-                rage_Ports ports = rage_ports_new(&elem->spec);
-                new_stream_buffers(&ports, elem->spec);
-                rage_Interpolators ii = new_interpolators(&ports, elem->spec);
+                rage_Ports ports = rage_ports_new(&cet->spec);
+                new_stream_buffers(&ports, cet->spec);
+                rage_Interpolators ii = new_interpolators(&ports, cet->spec);
                 if (!RAGE_FAILED(ii)) {
                     rage_InterpolatorArray interpolators = RAGE_SUCCESS_VALUE(ii);
                     rage_element_process(elem, RAGE_TRANSPORT_STOPPED, &ports);
                     rage_element_process(elem, RAGE_TRANSPORT_ROLLING, &ports);
-                    free_interpolators(interpolators, elem->spec);
+                    free_interpolators(interpolators, cet->spec);
                 } else {
                     err = RAGE_AS_ERROR(ii);
                 }
-                free_stream_buffers(&ports, elem->spec);
+                free_stream_buffers(&ports, cet->spec);
                 rage_ports_free(ports);
                 rage_element_free(elem);
             } else {

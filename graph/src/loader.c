@@ -165,20 +165,18 @@ rage_ElementNewResult rage_element_new(
         sample_rate, frame_size, cet->params);
     RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_state, void * state)
     rage_Element * const elem = malloc(sizeof(rage_Element));
-    elem->type = cet->type;
+    elem->cet = cet;
     elem->state = state;
-    elem->spec = cet->spec;
     return RAGE_SUCCESS(rage_ElementNewResult, elem);
 }
 
 void rage_element_free(rage_Element * elem) {
-    elem->type->free_ports(elem->spec);
-    elem->type->state_free(elem->state);
+    elem->cet->type->state_free(elem->state);
     free(elem);
 }
 
 void rage_element_process(
         rage_Element const * const elem,
         rage_TransportState const transport_state, rage_Ports const * ports) {
-    elem->type->process(elem->state, transport_state, ports);
+    elem->cet->type->process(elem->state, transport_state, ports);
 }
