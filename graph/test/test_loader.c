@@ -65,7 +65,9 @@ rage_Error test_loader() {
         if (!RAGE_FAILED(et_)) {
             rage_ElementType * et = RAGE_SUCCESS_VALUE(et_);
             rage_Atom ** tups = generate_tuples(et->parameters);
-            rage_ElementNewResult elem_ = rage_element_new(et, 44100, 256, tups);
+            // FIXME: error handling of next line
+            rage_ConcreteElementType * cet = RAGE_SUCCESS_VALUE(rage_element_type_specialise(et, tups));
+            rage_ElementNewResult elem_ = rage_element_new(cet, 44100, 256);
             if (!RAGE_FAILED(elem_)) {
                 rage_Element * elem = RAGE_SUCCESS_VALUE(elem_);
                 rage_Ports ports = rage_ports_new(&elem->spec);
@@ -85,6 +87,7 @@ rage_Error test_loader() {
             } else {
                 err = RAGE_AS_ERROR(elem_);
             }
+            rage_concrete_element_type_free(cet);
             free_tuples(et->parameters, tups);
             rage_element_loader_unload(el, et);
         } else {

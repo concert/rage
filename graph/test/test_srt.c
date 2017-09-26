@@ -12,6 +12,7 @@ typedef struct {
 
 typedef RAGE_OR_ERROR(rage_TestElem) rage_NewTestElem;
 
+// FIXME: this is getting out of hand
 rage_NewTestElem new_test_elem() {
     rage_ElementLoader * el = rage_element_loader_new();
     rage_ElementTypeLoadResult et_ = rage_element_loader_load(
@@ -22,7 +23,16 @@ rage_NewTestElem new_test_elem() {
     }
     rage_ElementType * et = RAGE_SUCCESS_VALUE(et_);
     rage_Atom ** tups = generate_tuples(et->parameters);
-    rage_ElementNewResult elem_ = rage_element_new(et, 44100, 256, tups);
+    rage_NewConcreteElementType ncet = rage_element_type_specialise(et, tups);
+    if (RAGE_FAILED(ncet)) {
+        rage_element_loader_unload(el, et);
+        rage_element_loader_free(el);
+        free_tuples(et->parameters, tups);
+        return RAGE_FAILURE(rage_NewTestElem, RAGE_FAILURE_VALUE(ncet));
+    }
+    rage_ConcreteElementType * cet = RAGE_SUCCESS_VALUE(ncet);
+    rage_ElementNewResult elem_ = rage_element_new(cet, 44100, 256);
+    rage_concrete_element_type_free(cet);  // You can do this, but should you?
     free_tuples(et->parameters, tups);
     if (RAGE_FAILED(elem_)) {
         rage_element_loader_unload(el, et);
