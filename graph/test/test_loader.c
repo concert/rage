@@ -43,7 +43,7 @@ static rage_Interpolators new_interpolators(rage_Ports * ports, rage_InstanceSpe
         if (RAGE_FAILED(ii)) {
             interpolators.len = i;
             free_interpolators(interpolators, spec);
-            return RAGE_FAILURE(rage_Interpolators, RAGE_FAILURE_VALUE(ii));
+            return RAGE_FAILURE_CAST(rage_Interpolators, ii);
         } else {
             interpolators.items[i] = RAGE_SUCCESS_VALUE(ii);
         }
@@ -53,7 +53,7 @@ static rage_Interpolators new_interpolators(rage_Ports * ports, rage_InstanceSpe
 }
 
 #define RAGE_AS_ERROR(errorable) (RAGE_FAILED(errorable)) ? \
-    RAGE_ERROR(RAGE_FAILURE_VALUE(errorable)) : RAGE_OK
+    RAGE_FAILURE_CAST(rage_Error, errorable) : RAGE_OK
 
 rage_Error test_loader() {
     rage_ElementLoader * el = rage_element_loader_new();
