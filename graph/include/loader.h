@@ -17,12 +17,7 @@ typedef struct {
 } rage_ConcreteElementType;
 
 typedef struct {
-    rage_ElementType * type;
-    // Too much of concrete element stuff duplicated?
-    union {
-        rage_InstanceSpec;
-        rage_InstanceSpec spec;
-    };
+    rage_ConcreteElementType * cet;
     rage_ElementState * state;
 } rage_Element;
 
@@ -56,6 +51,6 @@ void rage_element_process(
 
 
 // FIXME: better or worse?
-#define RAGE_ELEM_PREP(elem, controls) elem->type->prep(elem->state, controls)
-#define RAGE_ELEM_CLEAN(elem, controls) elem->type->clean(elem->state, controls)
-#define RAGE_ELEM_CLEAR(elem, ...) elem->type->clear(elem->state, __VA_ARGS__)
+#define RAGE_ELEM_PREP(elem, controls) elem->cet->type->prep(elem->state, controls)
+#define RAGE_ELEM_CLEAN(elem, controls) elem->cet->type->clean(elem->state, controls)
+#define RAGE_ELEM_CLEAR(elem, ...) elem->cet->type->clear(elem->state, __VA_ARGS__)

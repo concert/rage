@@ -107,26 +107,26 @@ rage_MountResult rage_proc_block_mount(
         rage_ProcBlock * pb, rage_Element * elem,
         rage_TimeSeries const * controls, char const * name) {
     rage_Harness * harness = malloc(sizeof(rage_Harness));
-    uint8_t n_views = view_count_for_type(elem->type);
+    uint8_t n_views = view_count_for_type(elem->cet->type);
     // FIXME: Error handling
     harness->interpolators = RAGE_SUCCESS_VALUE(interpolators_for(
-        pb->sample_rate, &elem->controls, controls, n_views));
+        pb->sample_rate, &elem->cet->controls, controls, n_views));
     rage_InterpolatedView ** rt_views = calloc(
-        elem->controls.len, sizeof(rage_InterpolatedView *));
+        elem->cet->controls.len, sizeof(rage_InterpolatedView *));
     rage_InterpolatedView ** prep_views, ** clean_views;
-    if (elem->type->prep == NULL) {
+    if (elem->cet->type->prep == NULL) {
         prep_views = NULL;
     } else {
         prep_views = calloc(
-            elem->controls.len, sizeof(rage_InterpolatedView *));
+            elem->cet->controls.len, sizeof(rage_InterpolatedView *));
     }
-    if (elem->type->clean == NULL) {
+    if (elem->cet->type->clean == NULL) {
         clean_views = NULL;
     } else {
         clean_views = calloc(
-            elem->controls.len, sizeof(rage_InterpolatedView *));
+            elem->cet->controls.len, sizeof(rage_InterpolatedView *));
     }
-    for (uint32_t i = 0; i < elem->controls.len; i++) {
+    for (uint32_t i = 0; i < elem->cet->controls.len; i++) {
         uint8_t view_idx = 0;
         rt_views[i] = rage_interpolator_get_view(
             harness->interpolators[i], view_idx);

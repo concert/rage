@@ -7,47 +7,51 @@
 typedef struct {
     rage_ElementLoader * loader;
     rage_ElementType * type;
+    rage_Atom ** tups;
+    rage_ConcreteElementType * cet;
     rage_Element * elem;
 } rage_TestElem;
 
 typedef RAGE_OR_ERROR(rage_TestElem) rage_NewTestElem;
 
-// FIXME: this is getting out of hand
+void free_test_elem(rage_TestElem te) {
+    if (te.elem != NULL)
+        rage_element_free(te.elem);
+    if (te.cet != NULL)
+        rage_concrete_element_type_free(te.cet);
+    if (te.tups != NULL)
+        free_tuples(te.type->parameters, te.tups);
+    if (te.type != NULL)
+        rage_element_loader_unload(te.loader, te.type);
+    if (te.loader != NULL)
+        rage_element_loader_free(te.loader);
+}
+
 rage_NewTestElem new_test_elem() {
     rage_ElementLoader * el = rage_element_loader_new();
+    rage_TestElem rv = {.loader=el};
     rage_ElementTypeLoadResult et_ = rage_element_loader_load(
         el, "./libamp.so");
     if (RAGE_FAILED(et_)) {
-        rage_element_loader_free(el);
+        free_test_elem(rv);
         return RAGE_FAILURE(rage_NewTestElem, RAGE_FAILURE_VALUE(et_));
     }
-    rage_ElementType * et = RAGE_SUCCESS_VALUE(et_);
-    rage_Atom ** tups = generate_tuples(et->parameters);
-    rage_NewConcreteElementType ncet = rage_element_type_specialise(et, tups);
+    rv.type = RAGE_SUCCESS_VALUE(et_);
+    rv.tups = generate_tuples(rv.type->parameters);
+    rage_NewConcreteElementType ncet = rage_element_type_specialise(
+        rv.type, rv.tups);
     if (RAGE_FAILED(ncet)) {
-        rage_element_loader_unload(el, et);
-        rage_element_loader_free(el);
-        free_tuples(et->parameters, tups);
+        free_test_elem(rv);
         return RAGE_FAILURE(rage_NewTestElem, RAGE_FAILURE_VALUE(ncet));
     }
-    rage_ConcreteElementType * cet = RAGE_SUCCESS_VALUE(ncet);
-    rage_ElementNewResult elem_ = rage_element_new(cet, 44100, 256);
-    rage_concrete_element_type_free(cet);  // You can do this, but should you?
-    free_tuples(et->parameters, tups);
+    rv.cet = RAGE_SUCCESS_VALUE(ncet);
+    rage_ElementNewResult elem_ = rage_element_new(rv.cet, 44100, 256);
     if (RAGE_FAILED(elem_)) {
-        rage_element_loader_unload(el, et);
-        rage_element_loader_free(el);
+        free_test_elem(rv);
         return RAGE_FAILURE(rage_NewTestElem, RAGE_FAILURE_VALUE(elem_));
     }
-    rage_TestElem rv = {
-        .loader=el, .type=et, .elem=RAGE_SUCCESS_VALUE(elem_)};
+    rv.elem = RAGE_SUCCESS_VALUE(elem_);
     return RAGE_SUCCESS(rage_NewTestElem, rv);
-}
-
-void free_test_elem(rage_TestElem te) {
-    rage_element_free(te.elem);
-    rage_element_loader_unload(te.loader, te.type);
-    rage_element_loader_free(te.loader);
 }
 
 rage_Error test_srt() {
@@ -91,6 +95,10 @@ static rage_ElementType fake_element_type = {
     .clean = fake_elem_clean
 };
 
+static rage_ConcreteElementType fake_concrete_type = {
+    .type = &fake_element_type
+};
+
 static rage_Error counter_checks(
         sem_t * sync_sem, rage_ElementState * fes, int expected_prep,
         int expected_clean) {
@@ -112,7 +120,7 @@ rage_Error test_srt_fake_elem() {
         .clean_counter = 0,
         .processed = &sync_sem};
     rage_Element fake_elem = {
-        .type = &fake_element_type,
+        .cet = &fake_concrete_type,
         .state = &fes};
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_SupportConvoy * convoy = rage_support_convoy_new(1024, countdown);
