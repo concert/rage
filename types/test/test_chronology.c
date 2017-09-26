@@ -8,8 +8,8 @@ typedef struct {
     char * buf;
 } StringBuffer;
 
-// FIXME: This really either ought to go all the way to the top of the testing
-// or should go.
+// FIXME: This really either ought to be part of the top level test runner or
+// should go.
 static rage_Error error_context(rage_Error (*f)(StringBuffer b)) {
     const unsigned buf_size = 80;
     char buf[buf_size];
@@ -17,7 +17,7 @@ static rage_Error error_context(rage_Error (*f)(StringBuffer b)) {
     rage_Error e = f(sb);
     if (RAGE_FAILED(e)) {
         printf("%s\n", RAGE_FAILURE_VALUE(e));
-	return RAGE_ERROR("Failed in error context");
+        return RAGE_ERROR("Failed in error context");
     }
     return RAGE_OK;
 }
@@ -34,7 +34,7 @@ static rage_Error error_context(rage_Error (*f)(StringBuffer b)) {
         return RAGE_ERROR(eb.buf); \
     }
 
-// FIXME: this seems to be the only thing exercising this code, remove?
+// FIXME: this is testing code not used elsewhere, remove?
 static rage_Error time_delta_checks(StringBuffer eb) {
     rage_Time a = {.fraction = UINT32_MAX * 0.1};
     ASSERT_EQUAL(rage_time_delta(a, a), 0.0, "Same time")
