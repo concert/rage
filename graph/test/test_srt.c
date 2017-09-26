@@ -34,7 +34,7 @@ rage_NewTestElem new_test_elem() {
         el, "./libamp.so");
     if (RAGE_FAILED(et_)) {
         free_test_elem(rv);
-        return RAGE_FAILURE(rage_NewTestElem, RAGE_FAILURE_VALUE(et_));
+        return RAGE_FAILURE_CAST(rage_NewTestElem, et_);
     }
     rv.type = RAGE_SUCCESS_VALUE(et_);
     rv.tups = generate_tuples(rv.type->parameters);
@@ -42,13 +42,13 @@ rage_NewTestElem new_test_elem() {
         rv.type, rv.tups);
     if (RAGE_FAILED(ncet)) {
         free_test_elem(rv);
-        return RAGE_FAILURE(rage_NewTestElem, RAGE_FAILURE_VALUE(ncet));
+        return RAGE_FAILURE_CAST(rage_NewTestElem, ncet);
     }
     rv.cet = RAGE_SUCCESS_VALUE(ncet);
     rage_ElementNewResult elem_ = rage_element_new(rv.cet, 44100, 256);
     if (RAGE_FAILED(elem_)) {
         free_test_elem(rv);
-        return RAGE_FAILURE(rage_NewTestElem, RAGE_FAILURE_VALUE(elem_));
+        return RAGE_FAILURE_CAST(rage_NewTestElem, elem_);
     }
     rv.elem = RAGE_SUCCESS_VALUE(elem_);
     return RAGE_SUCCESS(rage_NewTestElem, rv);
