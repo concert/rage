@@ -39,15 +39,6 @@
 #define RAGE_FAILURE_CAST(et, e) RAGE_FAILURE(et, RAGE_FAILURE_VALUE(e))
 
 /*
- * This is an experimental boilerplate reduction attempt.
- * Doesn't feel quite right yet.
- */
-#define RAGE_EXTRACT_VALUE(et, e, target) \
-    if (RAGE_FAILED(e)) \
-        return RAGE_FAILURE_CAST(et, e); \
-    target = RAGE_SUCCESS_VALUE(e);
-
-/*
  * A concrete error type for things that don't return anything, but may fail.
  */
 typedef RAGE_OR_ERROR(void *) rage_Error;

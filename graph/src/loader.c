@@ -142,8 +142,9 @@ void rage_element_loader_unload(
 rage_NewConcreteElementType rage_element_type_specialise(
         rage_ElementType * type, rage_Atom ** params) {
     rage_NewInstanceSpec new_ports = type->get_ports(params);
-    RAGE_EXTRACT_VALUE(
-	rage_NewConcreteElementType, new_ports, rage_InstanceSpec spec)
+    if (RAGE_FAILED(new_ports))
+        return RAGE_FAILURE_CAST(rage_NewConcreteElementType, new_ports);
+    rage_InstanceSpec spec = RAGE_SUCCESS_VALUE(new_ports);
     rage_ConcreteElementType * cet = malloc(sizeof(rage_ConcreteElementType));
     cet->type = type;
     cet->params = params;
@@ -163,7 +164,9 @@ rage_ElementNewResult rage_element_new(
         uint32_t frame_size) {
     rage_NewElementState new_state = cet->type->state_new(
         sample_rate, frame_size, cet->params);
-    RAGE_EXTRACT_VALUE(rage_ElementNewResult, new_state, void * state)
+    if (RAGE_FAILED(new_state))
+        return RAGE_FAILURE_CAST(rage_ElementNewResult, new_state);
+    void * state = RAGE_SUCCESS_VALUE(new_state);
     rage_Element * const elem = malloc(sizeof(rage_Element));
     elem->cet = cet;
     elem->state = state;

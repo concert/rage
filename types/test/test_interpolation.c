@@ -25,7 +25,9 @@ static rage_Error check_with_single_field_interpolator(
     };
     rage_InitialisedInterpolator ii = interpolator_for(
         &td, points, n_points, 1);
-    RAGE_EXTRACT_VALUE(rage_Error, ii, rage_Interpolator * interpolator)
+    if (RAGE_FAILED(ii))
+        return RAGE_FAILURE_CAST(rage_Error, ii);
+    rage_Interpolator * interpolator = RAGE_SUCCESS_VALUE(ii);
     rage_Error err = checker(interpolator);
     rage_interpolator_free(&td, interpolator);
     return err;
