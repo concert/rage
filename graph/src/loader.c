@@ -11,11 +11,13 @@ typedef struct rage_TypeHandle {
 } rage_TypeHandle;
 
 struct rage_ElementLoader {
+    char * elems_path;
     rage_TypeHandle * type_handle;
 };
 
-rage_ElementLoader * rage_element_loader_new() {
+rage_ElementLoader * rage_element_loader_new(char const * elems_path) {
     rage_ElementLoader * el = malloc(sizeof(rage_ElementLoader));
+    el->elems_path = strdup(elems_path);
     el->type_handle = NULL;
     return el;
 }
@@ -27,6 +29,7 @@ void rage_element_loader_free(rage_ElementLoader * el) {
         free(el->type_handle);
         el->type_handle = nxt;
     }
+    free(el->elems_path);
     free(el);
 }
 
@@ -49,12 +52,8 @@ rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
     rage_ElementTypes * elems = malloc(sizeof(rage_ElementTypes));
     elems->len = 0;
     elems->items = NULL;
-    char const * rage_elements_path = getenv("RAGE_ELEMENTS_PATH");
-    if (rage_elements_path == NULL) {
-        return elems;
-    }
     struct dirent ** entries;
-    int n_items = scandir(rage_elements_path, &entries, is_plugin, NULL);
+    int n_items = scandir(el->elems_path, &entries, is_plugin, NULL);
     if (n_items >= 0) {
         elems->len = n_items;
         elems->items = calloc(n_items, sizeof(char *));

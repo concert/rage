@@ -34,7 +34,7 @@ int main() {
         return 1;
     }
     bits.graph = RAGE_SUCCESS_VALUE(new_graph);
-    bits.el = rage_element_loader_new();
+    bits.el = rage_element_loader_new(getenv("RAGE_ELEMENTS_PATH"));
     //rage_ElementTypes element_type_names = rage_element_loader_list(el);
     // FIXME: loading super busted
     rage_ElementTypeLoadResult et_ = rage_element_loader_load(
