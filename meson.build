@@ -13,7 +13,7 @@ langext_sources = [
 
 sem = dependency('threads')
 
-langext = shared_library(
+langext = static_library(
     'rage_langext', langext_sources, include_directories: langext_inc,
     dependencies: [sem])
 
@@ -38,9 +38,13 @@ sources = [
     'types/src/atoms.c'
 ]
 
-rage_types = shared_library(
-    'rage_types', sources, include_directories: [types_inc, langext_inc],
-    link_with: langext, dependencies: [sem])
+rage_types = library(
+    'rage_types',
+    sources,
+    include_directories: [types_inc, langext_inc],
+    link_with: langext,
+    dependencies: [sem],
+    install: true)
 
 test_types = executable(
     'test_types', 'types/test/test_main.c',
@@ -56,7 +60,18 @@ jack = dependency('jack')
 
 graph_inc = include_directories('graph/include')
 
-rage_graph = shared_library(
+# TODO: work out how to thin this down?
+install_headers(
+    'graph/include/graph.h', 'graph/include/loader.h',
+    'types/include/atoms.h', 'types/include/element.h',
+    'types/include/ports.h', 'types/include/interpolation.h',
+    'types/include/chronology.h', 'types/include/transport_state.h',
+    'types/include/time_series.h',
+    'langext/include/macros.h', 'langext/include/error.h',
+    'langext/include/finaliser.h',
+    subdir: 'rage')
+
+rage_graph = library(
     'rage_graph',
     [
         'graph/src/loader.c', 'graph/src/jack_bindings.c', 'graph/src/srt.c',
@@ -64,7 +79,8 @@ rage_graph = shared_library(
     ],
     include_directories: [graph_inc, types_inc, langext_inc],
     dependencies: [dyn_load, jack, sem],
-    link_with: [langext, rage_types])
+    link_with: [langext, rage_types],
+    install: true)
 
 test_graph = executable(
     'test_graph', 'graph/test/main.c',
@@ -76,21 +92,33 @@ test('graph', test_graph)
 # Elements
 
 element_incs = [langext_inc, types_inc]
+element_install_dir = join_paths(get_option('datadir'), 'rage', 'elements')
 
 amp_sources = ['elements/amp/amp.c']
-amp = shared_library(
-    'amp', amp_sources, include_directories: element_incs, link_with: rage_types)
+amp = library(
+    'amp', amp_sources, include_directories: element_incs,
+    link_with: rage_types,
+    install_dir: element_install_dir,
+    install: true)
 
 sndfile = dependency('sndfile')
 
 persist_sources = ['elements/persistence/persistence.c']
-persist = shared_library(
-    'persist', persist_sources, include_directories: element_incs,
-    link_with: rage_types, dependencies: [jack, sndfile])
+persist = library(
+    'persist',
+    persist_sources,
+    include_directories: element_incs,
+    link_with: rage_types,
+    dependencies: [jack, sndfile],
+    install_dir: element_install_dir,
+    install: true)
 
 # Example
 
 example_sources = ['example/main.c']
 example = executable(
-    'example', example_sources, include_directories: [langext_inc, types_inc, graph_inc],
-    link_with: [langext, rage_types, rage_graph], dependencies: [jack])
+    'example',
+    example_sources,
+    include_directories: [langext_inc, types_inc, graph_inc],
+    link_with: [langext, rage_types, rage_graph],
+    dependencies: [jack])
