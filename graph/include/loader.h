@@ -5,6 +5,7 @@
 #include "element.h"
 #include "error.h"
 #include "macros.h"
+#include "ports.h"
 
 // Am I exposing too much of the internals?
 typedef struct {
