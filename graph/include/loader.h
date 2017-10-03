@@ -23,7 +23,7 @@ typedef struct {
 
 typedef struct rage_ElementLoader rage_ElementLoader;
 
-rage_ElementLoader * rage_element_loader_new();
+rage_ElementLoader * rage_element_loader_new(char const * elems_path);
 void rage_element_loader_free(rage_ElementLoader * el);
 
 typedef RAGE_ARRAY(char *) rage_ElementTypes;
