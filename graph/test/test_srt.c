@@ -28,7 +28,7 @@ void free_test_elem(rage_TestElem te) {
 }
 
 rage_NewTestElem new_test_elem() {
-    rage_ElementLoader * el = rage_element_loader_new();
+    rage_ElementLoader * el = rage_element_loader_new(getenv("RAGE_ELEMENTS_PATH"));
     rage_TestElem rv = {.loader=el};
     rage_ElementTypeLoadResult et_ = rage_element_loader_load(
         el, "./libamp.so");
