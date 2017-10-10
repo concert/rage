@@ -62,6 +62,7 @@ graph_inc = include_directories('graph/include')
 
 # TODO: work out how to thin this down?
 install_headers(
+    'haskwrap/include/wrappers.h',
     'graph/include/graph.h', 'graph/include/loader.h',
     'types/include/atoms.h', 'types/include/element.h',
     'types/include/ports.h', 'types/include/interpolation.h',
