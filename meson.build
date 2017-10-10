@@ -122,3 +122,14 @@ example = executable(
     include_directories: [langext_inc, types_inc, graph_inc],
     link_with: [langext, rage_types, rage_graph],
     dependencies: [jack])
+
+# Haskell wrapper (because you can't return structs to GHC)
+
+hsw_sources = ['haskwrap/src/wrappers.c']
+hsw_inc = include_directories('haskwrap/include/')
+hsw = library(
+    'haskwrap',
+    hsw_sources,
+    include_directories: [graph_inc, types_inc, langext_inc, hsw_inc],
+    link_with: [rage_graph],
+    install: true)
