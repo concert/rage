@@ -96,9 +96,8 @@ rage_ElementTypeLoadResult rage_element_loader_load(
     #define RAGE_ETL_BAIL(msg) \
         dlclose(handle); \
         return RAGE_FAILURE(rage_ElementTypeLoadResult, msg);
-    char const * err = dlerror();
-    if (err != NULL) {
-        RAGE_ETL_BAIL(err)
+    if (type == NULL) {
+        RAGE_ETL_BAIL("Missing entry point symbol: elem_info")
     }
     #define RAGE_ETL_MANDATORY_PARAM(struct_name) \
         if (type->struct_name == NULL) {\
