@@ -128,7 +128,7 @@ example = executable(
 hsw_sources = ['haskwrap/src/wrappers.c']
 hsw_inc = include_directories('haskwrap/include/')
 hsw = library(
-    'haskwrap',
+    'rage_hswrap',
     hsw_sources,
     include_directories: [graph_inc, types_inc, langext_inc, hsw_inc],
     link_with: [rage_graph],
