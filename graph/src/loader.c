@@ -39,6 +39,14 @@ void rage_element_loader_free(rage_ElementLoader * el) {
     free(el);
 }
 
+static char * join_path(char * a, char * b) {
+    char * joined = malloc(strlen(a) + strlen(b) + 2);
+    strncpy(joined, a, strlen(a));
+    joined[strlen(a)] = '/';
+    strcpy(joined + strlen(a) + 1, b);
+    return joined;
+}
+
 rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
     rage_ElementTypes * elems = malloc(sizeof(rage_ElementTypes));
     elems->len = 0;
@@ -49,7 +57,7 @@ rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
         elems->len = n_items;
         elems->items = calloc(n_items, sizeof(char *));
         for (uint32_t i = 0; i < n_items; i++) {
-            elems->items[i] = strdup(entries[i]->d_name);
+            elems->items[i] = join_path(el->elems_path, entries[i]->d_name);
             free(entries[i]);
         }
         free(entries);
