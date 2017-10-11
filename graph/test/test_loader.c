@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <sys/stat.h>
 #include "loader.h"
 #include "test_factories.h"
 #include "pdls.c"
@@ -55,8 +56,23 @@ static rage_Interpolators new_interpolators(rage_Ports * ports, rage_InstanceSpe
 #define RAGE_AS_ERROR(errorable) (RAGE_FAILED(errorable)) ? \
     RAGE_FAILURE_CAST(rage_Error, errorable) : RAGE_OK
 
+static int is_plugin(const struct dirent * entry) {
+    struct stat s;
+    // TODO: remove this pathname match tat once in separate packages
+    if (strncmp(entry->d_name, "lib", 3) != 0) {
+        return false;
+    }
+    if (strncmp(entry->d_name, "librage", 7) == 0) {
+        return false;
+    }
+    if (stat(entry->d_name, &s) == 0) {
+        return S_ISREG(s.st_mode);
+    }
+    return false;
+}
+
 rage_Error test_loader() {
-    rage_ElementLoader * el = rage_element_loader_new(getenv("RAGE_ELEMENTS_PATH"));
+    rage_ElementLoader * el = rage_fussy_element_loader_new(getenv("RAGE_ELEMENTS_PATH"), is_plugin);
     rage_ElementTypes * element_type_names = rage_element_loader_list(el);
     rage_Error err = RAGE_OK;
     for (unsigned i=0; i<element_type_names->len; i++) {

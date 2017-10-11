@@ -27,6 +27,11 @@ typedef struct rage_ElementLoader rage_ElementLoader;
 rage_ElementLoader * rage_element_loader_new(char const * elems_path);
 void rage_element_loader_free(rage_ElementLoader * el);
 
+// Hack around tests running before install
+#include <dirent.h>
+typedef int (*rage_PluginFilter)(struct dirent const * entry);
+rage_ElementLoader * rage_fussy_element_loader_new(char const * elems_path, rage_PluginFilter pf);
+
 typedef RAGE_ARRAY(char *) rage_ElementTypes;
 rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el);
 void rage_element_types_free(rage_ElementTypes * types);

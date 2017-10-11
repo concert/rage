@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <dirent.h>
-#include <sys/stat.h>
 #include "loader.h"
 
 typedef struct rage_TypeHandle {
@@ -12,12 +11,19 @@ typedef struct rage_TypeHandle {
 
 struct rage_ElementLoader {
     char * elems_path;
+    rage_PluginFilter pf;
     rage_TypeHandle * type_handle;
 };
 
 rage_ElementLoader * rage_element_loader_new(char const * elems_path) {
+    return rage_fussy_element_loader_new(elems_path, NULL);
+}
+
+rage_ElementLoader * rage_fussy_element_loader_new(
+        char const * elems_path, rage_PluginFilter pf) {
     rage_ElementLoader * el = malloc(sizeof(rage_ElementLoader));
     el->elems_path = strdup(elems_path);
+    el->pf = pf;
     el->type_handle = NULL;
     return el;
 }
@@ -33,27 +39,12 @@ void rage_element_loader_free(rage_ElementLoader * el) {
     free(el);
 }
 
-static int is_plugin(const struct dirent * entry) {
-    struct stat s;
-    // TODO: remove this pathname match tat once in separate packages
-    if (strncmp(entry->d_name, "lib", 3) != 0) {
-        return false;
-    }
-    if (strncmp(entry->d_name, "librage", 7) == 0) {
-        return false;
-    }
-    if (stat(entry->d_name, &s) == 0) {
-        return S_ISREG(s.st_mode);
-    }
-    return false;
-}
-
 rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
     rage_ElementTypes * elems = malloc(sizeof(rage_ElementTypes));
     elems->len = 0;
     elems->items = NULL;
     struct dirent ** entries;
-    int n_items = scandir(el->elems_path, &entries, is_plugin, NULL);
+    int n_items = scandir(el->elems_path, &entries, el->pf, NULL);
     if (n_items >= 0) {
         elems->len = n_items;
         elems->items = calloc(n_items, sizeof(char *));
