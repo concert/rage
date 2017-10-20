@@ -136,6 +136,21 @@ void rage_element_loader_unload(
 
 // ConcreteElementType
 
+static rage_Atom ** rage_params_copy(rage_ParamDefList const * pds, rage_Atom ** params) {
+    rage_Atom ** rp = calloc(pds->len, sizeof(rage_ParamDefList));
+    for (uint32_t i = 0; i < pds->len; i++) {
+        rp[i] = rage_tuple_copy(&pds->items[i], params[i]);
+    }
+    return rp;
+}
+
+static void rage_params_free(rage_ParamDefList const * pds, rage_Atom ** params) {
+    for (uint32_t i = 0; i < pds->len; i++) {
+        rage_tuple_free(&pds->items[i], params[i]);
+    }
+    free(params);
+}
+
 rage_NewConcreteElementType rage_element_type_specialise(
         rage_ElementType * type, rage_Atom ** params) {
     rage_NewInstanceSpec new_ports = type->get_ports(params);
@@ -144,13 +159,14 @@ rage_NewConcreteElementType rage_element_type_specialise(
     rage_InstanceSpec spec = RAGE_SUCCESS_VALUE(new_ports);
     rage_ConcreteElementType * cet = malloc(sizeof(rage_ConcreteElementType));
     cet->type = type;
-    cet->params = params;
+    cet->params = rage_params_copy(type->parameters, params);
     cet->spec = spec;
     return RAGE_SUCCESS(rage_NewConcreteElementType, cet);
 }
 
 void rage_concrete_element_type_free(rage_ConcreteElementType * cet) {
     cet->type->free_ports(cet->spec);
+    rage_params_free(cet->type->parameters, cet->params);
     free(cet);
 }
 
