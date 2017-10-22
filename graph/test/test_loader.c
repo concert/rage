@@ -117,3 +117,35 @@ rage_Error test_loader() {
     rage_element_loader_free(el);
     return err;
 }
+
+static rage_NewInstanceSpec fake_get_ports(rage_Atom ** params) {
+    rage_InstanceSpec s = {.controls = {.len = 0}, .inputs = {.len = 0}, .outputs = {.len = 0}};
+    return RAGE_SUCCESS(rage_NewInstanceSpec, s);
+}
+
+static void fake_free_ports(rage_InstanceSpec s) {
+}
+
+static rage_Error test_specialisation_copies_params() {
+    rage_AtomDef atom_def = {.type = RAGE_ATOM_INT};
+    rage_FieldDef field_def = {.type = &atom_def};
+    rage_TupleDef td = {.len = 1, .items = &field_def};
+    rage_ParamDefList params = {.len = 1, .items = &td};
+    rage_Atom ** tups = generate_tuples(&params);
+    rage_ElementType type = {
+            .parameters = &params, .get_ports=fake_get_ports,
+            .free_ports=fake_free_ports};
+    rage_NewConcreteElementType ncet = rage_element_type_specialise(
+        &type, tups);
+    rage_Error rv = RAGE_OK;
+    if (RAGE_FAILED(ncet)) {
+        rv = RAGE_AS_ERROR(ncet);
+    } else {
+        rage_ConcreteElementType * cet = RAGE_SUCCESS_VALUE(ncet);
+        if (cet->params == tups) {
+            rv = RAGE_ERROR("parameters not copied");
+        }
+    }
+    free_tuples(&params, tups);
+    return rv;
+}
