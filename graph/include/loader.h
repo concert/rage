@@ -7,6 +7,8 @@
 #include "macros.h"
 #include "ports.h"
 
+typedef struct rage_ElementKind rage_ElementKind;
+
 // Am I exposing too much of the internals?
 typedef struct {
     rage_ElementType * type;
@@ -36,15 +38,14 @@ typedef RAGE_ARRAY(char *) rage_ElementTypes;
 rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el);
 void rage_element_types_free(rage_ElementTypes * types);
 
-typedef RAGE_OR_ERROR(rage_ElementType *) rage_ElementTypeLoadResult;
-rage_ElementTypeLoadResult rage_element_loader_load(
-    rage_ElementLoader * el, char const * type_name);
-void rage_element_loader_unload(
-    rage_ElementLoader * el, rage_ElementType * type);
+typedef RAGE_OR_ERROR(rage_ElementKind *) rage_ElementKindLoadResult;
+rage_ElementKindLoadResult rage_element_loader_load(char const * type_name);
+void rage_element_loader_unload(rage_ElementKind * kind);
+rage_ParamDefList const * rage_element_kind_parameters(rage_ElementKind const * kind);
 
 typedef RAGE_OR_ERROR(rage_ConcreteElementType *) rage_NewConcreteElementType;
 rage_NewConcreteElementType rage_element_type_specialise(
-    rage_ElementType * et, rage_Atom ** params);
+    rage_ElementKind * ek, rage_Atom ** params);
 void rage_concrete_element_type_free(rage_ConcreteElementType * ct);
 
 typedef RAGE_OR_ERROR(rage_Element *) rage_ElementNewResult;

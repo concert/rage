@@ -6,8 +6,7 @@
 
 typedef struct {
     rage_ElementLoader * loader;
-    rage_ElementType * type;
-    rage_Atom ** tups;
+    rage_ElementKind * kind;
     rage_ConcreteElementType * cet;
     rage_Element * elem;
 } rage_TestElem;
@@ -19,10 +18,8 @@ void free_test_elem(rage_TestElem te) {
         rage_element_free(te.elem);
     if (te.cet != NULL)
         rage_concrete_element_type_free(te.cet);
-    if (te.tups != NULL)
-        free_tuples(te.type->parameters, te.tups);
-    if (te.type != NULL)
-        rage_element_loader_unload(te.loader, te.type);
+    if (te.kind != NULL)
+        rage_element_loader_unload(te.kind);
     if (te.loader != NULL)
         rage_element_loader_free(te.loader);
 }
@@ -30,16 +27,16 @@ void free_test_elem(rage_TestElem te) {
 rage_NewTestElem new_test_elem() {
     rage_ElementLoader * el = rage_element_loader_new(getenv("RAGE_ELEMENTS_PATH"));
     rage_TestElem rv = {.loader=el};
-    rage_ElementTypeLoadResult et_ = rage_element_loader_load(
-        el, "./libamp.so");
-    if (RAGE_FAILED(et_)) {
+    rage_ElementKindLoadResult ek_ = rage_element_loader_load("./libamp.so");
+    if (RAGE_FAILED(ek_)) {
         free_test_elem(rv);
-        return RAGE_FAILURE_CAST(rage_NewTestElem, et_);
+        return RAGE_FAILURE_CAST(rage_NewTestElem, ek_);
     }
-    rv.type = RAGE_SUCCESS_VALUE(et_);
-    rv.tups = generate_tuples(rv.type->parameters);
+    rv.kind = RAGE_SUCCESS_VALUE(ek_);
+    rage_Atom ** tups = generate_tuples(rage_element_kind_parameters(rv.kind));
     rage_NewConcreteElementType ncet = rage_element_type_specialise(
-        rv.type, rv.tups);
+        rv.kind, tups);
+    free_tuples(rage_element_kind_parameters(rv.kind), tups);
     if (RAGE_FAILED(ncet)) {
         free_test_elem(rv);
         return RAGE_FAILURE_CAST(rage_NewTestElem, ncet);

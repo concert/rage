@@ -3,16 +3,14 @@
 #include <dirent.h>
 #include "loader.h"
 
-typedef struct rage_TypeHandle {
-    void * dlhandle;
-    rage_ElementType const * type;
-    struct rage_TypeHandle * next;
-} rage_TypeHandle;
-
 struct rage_ElementLoader {
     char * elems_path;
     rage_PluginFilter pf;
-    rage_TypeHandle * type_handle;
+};
+
+struct rage_ElementKind {
+    void * dlhandle;
+    rage_ElementType * type;
 };
 
 rage_ElementLoader * rage_element_loader_new(char const * elems_path) {
@@ -24,17 +22,10 @@ rage_ElementLoader * rage_fussy_element_loader_new(
     rage_ElementLoader * el = malloc(sizeof(rage_ElementLoader));
     el->elems_path = strdup(elems_path);
     el->pf = pf;
-    el->type_handle = NULL;
     return el;
 }
 
 void rage_element_loader_free(rage_ElementLoader * el) {
-    while (el->type_handle != NULL) {
-        rage_TypeHandle * nxt = el->type_handle->next;
-        dlclose(el->type_handle->dlhandle);
-        free(el->type_handle);
-        el->type_handle = nxt;
-    }
     free(el->elems_path);
     free(el);
 }
@@ -74,27 +65,14 @@ void rage_element_types_free(rage_ElementTypes * t) {
     RAGE_ARRAY_FREE(t)
 }
 
-static void type_handle_append(
-        rage_TypeHandle ** th, void * dlhandle, rage_ElementType const * type) {
-    rage_TypeHandle * new_th = malloc(sizeof(rage_TypeHandle));
-    new_th->next = NULL;
-    new_th->dlhandle = dlhandle;
-    new_th->type = type;
-    while (*th != NULL) {
-        th = &(*th)->next;
-    }
-    *th = new_th;
-}
-
-rage_ElementTypeLoadResult rage_element_loader_load(
-        rage_ElementLoader * el, char const * type_name) {
+rage_ElementKindLoadResult rage_element_loader_load(char const * type_name) {
     void * handle = dlopen(type_name, RTLD_LAZY);
     if (handle == NULL)
-        return RAGE_FAILURE(rage_ElementTypeLoadResult, dlerror());
+        return RAGE_FAILURE(rage_ElementKindLoadResult, dlerror());
     rage_ElementType * type = dlsym(handle, "elem_info");
     #define RAGE_ETL_BAIL(msg) \
         dlclose(handle); \
-        return RAGE_FAILURE(rage_ElementTypeLoadResult, msg);
+        return RAGE_FAILURE(rage_ElementKindLoadResult, msg);
     if (type == NULL) {
         RAGE_ETL_BAIL("Missing entry point symbol: elem_info")
     }
@@ -113,25 +91,19 @@ rage_ElementTypeLoadResult rage_element_loader_load(
         RAGE_ETL_BAIL("Prep provide but no clear")
     }
     #undef RAGE_ETL_BAIL
-    type_handle_append(&el->type_handle, handle, type);
-    return RAGE_SUCCESS(rage_ElementTypeLoadResult, type);
+    rage_ElementKind * kind = malloc(sizeof(rage_ElementKind));
+    kind->dlhandle = handle;
+    kind->type = type;
+    return RAGE_SUCCESS(rage_ElementKindLoadResult, kind);
 }
 
-void rage_element_loader_unload(
-        rage_ElementLoader * el, rage_ElementType * type) {
-    rage_TypeHandle ** prev = &el->type_handle;
-    rage_TypeHandle * th = el->type_handle;
-    while (th != NULL) {
-        if (th->type == type) {
-            dlclose(th->dlhandle);
-            *prev = th->next;
-            free(th);
-            th = NULL;  // Better or worse than break?
-        } else {
-            prev = &th->next;
-            th = th->next;
-        }
-    }
+void rage_element_loader_unload(rage_ElementKind * ek) {
+    dlclose(ek->dlhandle);
+    free(ek);
+}
+
+rage_ParamDefList const * rage_element_kind_parameters(rage_ElementKind const * kind) {
+    return kind->type->parameters;
 }
 
 // ConcreteElementType
@@ -152,14 +124,14 @@ static void rage_params_free(rage_ParamDefList const * pds, rage_Atom ** params)
 }
 
 rage_NewConcreteElementType rage_element_type_specialise(
-        rage_ElementType * type, rage_Atom ** params) {
-    rage_NewInstanceSpec new_ports = type->get_ports(params);
+        rage_ElementKind * kind, rage_Atom ** params) {
+    rage_NewInstanceSpec new_ports = kind->type->get_ports(params);
     if (RAGE_FAILED(new_ports))
         return RAGE_FAILURE_CAST(rage_NewConcreteElementType, new_ports);
     rage_InstanceSpec spec = RAGE_SUCCESS_VALUE(new_ports);
     rage_ConcreteElementType * cet = malloc(sizeof(rage_ConcreteElementType));
-    cet->type = type;
-    cet->params = rage_params_copy(type->parameters, params);
+    cet->type = kind->type;
+    cet->params = rage_params_copy(rage_element_kind_parameters(kind), params);
     cet->spec = spec;
     return RAGE_SUCCESS(rage_NewConcreteElementType, cet);
 }

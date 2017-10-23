@@ -5,4 +5,4 @@
 #include "test_srt.c"
 #include "test_graph.c"
 
-TEST_MAIN(test_loader, test_specialisation_copies_params, test_jack_bindings, test_srt, test_srt_fake_elem, test_graph)
+TEST_MAIN(test_loader, test_jack_bindings, test_srt, test_srt_fake_elem, test_graph)

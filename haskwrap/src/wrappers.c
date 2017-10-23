@@ -8,12 +8,12 @@
     }
 
 RAGE_HS_STRUCT_WRAPPER(
-    rage_ElementTypeLoadResult, (rage_ElementLoader * l, char * name),
-    rage_element_loader_load, (l, name))
+    rage_ElementKindLoadResult, (char * name),
+    rage_element_loader_load, (name))
 
 RAGE_HS_STRUCT_WRAPPER(
-    rage_NewConcreteElementType, (rage_ElementType * t, rage_Atom ** params),
-    rage_element_type_specialise, (t, params))
+    rage_NewConcreteElementType, (rage_ElementKind * k, rage_Atom ** params),
+    rage_element_type_specialise, (k, params))
 
 RAGE_HS_STRUCT_WRAPPER(
     rage_NewGraph, (uint32_t sample_rate),

@@ -7,7 +7,7 @@
 typedef struct {
     rage_Graph * graph;
     rage_ElementLoader * el;
-    rage_ElementType * et;
+    rage_ElementKind * ek;
     rage_ConcreteElementType * cet;
     rage_GraphNode * node;
 } example_Bits;
@@ -17,8 +17,8 @@ static void free_bits(example_Bits * bits) {
         rage_graph_remove_node(bits->graph, bits->node);
     if (bits->cet)
         rage_concrete_element_type_free(bits->cet);
-    if (bits->et)
-        rage_element_loader_unload(bits->el, bits->et);
+    if (bits->ek)
+        rage_element_loader_unload(bits->ek);
     if (bits->el)
         rage_element_loader_free(bits->el);
     if (bits->graph)
@@ -37,23 +37,23 @@ int main() {
     bits.el = rage_element_loader_new(getenv("RAGE_ELEMENTS_PATH"));
     //rage_ElementTypes element_type_names = rage_element_loader_list(el);
     // FIXME: loading super busted
-    rage_ElementTypeLoadResult et_ = rage_element_loader_load(
-    //    el, "./build/libamp.so");
-        bits.el, "./build/libpersist.so");
-    if (RAGE_FAILED(et_)) {
-        printf("Element type load failed: %s\n", RAGE_FAILURE_VALUE(et_));
+    rage_ElementKindLoadResult ek_ = rage_element_loader_load(
+    //    "./build/libamp.so");
+        "./build/libpersist.so");
+    if (RAGE_FAILED(ek_)) {
+        printf("Element kind load failed: %s\n", RAGE_FAILURE_VALUE(ek_));
         free_bits(&bits);
         return 2;
     }
-    bits.et = RAGE_SUCCESS_VALUE(et_);
-    printf("Element type loaded\n");
+    bits.ek = RAGE_SUCCESS_VALUE(ek_);
+    printf("Element kind loaded\n");
     // FIXME: Fixed stuff for amp
     rage_Atom tup[] = {
         {.i=1}
     };
     rage_Atom * tupp = tup;
     rage_NewConcreteElementType cet_ = rage_element_type_specialise(
-        bits.et, &tupp);
+        bits.ek, &tupp);
     if (RAGE_FAILED(cet_)) {
         printf("Element type specialising failed: %s\n", RAGE_FAILURE_VALUE(cet_));
         free_bits(&bits);
