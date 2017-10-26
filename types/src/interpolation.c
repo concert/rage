@@ -267,6 +267,19 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
             view->value.value + i, start->value + i, end->value + i,
             view->pos - start->frame, duration);
     }
+    // FIXME: this is ugly because the interpolators set it "wrong"
+    if (duration == UINT32_MAX)
+        view->value.valid_for = duration;
+    // Take into account that timeseries might have changed in the future
+    // FIXME: a lot of commonality with seek!
+    rage_FrameSeries * active_pts = atomic_load_explicit(
+        &view->interpolator->points, memory_order_consume);
+    if (active_pts != view->points) {
+        uint32_t next_view_valid_from = (view->interpolator->valid_from > view->pos) ?
+            (view->interpolator->valid_from - view->pos) : UINT32_MAX;
+        view->value.valid_for = (view->value.valid_for < next_view_valid_from) ?
+            view->value.valid_for : next_view_valid_from;
+    }
     return &view->value;
 }
 
