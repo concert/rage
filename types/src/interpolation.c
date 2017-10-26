@@ -267,7 +267,9 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
             view->value.value + i, start->value + i, end->value + i,
             view->pos - start->frame, duration);
     }
-    // FIXME: this is ugly because the interpolators set it "wrong"
+    // FIXME: this is ugly because the interpolators set it to the how much of
+    // the duration remains, but because UINT32_MAX essentially means forever,
+    // this isn't what we want
     if (duration == UINT32_MAX)
         view->value.valid_for = duration;
     // Take into account that timeseries might have changed in the future
