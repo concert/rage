@@ -331,12 +331,12 @@ static rage_Error delayed_change_checks(rage_Interpolator * interpolator) {
         rage_InterpolatedValue const * r = rage_interpolated_view_value(v);
         rv = check_float_value(r, 0.0, 1);
         if (RAGE_FAILED(rv))
-            return rv;
+            break;
         rage_interpolated_view_advance(v, 1);
         r = rage_interpolated_view_value(v);
         rv = check_float_value(r, 1.0, UINT32_MAX);
         if (RAGE_FAILED(rv))
-            return rv;
+            break;
     }
     rage_finaliser_wait(change_complete);
     return rv;
