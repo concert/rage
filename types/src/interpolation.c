@@ -277,8 +277,7 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
     rage_FrameSeries * active_pts = atomic_load_explicit(
         &view->interpolator->points, memory_order_consume);
     if (active_pts != view->points) {
-        uint32_t next_view_valid_from = (view->interpolator->valid_from > view->pos) ?
-            (view->interpolator->valid_from - view->pos) : UINT32_MAX;
+        uint32_t next_view_valid_from = view->interpolator->valid_from - view->pos;
         view->value.valid_for = (view->value.valid_for < next_view_valid_from) ?
             view->value.valid_for : next_view_valid_from;
     }
