@@ -12,7 +12,7 @@ typedef RAGE_ARRAY(rage_InterpolatedView) rage_InterpolatedViews;
 
 typedef struct {
     rage_Atom * value;
-    rage_FrameNo valid_for;
+    uint32_t valid_for;
 } rage_InterpolatedValue;
 
 rage_InterpolatedValue const * rage_interpolated_view_value(
