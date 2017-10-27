@@ -25,6 +25,7 @@ rage_NewProcBlock rage_proc_block_new(uint32_t sample_rate) {
     } else {
         rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
         pb->jack_binding = RAGE_SUCCESS_VALUE(njb);
+        pb->sample_rate = sample_rate;
         // FIXME: FIXED PERIOD SIZE!!!!!
         // The success value should probably be some kind of handy struct
         pb->convoy = rage_support_convoy_new(1024, countdown);
