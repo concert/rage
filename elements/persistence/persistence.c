@@ -221,6 +221,9 @@ static sf_count_t read_prep_sndfile(
         sndfile_status * const s, char const * const path, size_t pos,
         uint32_t to_read, float * interleaved_buffer) {
     if (file_path_changed(s, path)) {
+        // FIXME: URGENT if we open a file with a different number of channels
+        // we will have a terrible day tracking down the ensuing memory
+        // corruption!
         s->sf = sf_open(path, SFM_READ, &s->sf_info);
     }
     // FIXME: may fail (also could be more efficient)
