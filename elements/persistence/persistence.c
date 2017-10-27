@@ -206,7 +206,7 @@ void elem_process(rage_ElementState * data, rage_TransportState const transport_
 
 // FIXME: doesn't handle mode switching with same path, also could do more
 static bool file_path_changed(sndfile_status * const s, char const * const path) {
-    if (strcmp(path, s->open_path)) {
+    if (s->open_path == NULL || strcmp(path, s->open_path)) {
         if (s->sf != NULL) {
             sf_close(s->sf);
         }
