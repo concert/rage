@@ -206,7 +206,7 @@ void elem_process(rage_ElementState * data, rage_TransportState const transport_
 
 // FIXME: doesn't handle mode switching with same path, also could do more
 static bool file_path_changed(sndfile_status * const s, char const * const path) {
-    if (strcmp(path, s->open_path)) {
+    if (s->open_path == NULL || strcmp(path, s->open_path)) {
         if (s->sf != NULL) {
             sf_close(s->sf);
         }
@@ -221,6 +221,9 @@ static sf_count_t read_prep_sndfile(
         sndfile_status * const s, char const * const path, size_t pos,
         uint32_t to_read, float * interleaved_buffer) {
     if (file_path_changed(s, path)) {
+        // FIXME: URGENT if we open a file with a different number of channels
+        // we will have a terrible day tracking down the ensuing memory
+        // corruption!
         s->sf = sf_open(path, SFM_READ, &s->sf_info);
     }
     // FIXME: may fail (also could be more efficient)

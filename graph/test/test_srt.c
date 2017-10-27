@@ -74,10 +74,13 @@ struct rage_ElementState {
     int prep_counter;
     int clean_counter;
     sem_t * processed;
+    rage_InterpolatedView ** prep_ctls;
+    rage_InterpolatedView ** clean_ctls;
 };
 
 static rage_PreparedFrames fake_elem_prep(
         rage_ElementState * state, rage_InterpolatedView ** controls) {
+    state->prep_ctls = controls;
     state->prep_counter++;
     sem_post(state->processed);
     return RAGE_SUCCESS(rage_PreparedFrames, 1024);
@@ -85,6 +88,7 @@ static rage_PreparedFrames fake_elem_prep(
 
 static rage_PreparedFrames fake_elem_clean(
         rage_ElementState * state, rage_InterpolatedView ** controls) {
+    state->clean_ctls = controls;
     state->clean_counter++;
     return RAGE_SUCCESS(rage_PreparedFrames, 1024);
 }
@@ -118,14 +122,14 @@ rage_Error test_srt_fake_elem() {
         .prep_counter = 0,
         .clean_counter = 0,
         .processed = &sync_sem};
+    rage_InterpolatedView **prep_view = (void *) 134, **clean_view = (void *) 983;
     rage_Element fake_elem = {
         .cet = &fake_concrete_type,
         .state = &fes};
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_SupportConvoy * convoy = rage_support_convoy_new(1024, countdown);
     rage_SupportTruck * truck = rage_support_convoy_mount(
-        convoy, &fake_elem, (rage_InterpolatedView **) 1,
-        (rage_InterpolatedView **) 1);
+        convoy, &fake_elem, prep_view, clean_view);
     // FIXME: ATM don't know (without our sem) when initial prep is done (which
     // is dodgy)
     rage_Error err = rage_support_convoy_start(convoy);
@@ -144,7 +148,15 @@ rage_Error test_srt_fake_elem() {
     sem_destroy(&sync_sem);
     if (RAGE_FAILED(err)) {
         return err;
-    } else {
+    }
+    if (RAGE_FAILED(assertion_err)) {
         return assertion_err;
     }
+    if (fes.prep_ctls != prep_view) {
+        return RAGE_ERROR("Bad prep ctl");
+    }
+    if (fes.clean_ctls != clean_view) {
+        return RAGE_ERROR("Bad clean ctl");
+    }
+    return RAGE_OK;
 }
