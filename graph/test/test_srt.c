@@ -115,7 +115,7 @@ static rage_Error counter_checks(
     return RAGE_OK;
 }
 
-rage_Error test_srt_fake_elem() {
+static rage_Error test_srt_fake_elem() {
     sem_t sync_sem;
     sem_init(&sync_sem, 0, 0);
     rage_ElementState fes = {
@@ -128,11 +128,11 @@ rage_Error test_srt_fake_elem() {
         .state = &fes};
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_SupportConvoy * convoy = rage_support_convoy_new(1024, countdown);
+    rage_Error err = rage_support_convoy_start(convoy);
     rage_SupportTruck * truck = rage_support_convoy_mount(
         convoy, &fake_elem, prep_view, clean_view);
     // FIXME: ATM don't know (without our sem) when initial prep is done (which
     // is dodgy)
-    rage_Error err = rage_support_convoy_start(convoy);
     rage_Error assertion_err = RAGE_OK;
     if (!RAGE_FAILED(err)) {
         assertion_err = counter_checks(&sync_sem, &fes, 1, 0);

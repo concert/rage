@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <semaphore.h>
 
 struct rage_SupportTruck {
     rage_SupportConvoy * convoy;  // Not totally convinced by the backref
@@ -26,6 +27,8 @@ struct rage_SupportConvoy {
     pthread_mutex_t active;
     rage_Trucks * prep_trucks;
     rage_Trucks * clean_trucks;
+    int countdown_limit;
+    sem_t truck_change_sem;
 };
 
 rage_SupportConvoy * rage_support_convoy_new(uint32_t period_size, rage_Countdown * countdown) {
@@ -42,6 +45,8 @@ rage_SupportConvoy * rage_support_convoy_new(uint32_t period_size, rage_Countdow
     convoy->clean_trucks = malloc(sizeof(rage_Trucks));
     convoy->clean_trucks->len = 0;
     convoy->clean_trucks->items = NULL;
+    convoy->countdown_limit = 0;
+    sem_init(&convoy->truck_change_sem, 0, 0);
     return convoy;
 }
 
@@ -109,12 +114,16 @@ static void * rage_support_convoy_worker(void * ptr) {
             min_frames_wait = (min_frames_wait < n_frames_until_next) ?
                 min_frames_wait : n_frames_until_next;
         }
-        pthread_mutex_unlock(&convoy->active);
-        if (0 > rage_countdown_add(
+        if (convoy->countdown_limit > rage_countdown_add(
                 convoy->countdown, min_frames_wait / convoy->period_size)) {
             err = "SupportConvoy failed to keep up";
             break;
         }
+        if (convoy->countdown_limit) {
+            sem_post(&convoy->truck_change_sem);
+            convoy->countdown_limit = 0;
+        }
+        pthread_mutex_unlock(&convoy->active);
         rage_countdown_timed_wait(convoy->countdown, UINT32_MAX);
         pthread_mutex_lock(&convoy->active);
         frames_until_next = apply_to_trucks(convoy->clean_trucks, clean_truck);
@@ -158,6 +167,7 @@ static void change_trucks(
         rage_Trucks * (next_trucks)(rage_Trucks *, rage_SupportTruck * truck),
         rage_SupportConvoy * convoy,
         rage_SupportTruck * truck) {
+    bool wait_sem = false;
     // FIXME: This is assuming a single control thread
     rage_Trucks
         * old_prep_trucks,
@@ -181,7 +191,14 @@ static void change_trucks(
     pthread_mutex_lock(&convoy->active);
     convoy->prep_trucks = new_prep_trucks;
     convoy->clean_trucks = new_clean_trucks;
+    if (convoy->running) {
+        convoy->countdown_limit = - rage_countdown_unblock_wait(convoy->countdown);
+        wait_sem = convoy->countdown_limit;
+    }
     pthread_mutex_unlock(&convoy->active);
+    if (wait_sem) {
+        sem_wait(&convoy->truck_change_sem);
+    }
     if (old_prep_trucks != NULL) {
         RAGE_ARRAY_FREE(old_prep_trucks);
     }

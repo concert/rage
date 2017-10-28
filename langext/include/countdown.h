@@ -28,6 +28,6 @@ rage_Error rage_countdown_timed_wait(rage_Countdown * c, unsigned millis);
  */
 int rage_countdown_add(rage_Countdown * c, int delta);
 /*
- * Unblock a wait without changing the countdown value.
+ * Reset the countdown and release waiter, returns previous value.
  */
-void rage_countdown_unblock_wait(rage_Countdown * c);
+int rage_countdown_unblock_wait(rage_Countdown * c);

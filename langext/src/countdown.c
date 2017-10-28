@@ -49,6 +49,10 @@ int rage_countdown_add(rage_Countdown * c, int delta) {
     return val;
 }
 
-void rage_countdown_unblock_wait(rage_Countdown * c) {
-    sem_post(&c->sig);
+int rage_countdown_unblock_wait(rage_Countdown * c) {
+    int val = atomic_exchange(&c->counter, 0);
+    if (val != 0) {
+        sem_post(&c->sig);
+    }
+    return val;
 }
