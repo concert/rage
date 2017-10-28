@@ -13,7 +13,8 @@ static rage_InitialisedInterpolator interpolator_for(
 
 static rage_Error check_with_single_field_interpolator(
         rage_AtomDef const * atom_def, rage_TimePoint * points,
-        unsigned n_points, rage_Error (*checker)(rage_Interpolator *)) {
+        unsigned n_points, rage_Error (*checker)(rage_Interpolator *),
+        uint8_t n_views) {
     rage_FieldDef fields[] = {
         {.name = "field", .type = atom_def}
     };
@@ -24,7 +25,7 @@ static rage_Error check_with_single_field_interpolator(
         .items = fields
     };
     rage_InitialisedInterpolator ii = interpolator_for(
-        &td, points, n_points, 1);
+        &td, points, n_points, n_views);
     if (RAGE_FAILED(ii))
         return RAGE_FAILURE_CAST(rage_Error, ii);
     rage_Interpolator * interpolator = RAGE_SUCCESS_VALUE(ii);
@@ -92,7 +93,7 @@ static rage_Error interpolator_float_test() {
         }
     };
     return check_with_single_field_interpolator(
-        &unconstrained_float, tps, 3, float_checks);
+        &unconstrained_float, tps, 3, float_checks, 1);
 }
 
 RAGE_EQUALITY_CHECK(int, i, "%i")
@@ -130,7 +131,7 @@ static rage_Error interpolator_int_test() {
         }
     };
     return check_with_single_field_interpolator(
-        &unconstrained_int, tps, 2, int_checks);
+        &unconstrained_int, tps, 2, int_checks, 1);
 }
 
 RAGE_EQUALITY_CHECK(uint32_t, frame_no, "%u")
@@ -174,12 +175,12 @@ static rage_Error interpolator_time_test() {
         }
     };
     return check_with_single_field_interpolator(
-        &unconstrained_time, tps, 2, time_checks);
+        &unconstrained_time, tps, 2, time_checks, 1);
 }
 
 static rage_Error interpolator_new_with_no_timepoints() {
     rage_Error err = check_with_single_field_interpolator(
-        &unconstrained_int, NULL, 0, NULL);
+        &unconstrained_int, NULL, 0, NULL, 1);
     if (!RAGE_FAILED(err))
         return RAGE_ERROR("Interpolator create did not fail");
     return RAGE_OK;
@@ -197,7 +198,7 @@ static rage_Error interpolator_new_first_timepoint_not_start() {
         }
     };
     rage_Error err = check_with_single_field_interpolator(
-        &unconstrained_int, tps, 1, NULL);
+        &unconstrained_int, tps, 1, NULL, 1);
     if (!RAGE_FAILED(err))
         return RAGE_ERROR("Interpolator create did not fail");
     return RAGE_OK;
@@ -220,7 +221,7 @@ static rage_Error interpolator_ambiguous_interpolation_mode() {
         }
     };
     rage_Error err = check_with_single_field_interpolator(
-        &unconstrained_int, tps, 2, NULL);
+        &unconstrained_int, tps, 2, NULL, 1);
     if (!RAGE_FAILED(err))
         return RAGE_ERROR("Interpolator create did not fail");
     return RAGE_OK;
@@ -248,46 +249,56 @@ static rage_Error interpolator_timeseries_not_monotonic() {
         }
     };
     rage_Error err = check_with_single_field_interpolator(
-        &unconstrained_int, tps, 3, NULL);
+        &unconstrained_int, tps, 3, NULL, 1);
     if (!RAGE_FAILED(err))
         return RAGE_ERROR("Interpolator create did not fail");
     return RAGE_OK;
 }
 
+static rage_Error check_float_value(
+        rage_InterpolatedValue const * val, float expected,
+        uint32_t duration) {
+    if (val->value[0].f != expected)
+        return RAGE_ERROR("Incorrect interpolated value");
+    if (val->valid_for != duration)
+        return RAGE_ERROR("Incorrect validity duration");
+    return RAGE_OK;
+}
+
+static rage_Finaliser * change_float_ts_to(
+        rage_Interpolator * interpolator, float f, uint32_t frame) {
+    rage_Atom val = {.f = f};
+    rage_TimePoint tps[] = {
+        {
+            .time = {.second = 0},
+            .value = &val,
+            .mode = RAGE_INTERPOLATION_CONST
+        },
+    };
+    rage_TimeSeries ts = {
+        .len = 1,
+        .items = tps
+    };
+    return rage_interpolator_change_timeseries(interpolator, &ts, frame);
+}
+
 static rage_Error immediate_change_checks(rage_Interpolator * interpolator) {
     rage_InterpolatedView * iv = rage_interpolator_get_view(interpolator, 0);
     rage_InterpolatedValue const * obtained = rage_interpolated_view_value(iv);
-    if (obtained->valid_for != UINT32_MAX) {
-        return RAGE_ERROR("Incorrect validity duration");
-    } else if (obtained->value[0].f != 0) {
-        return RAGE_ERROR("Incorrect interpolated value");
-    } else {
-        rage_Atom val = {.f = 1};
-        rage_TimePoint tps[] = {
-            {
-                .time = {.second = 0},
-                .value = &val,
-                .mode = RAGE_INTERPOLATION_CONST
-            },
-        };
-        rage_TimeSeries ts = {
-            .len = 1,
-            .items = tps
-        };
-        rage_Finaliser * change_complete = rage_interpolator_change_timeseries(
-            interpolator, &ts, 0);
+    rage_Error rv = check_float_value(obtained, 0.0, UINT32_MAX);
+    if (!RAGE_FAILED(rv)) {
+        rage_Finaliser * change_complete = change_float_ts_to(interpolator, 1.0, 0);
         // FIXME: should reading the value trigger a seek?
         rage_interpolated_view_advance(iv, 0);
         obtained = rage_interpolated_view_value(iv);
         rage_finaliser_wait(change_complete);
-        if (obtained->value[0].f != val.f) {
-            return RAGE_ERROR("Incorrect interpolated value after TS change");
-        }
+        rv = check_float_value(obtained, 1.0, UINT32_MAX);
     }
-    return RAGE_OK;
+    return rv;
 }
 
-static rage_Error interpolator_immediate_change_test() {
+static rage_Error zero_float_start(
+        rage_Error (*checker)(rage_Interpolator *), uint8_t n_views) {
     rage_Atom val = {.f = 0};
     rage_TimePoint tps[] = {
         {
@@ -297,8 +308,42 @@ static rage_Error interpolator_immediate_change_test() {
         },
     };
     return check_with_single_field_interpolator(
-        &unconstrained_float, tps, 1, immediate_change_checks);
+        &unconstrained_float, tps, 1, checker, n_views);
 }
 
-// TODO: change part way through
-// TODO: multiple views test
+static rage_Error interpolator_immediate_change_test() {
+    return zero_float_start(immediate_change_checks, 1);
+}
+
+static rage_Error delayed_change_checks(rage_Interpolator * interpolator) {
+    rage_Error rv = RAGE_OK;
+    for (uint8_t i = 0; i < 2; i++) {
+        rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, i);
+        rage_InterpolatedValue const * r = rage_interpolated_view_value(v);
+        rv = check_float_value(r, 0.0, UINT32_MAX);
+        if (RAGE_FAILED(rv))
+            return rv;
+    }
+    rage_Finaliser * change_complete = change_float_ts_to(interpolator, 1.0, 2);
+    for (uint8_t i = 0; i < 2; i++) {
+        rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, i);
+        rage_interpolated_view_advance(v, 1);
+        rage_InterpolatedValue const * r = rage_interpolated_view_value(v);
+        rv = check_float_value(r, 0.0, 1);
+        if (RAGE_FAILED(rv))
+            break;
+        rage_interpolated_view_advance(v, 1);
+        r = rage_interpolated_view_value(v);
+        rv = check_float_value(r, 1.0, UINT32_MAX);
+        if (RAGE_FAILED(rv))
+            break;
+    }
+    rage_finaliser_wait(change_complete);
+    return rv;
+}
+
+static rage_Error interpolator_delayed_change_test() {
+    return zero_float_start(delayed_change_checks, 2);
+}
+
+// TODO: change part way through to halfway through interpolation test
