@@ -115,7 +115,7 @@ static rage_Error counter_checks(
     return RAGE_OK;
 }
 
-rage_Error test_srt_fake_elem() {
+static rage_Error test_srt_fake_elem() {
     sem_t sync_sem;
     sem_init(&sync_sem, 0, 0);
     rage_ElementState fes = {
