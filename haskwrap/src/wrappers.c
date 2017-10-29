@@ -24,3 +24,7 @@ RAGE_HS_STRUCT_WRAPPER(
     rage_graph_add_node, (g, cet, name, ts))
 
 #undef RAGE_HS_STRUCT_WRAPPER
+
+rage_InstanceSpec * rage_cet_get_spec_hs(rage_ConcreteElementType * cet) {
+    return &cet->spec;
+}
