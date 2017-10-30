@@ -217,19 +217,28 @@ static bool file_path_changed(sndfile_status * const s, char const * const path)
     return false;
 }
 
-static sf_count_t read_prep_sndfile(
-        sndfile_status * const s, char const * const path, size_t pos,
+static rage_PreparedFrames read_prep_sndfile(
+        rage_ElementState * const data, char const * const path, size_t pos,
         uint32_t to_read, float * interleaved_buffer) {
-    if (file_path_changed(s, path)) {
-        // FIXME: URGENT if we open a file with a different number of channels
-        // we will have a terrible day tracking down the ensuing memory
-        // corruption!
-        s->sf = sf_open(path, SFM_READ, &s->sf_info);
+    if (file_path_changed(&data->sndfile, path)) {
+        data->sndfile.sf = sf_open(path, SFM_READ, &data->sndfile.sf_info);
+        if (data->sndfile.sf_info.channels != data->n_channels) {
+            return RAGE_FAILURE(rage_PreparedFrames, "Channel count mismatch");
+        }
+        if (data->sndfile.sf_info.samplerate != data->sample_rate) {
+            return RAGE_FAILURE(rage_PreparedFrames, "Sample rate mismatch");
+        }
     }
     // FIXME: may fail (also could be more efficient)
-    sf_seek(s->sf, pos, SEEK_SET);
-    return sf_readf_float(
-        s->sf, interleaved_buffer, to_read);
+    if (sf_seek(data->sndfile.sf, pos, SEEK_SET) == -1) {
+        return RAGE_FAILURE(rage_PreparedFrames, "Seek failed");
+    }
+    uint32_t read = sf_readf_float(
+        data->sndfile.sf, data->interleaved_buffer, to_read);
+    if (read < to_read) {
+        return RAGE_FAILURE(rage_PreparedFrames, "Insufficient data in file");
+    }
+    return RAGE_SUCCESS(rage_PreparedFrames, read);
 }
 
 static void deinterleave(
@@ -271,11 +280,12 @@ rage_PreparedFrames elem_prepare(rage_ElementState * data, rage_InterpolatedView
                     data->rb_vec, data->play_buffs);
                 size_t const rb_space = slabs[0] + slabs[1];
                 size_t const to_read = (rb_space < chunk->valid_for) ? rb_space : chunk->valid_for;
-                sf_count_t const read = read_prep_sndfile(
-                    &data->sndfile, chunk->value[1].s, chunk->value[2].frame_no, to_read, data->interleaved_buffer);
-                if (read < to_read) {
-                    return RAGE_FAILURE(rage_PreparedFrames, "Insufficient data in file");
+                rage_PreparedFrames const read_or_fail = read_prep_sndfile(
+                    data, chunk->value[1].s, chunk->value[2].frame_no, to_read, data->interleaved_buffer);
+                if (RAGE_FAILED(read_or_fail)) {
+                    return read_or_fail;
                 }
+                uint32_t const read = RAGE_SUCCESS_VALUE(read_or_fail);
                 deinterleave(data->interleaved_buffer, (float**) data->rb_vec, data->n_channels, slabs[0]);
                 deinterleave(
                     &data->interleaved_buffer[slabs[0] * data->n_channels],
