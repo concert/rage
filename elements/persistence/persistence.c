@@ -217,16 +217,27 @@ static bool file_path_changed(sndfile_status * const s, char const * const path)
     return false;
 }
 
+// Should this return rage_PreparedFrames to reduce casting?
+static rage_Error check_sfinfo(
+        SF_INFO * const info, uint32_t n_channels, uint32_t sample_rate) {
+    if (info->channels != n_channels) {
+        return RAGE_ERROR("Channel count mismatch");
+    }
+    if (info->samplerate != sample_rate) {
+        return RAGE_ERROR("Sample rate mismatch");
+    }
+    return RAGE_OK;
+}
+
 static rage_PreparedFrames read_prep_sndfile(
         rage_ElementState * const data, char const * const path, size_t pos,
         uint32_t to_read, float * interleaved_buffer) {
     if (file_path_changed(&data->sndfile, path)) {
         data->sndfile.sf = sf_open(path, SFM_READ, &data->sndfile.sf_info);
-        if (data->sndfile.sf_info.channels != data->n_channels) {
-            return RAGE_FAILURE(rage_PreparedFrames, "Channel count mismatch");
-        }
-        if (data->sndfile.sf_info.samplerate != data->sample_rate) {
-            return RAGE_FAILURE(rage_PreparedFrames, "Sample rate mismatch");
+        const rage_Error info_check = check_sfinfo(
+            &data->sndfile.sf_info, data->n_channels, data->sample_rate);
+        if (RAGE_FAILED(info_check)) {
+            return RAGE_FAILURE_CAST(rage_PreparedFrames, info_check);
         }
     }
     if (sf_seek(data->sndfile.sf, pos, SEEK_SET) == -1) {
@@ -322,7 +333,7 @@ static void interleave(
     }
 }
 
-static sf_count_t write_buffer_to_file(
+static rage_PreparedFrames write_buffer_to_file(
         sndfile_status * const s, char const * const path, uint32_t pos,
         uint32_t to_write, float * interleaved_buffer, uint32_t sample_rate,
         uint32_t n_channels) {
@@ -330,13 +341,18 @@ static sf_count_t write_buffer_to_file(
         s->sf_info.samplerate = sample_rate;
         s->sf_info.channels = n_channels;
         s->sf_info.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
-        // FIXME: what if the file is incompatible with our info struct?
         s->sf = sf_open(path, SFM_RDWR, &s->sf_info);
+        const rage_Error info_check = check_sfinfo(
+            &s->sf_info, n_channels, sample_rate);
+        if (RAGE_FAILED(info_check)) {
+            return RAGE_FAILURE_CAST(rage_PreparedFrames, info_check);
+        }
     }
-    // FIXME: may fail
-    sf_seek(s->sf, pos, SEEK_SET);
-    return sf_writef_float(
-        s->sf, interleaved_buffer, to_write);
+    if (sf_seek(s->sf, pos, SEEK_SET) == -1) {
+        return RAGE_FAILURE(rage_PreparedFrames, "Seek failed");
+    }
+    return RAGE_SUCCESS(rage_PreparedFrames, sf_writef_float(
+        s->sf, interleaved_buffer, to_write));
 }
 
 rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView ** controls) {
@@ -367,11 +383,15 @@ rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView
                         data->n_channels, slabs[1]);
                 }
                 size_t const to_write = (rb_left < chunk->valid_for) ? rb_left : chunk->valid_for;
-                sf_count_t const written = write_buffer_to_file(
+                rage_PreparedFrames const written_frames = write_buffer_to_file(
                     &data->sndfile, chunk->value[1].s,
                     chunk->value[2].frame_no, to_write,
                     data->interleaved_buffer, data->sample_rate,
                     data->n_channels);
+                if (RAGE_FAILED(written_frames)) {
+                    return written_frames;
+                }
+                uint32_t const written = RAGE_SUCCESS_VALUE(written_frames);
                 if (written < to_write) {
                     return RAGE_FAILURE(rage_PreparedFrames, "Unable to write all data to file");
                 }
