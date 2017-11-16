@@ -229,7 +229,6 @@ static rage_PreparedFrames read_prep_sndfile(
             return RAGE_FAILURE(rage_PreparedFrames, "Sample rate mismatch");
         }
     }
-    // FIXME: may fail (also could be more efficient)
     if (sf_seek(data->sndfile.sf, pos, SEEK_SET) == -1) {
         return RAGE_FAILURE(rage_PreparedFrames, "Seek failed");
     }
