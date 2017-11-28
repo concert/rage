@@ -361,7 +361,7 @@ static rage_PreparedFrames write_buffer_to_file(
 rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView ** controls) {
     uint32_t frames_until_buffer_full = 0;
     size_t slabs[2] = {};
-    size_t rb_left = 0;
+    size_t interleaved_remaining = 0;
     rage_InterpolatedValue const * chunk;
     chunk = rage_interpolated_view_value(controls[0]);
     while (chunk->valid_for != UINT32_MAX) {
@@ -372,11 +372,12 @@ rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView
                 rage_interpolated_view_advance(controls[0], chunk->valid_for);
                 break;
             case REC:
-                if (!rb_left) {
+                // First time around main while only
+                if (!interleaved_remaining) {
                     populate_slabs(
                         slabs, data->n_channels, jack_ringbuffer_get_read_vector,
                         data->rb_vec, data->rec_buffs);
-                    rb_left = slabs[0] + slabs[1];
+                    interleaved_remaining = slabs[0] + slabs[1];
                     interleave(
                         data->interleaved_buffer, (float const**) data->rb_vec,
                         data->n_channels, slabs[0]);
@@ -384,8 +385,11 @@ rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView
                         &data->interleaved_buffer[slabs[0] * data->n_channels],
                         (float const **) &data->rb_vec[data->n_channels],
                         data->n_channels, slabs[1]);
+                    for (uint32_t c = 0; c < data->n_channels; c++) {
+                        jack_ringbuffer_read_advance(data->rec_buffs[c], interleaved_remaining * sizeof(float));
+                    }
                 }
-                size_t const to_write = (rb_left < chunk->valid_for) ? rb_left : chunk->valid_for;
+                size_t const to_write = (interleaved_remaining < chunk->valid_for) ? interleaved_remaining : chunk->valid_for;
                 rage_PreparedFrames const written_frames = write_buffer_to_file(
                     &data->sndfile, chunk->value[1].s,
                     chunk->value[2].frame_no, to_write,
@@ -398,21 +402,17 @@ rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView
                 if (written < to_write) {
                     return RAGE_FAILURE(rage_PreparedFrames, "Unable to write all data to file");
                 }
-                for (uint32_t c = 0; c < data->n_channels; c++) {
-                    jack_ringbuffer_read_advance(data->rec_buffs[c], written * sizeof(float));
-                }
-                rb_left -= written;
-                frames_until_buffer_full += written;
+                interleaved_remaining -= written;
                 rage_interpolated_view_advance(controls[0], written);
+                if (!interleaved_remaining) {
+                    return RAGE_SUCCESS(rage_PreparedFrames, jack_ringbuffer_write_space(data->rec_buffs[0]));
+                }
                 break;
         }
         chunk = rage_interpolated_view_value(controls[0]);
     }
-    if (chunk->valid_for == UINT32_MAX) {
-        frames_until_buffer_full = UINT32_MAX;
-    }
     assert(chunk->value[0].e == IDLE);
-    return RAGE_SUCCESS(rage_PreparedFrames, frames_until_buffer_full);
+    return RAGE_SUCCESS(rage_PreparedFrames, UINT32_MAX);
 }
 
 rage_Error elem_clear(rage_ElementState * data, rage_InterpolatedView ** controls, rage_FrameNo to_present) {
