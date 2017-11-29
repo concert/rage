@@ -1,7 +1,5 @@
 #include "error.h"
 #include "graph.h"
-#include "test_factories.h"
-#include "pdls.c"
 
 static rage_Error test_graph() {
     rage_NewGraph new_graph = rage_graph_new(44100);

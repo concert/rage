@@ -2,7 +2,7 @@
 #include <sys/stat.h>
 #include "loader.h"
 #include "test_factories.h"
-#include "pdls.c"
+#include "graph_test_factories.h"
 
 static void new_stream_buffers(rage_Ports * ports, rage_InstanceSpec spec) {
     uint32_t i;

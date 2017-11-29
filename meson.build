@@ -83,11 +83,17 @@ rage_graph = library(
     link_with: [langext, rage_types],
     install: true)
 
+graph_test_factories = library(
+    'rage_graph_test_factories',
+    ['graph/src/graph_test_factories.c'],
+    include_directories: [graph_inc, types_inc, langext_inc],
+    link_with: [langext, rage_types, rage_graph])
+
 test_graph = executable(
     'test_graph', 'graph/test/main.c',
     include_directories: [graph_inc, types_inc, langext_inc],
     dependencies: [sem],
-    link_with: [langext, rage_types, rage_graph])
+    link_with: [langext, rage_types, rage_graph, graph_test_factories])
 test('graph', test_graph)
 
 # Elements
@@ -113,6 +119,13 @@ persist = library(
     dependencies: [jack, sndfile],
     install_dir: element_install_dir,
     install: true)
+
+test_persist = executable(
+    'test_persist',
+    ['elements/persistence/test_persistence.c'],
+    include_directories: [langext_inc, types_inc, graph_inc],
+    link_with: [langext, rage_types, rage_graph, graph_test_factories])
+test('persist', test_persist)
 
 # Example
 
