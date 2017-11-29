@@ -54,15 +54,7 @@ static int process(jack_nframes_t nframes, void * arg) {
     switch (e->rt_transport) {
         case RAGE_TRANSPORT_ROLLING:
             rage_countdown_add(e->rolling_countdown, -1);
-            break;
         case RAGE_TRANSPORT_STOPPED:
-            if (transport_changed) {
-                // FIXME: might be able to make this simpler using the "release
-                // now" thihg, equally might not need to do this at all.
-                int countdown_value = rage_countdown_add(
-                    e->rolling_countdown, -1);
-                rage_countdown_add(e->rolling_countdown, -countdown_value);
-            }
             break;
     }
     if (transport_changed) {
