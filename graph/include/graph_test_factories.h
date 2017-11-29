@@ -9,6 +9,7 @@ typedef struct {
     rage_ElementKind * kind;
     rage_ConcreteElementType * cet;
     rage_Element * elem;
+    uint32_t elem_frame_size;
 } rage_TestElem;
 
 typedef RAGE_OR_ERROR(rage_TestElem) rage_NewTestElem;

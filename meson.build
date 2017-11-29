@@ -120,6 +120,13 @@ persist = library(
     install_dir: element_install_dir,
     install: true)
 
+test_persist = executable(
+    'test_persist',
+    ['elements/persistence/test_persistence.c'],
+    include_directories: [langext_inc, types_inc, graph_inc],
+    link_with: [langext, rage_types, rage_graph, graph_test_factories])
+test('persist', test_persist)
+
 # Example
 
 example_sources = ['example/main.c']
