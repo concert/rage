@@ -14,4 +14,4 @@ typedef struct {
 typedef RAGE_OR_ERROR(rage_TestElem) rage_NewTestElem;
 
 void free_test_elem(rage_TestElem te);
-rage_NewTestElem new_test_elem();
+rage_NewTestElem new_test_elem(char const * elem_so);

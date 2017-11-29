@@ -4,7 +4,7 @@
 #include "graph_test_factories.h"
 
 rage_Error test_srt() {
-    rage_NewTestElem nte = new_test_elem();
+    rage_NewTestElem nte = new_test_elem("./libamp.so");
     if (RAGE_FAILED(nte))
         return RAGE_FAILURE_CAST(rage_Error, nte);
     rage_TestElem te = RAGE_SUCCESS_VALUE(nte);
