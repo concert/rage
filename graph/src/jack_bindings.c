@@ -188,6 +188,8 @@ void rage_jack_binding_unmount(rage_JackHarness * harness) {
 }
 
 void rage_jack_binding_set_transport_state(rage_JackBinding * binding, rage_TransportState state) {
-    binding->desired_transport = state;
-    sem_wait(&binding->transport_synced);
+    if (binding->desired_transport != state) {
+        binding->desired_transport = state;
+        sem_wait(&binding->transport_synced);
+    }
 }
