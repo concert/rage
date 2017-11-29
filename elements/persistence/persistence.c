@@ -278,10 +278,6 @@ static void populate_slabs(
     }
 }
 
-static inline uint32_t add_chunk_time(uint32_t current_total, uint32_t addition) {
-    return (current_total == UINT32_MAX) ? UINT32_MAX : (addition == UINT32_MAX) ? UINT32_MAX : current_total + addition;
-}
-
 rage_PreparedFrames elem_prepare(rage_ElementState * data, rage_InterpolatedView ** controls) {
     uint32_t n_prepared_frames = 0;
     size_t slabs[2];
@@ -316,7 +312,7 @@ rage_PreparedFrames elem_prepare(rage_ElementState * data, rage_InterpolatedView
                 break;
             case IDLE:
             case REC:
-                n_prepared_frames = add_chunk_time(n_prepared_frames, chunk->valid_for);
+                n_prepared_frames = RAGE_VALIDITY_ADD(n_prepared_frames, chunk->valid_for);
                 break;
         }
         rage_interpolated_view_advance(controls[0], chunk->valid_for);
@@ -368,7 +364,7 @@ rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView
         switch ((PersistanceMode) chunk->value[0].e) {
             case IDLE:
             case PLAY:
-                frames_until_buffer_full = add_chunk_time(frames_until_buffer_full, chunk->valid_for);
+                frames_until_buffer_full = RAGE_VALIDITY_ADD(frames_until_buffer_full, chunk->valid_for);
                 rage_interpolated_view_advance(controls[0], chunk->valid_for);
                 break;
             case REC:

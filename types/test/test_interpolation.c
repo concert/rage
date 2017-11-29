@@ -1,6 +1,19 @@
 #include <stdio.h>
 #include "interpolation.h"
 
+static rage_Error test_validity_add() {
+    uint32_t result = RAGE_VALIDITY_ADD(5, 150);
+    if (result != 155)
+        return RAGE_ERROR("Normal addition broken");
+    result = RAGE_VALIDITY_ADD(UINT32_MAX, 150);
+    if (result != UINT32_MAX)
+        return RAGE_ERROR("First argument limit ignored");
+    result = RAGE_VALIDITY_ADD(5, UINT32_MAX);
+    if (result != UINT32_MAX)
+        return RAGE_ERROR("Second argument limit ignored");
+    return RAGE_OK;
+}
+
 static rage_InitialisedInterpolator interpolator_for(
         rage_TupleDef const * td, rage_TimePoint * points,
         unsigned n_points, uint8_t n_views) {
