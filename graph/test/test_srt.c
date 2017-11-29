@@ -54,15 +54,20 @@ static rage_ConcreteElementType fake_concrete_type = {
     .type = &fake_element_type
 };
 
+#define ERR_MSG_BUFF_SIZE 128
+static char err_msg[ERR_MSG_BUFF_SIZE];
+
 static rage_Error counter_checks(
         sem_t * sync_sem, rage_ElementState * fes, int expected_prep,
         int expected_clean) {
     sem_wait(sync_sem);
     if (fes->prep_counter != expected_prep) {
-        return RAGE_ERROR("Unexpected prep count");
+        snprintf(err_msg, ERR_MSG_BUFF_SIZE, "Unexpected prep count %u != %u", fes->prep_counter, expected_prep);
+        return RAGE_ERROR(err_msg);
     }
     if (fes->clean_counter != expected_clean) {
-        return RAGE_ERROR("Unexpected clean count");
+        snprintf(err_msg, ERR_MSG_BUFF_SIZE, "Unexpected clean count %u != %u", fes->clean_counter, expected_clean);
+        return RAGE_ERROR(err_msg);
     }
     return RAGE_OK;
 }
@@ -83,14 +88,12 @@ static rage_Error test_srt_fake_elem() {
     rage_Error err = rage_support_convoy_start(convoy);
     rage_SupportTruck * truck = rage_support_convoy_mount(
         convoy, &fake_elem, prep_view, clean_view);
-    // FIXME: ATM don't know (without our sem) when initial prep is done (which
-    // is dodgy)
     rage_Error assertion_err = RAGE_OK;
     if (!RAGE_FAILED(err)) {
-        assertion_err = counter_checks(&sync_sem, &fes, 1, 0);
+        assertion_err = counter_checks(&sync_sem, &fes, 1, 1);
         if (!RAGE_FAILED(assertion_err)) {
             rage_countdown_add(countdown, -1);
-            assertion_err = counter_checks(&sync_sem, &fes, 2, 1);
+            assertion_err = counter_checks(&sync_sem, &fes, 2, 2);
         }
         err = rage_support_convoy_stop(convoy);
     }

@@ -20,5 +20,7 @@ rage_SupportTruck * rage_support_convoy_mount(
 
 void rage_support_convoy_unmount(rage_SupportTruck * truck);
 
-void rage_support_convoy_set_transport_state(
+void rage_support_convoy_transport_state_changing(
+    rage_SupportConvoy * convoy, rage_TransportState state);
+void rage_support_convoy_transport_state_changed(
     rage_SupportConvoy * convoy, rage_TransportState state);
