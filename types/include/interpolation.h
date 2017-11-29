@@ -23,6 +23,8 @@ rage_FrameNo rage_interpolated_view_get_pos(
 void rage_interpolated_view_advance(
     rage_InterpolatedView * view, rage_FrameNo n_frames);
 
+#define RAGE_VALIDITY_ADD(a, b) (a == UINT32_MAX) ? a : (b == UINT32_MAX) ? b : a + b
+
 // FIXME: different headers?
 
 typedef RAGE_OR_ERROR(rage_Interpolator *) rage_InitialisedInterpolator;
