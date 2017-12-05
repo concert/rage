@@ -112,7 +112,7 @@ static uint32_t n_frames_grace(rage_Trucks * trucks, uint32_t period_size) {
         rage_SupportTruck * truck = trucks->items[i];
         min_prepared = (truck->frames_prepared < min_prepared) ? truck->frames_prepared : min_prepared;
         if (!needs_clean) {
-            needs_clean = truck->frames_to_clean > 0;
+            needs_clean = truck->frames_to_clean >= 0;
         }
     }
     if (needs_clean) {  // FIXME: cleanup excessively frequent
