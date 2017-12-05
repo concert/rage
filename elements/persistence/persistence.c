@@ -355,7 +355,7 @@ static rage_PreparedFrames write_buffer_to_file(
 }
 
 rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView ** controls) {
-    uint32_t frames_until_buffer_full = 0;
+    uint32_t frames_cleaned = 0;
     size_t slabs[2] = {};
     size_t interleaved_remaining = 0;
     rage_InterpolatedValue const * chunk;
@@ -364,7 +364,7 @@ rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView
         switch ((PersistanceMode) chunk->value[0].e) {
             case IDLE:
             case PLAY:
-                frames_until_buffer_full = RAGE_VALIDITY_ADD(frames_until_buffer_full, chunk->valid_for);
+                frames_cleaned = RAGE_VALIDITY_ADD(frames_cleaned, chunk->valid_for);
                 rage_interpolated_view_advance(controls[0], chunk->valid_for);
                 break;
             case REC:
@@ -399,9 +399,10 @@ rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView
                     return RAGE_FAILURE(rage_PreparedFrames, "Unable to write all data to file");
                 }
                 interleaved_remaining -= written;
+                frames_cleaned += written;
                 rage_interpolated_view_advance(controls[0], written);
                 if (!interleaved_remaining) {
-                    return RAGE_SUCCESS(rage_PreparedFrames, jack_ringbuffer_write_space(data->rec_buffs[0]));
+                    return RAGE_SUCCESS(rage_PreparedFrames, frames_cleaned);
                 }
                 break;
         }
