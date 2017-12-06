@@ -310,7 +310,7 @@ void rage_support_convoy_transport_state_changed(
     }
 }
 
-rage_Error rage_support_convoy_seek(rage_SupportConvoy * convoy, rage_FrameNo target_frame) {
+rage_Error rage_support_convoy_transport_seek(rage_SupportConvoy * convoy, rage_FrameNo target_frame) {
     rage_FrameNo clear_from = UINT64_MAX;
     rage_Error err = RAGE_OK;
     if (convoy->transport_state == RAGE_TRANSPORT_ROLLING) {

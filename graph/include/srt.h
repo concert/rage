@@ -24,3 +24,5 @@ void rage_support_convoy_transport_state_changing(
     rage_SupportConvoy * convoy, rage_TransportState state);
 void rage_support_convoy_transport_state_changed(
     rage_SupportConvoy * convoy, rage_TransportState state);
+rage_Error rage_support_convoy_transport_seek(
+    rage_SupportConvoy * convoy, rage_FrameNo target_frame);

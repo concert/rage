@@ -25,3 +25,4 @@ rage_Finaliser * rage_harness_set_time_series(
     rage_TimeSeries const * const new_controls);
 
 void rage_proc_block_set_transport_state(rage_ProcBlock * pb, rage_TransportState state);
+rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo target);
