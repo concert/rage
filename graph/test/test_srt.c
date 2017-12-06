@@ -138,6 +138,8 @@ static rage_Error test_srt_fake_elem() {
                                 assertion_err = RAGE_ERROR("Clear called in wrong place");
                             } else if (fes.last_prep_from != 12) {
                                 assertion_err = RAGE_ERROR("Prep after seek in wrong place");
+                            } else if (fes.last_clean_from != 12) {
+                                assertion_err = RAGE_ERROR("Clean after seek in wrong place");
                             }
                         }
                     }
