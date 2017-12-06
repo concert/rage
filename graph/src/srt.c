@@ -32,6 +32,7 @@ struct rage_SupportConvoy {
     int counts_skipped;
     bool triggered_tick;
     sem_t triggered_tick_sem;
+    rage_TransportState transport_state;
 };
 
 rage_SupportConvoy * rage_support_convoy_new(uint32_t period_size, rage_Countdown * countdown) {
@@ -278,6 +279,7 @@ void rage_support_convoy_unmount(rage_SupportTruck * truck) {
 
 void rage_support_convoy_transport_state_changing(
         rage_SupportConvoy * convoy, rage_TransportState state) {
+    convoy->transport_state = state;
     if (state == RAGE_TRANSPORT_ROLLING) {
         // Wait for any active prep work to finish (assumes single control thread)
         pthread_mutex_lock(&convoy->active);
@@ -288,7 +290,39 @@ void rage_support_convoy_transport_state_changing(
 void rage_support_convoy_transport_state_changed(
         rage_SupportConvoy * convoy, rage_TransportState state) {
     if (state == RAGE_TRANSPORT_STOPPED) {
+        // Force an iteration to ensure cleanup completed
         pthread_mutex_lock(&convoy->active);
         unlock_and_await_tick(convoy);
     }
+}
+
+rage_Error rage_support_convoy_seek(rage_SupportConvoy * convoy, rage_FrameNo target_frame) {
+    rage_FrameNo clear_from = UINT64_MAX;
+    rage_Error err = RAGE_OK;
+    if (convoy->transport_state == RAGE_TRANSPORT_ROLLING) {
+        return RAGE_ERROR("Transport seek whilst rolling not implemented");
+    }
+    pthread_mutex_lock(&convoy->active);
+    for (unsigned i = 0; i < convoy->prep_trucks->len; i++) {
+        rage_SupportTruck * truck = convoy->prep_trucks->items[i];
+        assert(truck->frames_to_clean == 0);
+        clear_from = rage_interpolated_view_get_pos(truck->prep_view[0]) - truck->frames_prepared;
+        for (uint32_t j = 0; j < truck->elem->cet->controls.len; j++) {
+            rage_interpolated_view_seek(truck->prep_view[j], clear_from);
+        }
+        // FIXME: When this fails end up in an awful mess
+        err = RAGE_ELEM_CLEAR(truck->elem, truck->prep_view, 0);
+        if (RAGE_FAILED(err))
+            break;
+        truck->frames_prepared = 0;
+    }
+    for (unsigned i = 0; i < convoy->clean_trucks->len; i++) {
+        rage_SupportTruck * truck = convoy->prep_trucks->items[i];
+        assert(truck->frames_to_clean == 0);
+        for (uint32_t j = 0; j < truck->elem->cet->controls.len; j++) {
+            rage_interpolated_view_seek(truck->clean_view[j], target_frame);
+        }
+    }
+    unlock_and_await_tick(convoy);
+    return err;
 }
