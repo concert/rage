@@ -23,7 +23,7 @@ struct rage_SupportConvoy {
     bool running;
     pthread_t worker_thread;
     uint32_t period_size;
-    uint32_t invalid_after;
+    rage_FrameNo invalid_after;
     rage_Countdown * countdown;
     // mutex to prevent truck array freeing during iteration:
     pthread_mutex_t active;
@@ -39,7 +39,7 @@ rage_SupportConvoy * rage_support_convoy_new(uint32_t period_size, rage_Countdow
     rage_SupportConvoy * convoy = malloc(sizeof(rage_SupportConvoy));
     convoy->running = false;
     convoy->period_size = period_size;
-    convoy->invalid_after = UINT32_MAX;
+    convoy->invalid_after = UINT64_MAX;
     convoy->countdown = countdown;
     // FIXME: can in theory fail
     pthread_mutex_init(&convoy->active, NULL);
@@ -95,13 +95,25 @@ static rage_Error apply_to_trucks(
     return RAGE_OK;
 }
 
-static rage_Error clear(rage_Trucks * trucks, uint32_t preserve) {
+static rage_Error clear(rage_Trucks * trucks, rage_FrameNo invalid_after) {
+    rage_SupportTruck * truck;
+    rage_FrameNo newest_prep, oldest_prep;
     for (unsigned i = 0; i < trucks->len; i++) {
-        rage_SupportTruck * truck = trucks->items[i];
-        // FIXME: Hasn't reduced prepared frames counter!
-        rage_Error err = RAGE_ELEM_CLEAR(truck->elem, truck->prep_view, preserve);
+        truck = trucks->items[i];
+        newest_prep = rage_interpolated_view_get_pos(truck->prep_view[0]);
+        if (newest_prep <= invalid_after)
+            continue;
+        oldest_prep = newest_prep - truck->frames_prepared;
+        if (invalid_after < oldest_prep) {
+            return RAGE_ERROR("Cannot clear that far back");
+        }
+        for (uint32_t j = 0; j < truck->elem->cet->controls.len; j++) {
+            rage_interpolated_view_seek(truck->prep_view[j], invalid_after);
+        }
+        rage_Error err = RAGE_ELEM_CLEAR(truck->elem, truck->prep_view, newest_prep - invalid_after);
         if (RAGE_FAILED(err))
             return err;
+        truck->frames_prepared = invalid_after - oldest_prep;
     }
     return RAGE_OK;
 }
@@ -145,8 +157,10 @@ static void * rage_support_convoy_worker(void * ptr) {
             break; \
         }
     while (convoy->running) {
-        if (convoy->invalid_after != UINT32_MAX) {
-             clear(convoy->prep_trucks, convoy->invalid_after);
+        if (convoy->invalid_after != UINT64_MAX) {
+             op_result = clear(convoy->prep_trucks, convoy->invalid_after);
+             RAGE_BAIL_ON_FAIL
+             convoy->invalid_after = UINT64_MAX;
         }
         op_result = apply_to_trucks(convoy->prep_trucks, prep_truck);
         RAGE_BAIL_ON_FAIL
