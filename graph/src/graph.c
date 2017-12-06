@@ -35,8 +35,8 @@ void rage_graph_set_transport_state(rage_Graph * g, rage_TransportState s) {
     rage_proc_block_set_transport_state(g->pb, s);
 }
 
-rage_Error rage_graph_transport_seek(rage_Graph * g, rage_FrameNo target) {
-    return rage_proc_block_transport_seek(g->pb, target);
+rage_Error rage_graph_transport_seek(rage_Graph * g, rage_Time const * target) {
+    return rage_proc_block_transport_seek(g->pb, rage_time_to_frame(target, g->sample_rate));
 }
 
 struct rage_GraphNode {
