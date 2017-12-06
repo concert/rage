@@ -10,9 +10,9 @@ struct rage_SupportTruck {
     rage_SupportConvoy * convoy;  // Not totally convinced by the backref
     rage_Element * elem;
     rage_InterpolatedView ** prep_view;
-    int frames_prepared;
+    int64_t frames_prepared;
     rage_InterpolatedView ** clean_view;
-    int frames_to_clean;
+    int64_t frames_to_clean;
 };
 
 typedef RAGE_ARRAY(rage_SupportTruck *) rage_Trucks;
@@ -66,23 +66,23 @@ void rage_support_convoy_free(rage_SupportConvoy * convoy) {
 }
 
 static rage_Error prep_truck(rage_SupportTruck * truck) {
-    rage_PreparedFrames rv = RAGE_ELEM_PREP(truck->elem, truck->prep_view);
-    if (RAGE_FAILED(rv)) {
-        return RAGE_FAILURE_CAST(rage_Error, rv);
-    } else {
-        truck->frames_prepared += RAGE_SUCCESS_VALUE(rv);
-        return RAGE_OK;
+    rage_FrameNo const prep_began = rage_interpolated_view_get_pos(truck->prep_view[0]);
+    rage_Error rv = RAGE_ELEM_PREP(truck->elem, truck->prep_view);
+    if (!RAGE_FAILED(rv)) {
+        rage_FrameNo const prep_ended = rage_interpolated_view_get_pos(truck->prep_view[0]);
+        truck->frames_prepared += prep_ended - prep_began;
     }
+    return rv;
 }
 
 static rage_Error clean_truck(rage_SupportTruck * truck) {
-    rage_PreparedFrames rv = RAGE_ELEM_CLEAN(truck->elem, truck->clean_view);
-    if (RAGE_FAILED(rv)) {
-        return RAGE_FAILURE_CAST(rage_Error, rv);
-    } else {
-        truck->frames_to_clean -= RAGE_SUCCESS_VALUE(rv);
-        return RAGE_OK;
+    rage_FrameNo const clean_began = rage_interpolated_view_get_pos(truck->clean_view[0]);
+    rage_Error rv = RAGE_ELEM_CLEAN(truck->elem, truck->clean_view);
+    if (!RAGE_FAILED(rv)) {
+        rage_FrameNo const clean_ended = rage_interpolated_view_get_pos(truck->clean_view[0]);
+        truck->frames_to_clean -= clean_ended - clean_began;
     }
+    return rv;
 }
 
 static rage_Error apply_to_trucks(

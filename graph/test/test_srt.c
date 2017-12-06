@@ -30,19 +30,21 @@ struct rage_ElementState {
     rage_InterpolatedView ** clean_ctls;
 };
 
-static rage_PreparedFrames fake_elem_prep(
+static rage_Error fake_elem_prep(
         rage_ElementState * state, rage_InterpolatedView ** controls) {
     state->prep_ctls = controls;
     state->prep_counter++;
     sem_post(state->processed);
-    return RAGE_SUCCESS(rage_PreparedFrames, 1024);
+    rage_interpolated_view_advance(controls[0], 2048);
+    return RAGE_OK;
 }
 
-static rage_PreparedFrames fake_elem_clean(
+static rage_Error fake_elem_clean(
         rage_ElementState * state, rage_InterpolatedView ** controls) {
     state->clean_ctls = controls;
     state->clean_counter++;
-    return RAGE_SUCCESS(rage_PreparedFrames, 1024);
+    rage_interpolated_view_advance(controls[0], 2048);
+    return RAGE_OK;
 }
 
 static rage_ElementType fake_element_type = {
@@ -79,25 +81,38 @@ static rage_Error test_srt_fake_elem() {
         .prep_counter = 0,
         .clean_counter = 0,
         .processed = &sync_sem};
-    rage_InterpolatedView **prep_view = (void *) 134, **clean_view = (void *) 983;
+    rage_Error assertion_err = RAGE_OK;
+    rage_TimePoint tp = {};
+    rage_TimeSeries ts = {.len = 1, .items = &tp};
+    rage_TupleDef td = {};
+    rage_InterpolatedView *prep_view, *clean_view;
     rage_Element fake_elem = {
         .cet = &fake_concrete_type,
         .state = &fes};
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_SupportConvoy * convoy = rage_support_convoy_new(1024, countdown);
     rage_Error err = rage_support_convoy_start(convoy);
-    rage_SupportTruck * truck = rage_support_convoy_mount(
-        convoy, &fake_elem, prep_view, clean_view);
-    rage_Error assertion_err = RAGE_OK;
     if (!RAGE_FAILED(err)) {
-        assertion_err = counter_checks(&sync_sem, &fes, 1, 1);
-        if (!RAGE_FAILED(assertion_err)) {
-            rage_countdown_add(countdown, -1);
-            assertion_err = counter_checks(&sync_sem, &fes, 2, 2);
+        rage_InitialisedInterpolator ii = rage_interpolator_new(&td, &ts, 44100, 2);
+        if (RAGE_FAILED(ii)) {
+            assertion_err = RAGE_FAILURE_CAST(rage_Error, ii);
+        } else {
+            rage_Interpolator * interp = RAGE_SUCCESS_VALUE(ii);
+            prep_view = rage_interpolator_get_view(interp, 0);
+            clean_view = rage_interpolator_get_view(interp, 1);
+            rage_SupportTruck * truck = rage_support_convoy_mount(
+                convoy, &fake_elem, &prep_view, &clean_view);
+            assertion_err = counter_checks(&sync_sem, &fes, 1, 1);
+            if (!RAGE_FAILED(assertion_err)) {
+                rage_countdown_add(countdown, -1);
+                rage_countdown_add(countdown, -1);
+                assertion_err = counter_checks(&sync_sem, &fes, 2, 2);
+            }
+            rage_support_convoy_unmount(truck);
+            rage_interpolator_free(&td, interp);
         }
-        err = rage_support_convoy_stop(convoy);
     }
-    rage_support_convoy_unmount(truck);
+    err = rage_support_convoy_stop(convoy);
     rage_support_convoy_free(convoy);
     rage_countdown_free(countdown);
     sem_destroy(&sync_sem);
@@ -107,10 +122,10 @@ static rage_Error test_srt_fake_elem() {
     if (RAGE_FAILED(assertion_err)) {
         return assertion_err;
     }
-    if (fes.prep_ctls != prep_view) {
+    if (fes.prep_ctls != &prep_view) {
         return RAGE_ERROR("Bad prep ctl");
     }
-    if (fes.clean_ctls != clean_view) {
+    if (fes.clean_ctls != &clean_view) {
         return RAGE_ERROR("Bad clean ctl");
     }
     return RAGE_OK;
