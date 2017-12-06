@@ -310,6 +310,12 @@ void rage_support_convoy_transport_state_changed(
     }
 }
 
+static void seek_views_to(rage_InterpolatedView ** views, uint32_t n_views, rage_FrameNo pos) {
+    for (uint32_t j = 0; j < n_views; j++) {
+        rage_interpolated_view_seek(views[j], pos);
+    }
+}
+
 rage_Error rage_support_convoy_transport_seek(rage_SupportConvoy * convoy, rage_FrameNo target_frame) {
     rage_FrameNo clear_from = UINT64_MAX;
     rage_Error err = RAGE_OK;
@@ -319,23 +325,20 @@ rage_Error rage_support_convoy_transport_seek(rage_SupportConvoy * convoy, rage_
     pthread_mutex_lock(&convoy->active);
     for (unsigned i = 0; i < convoy->prep_trucks->len; i++) {
         rage_SupportTruck * truck = convoy->prep_trucks->items[i];
-        assert(truck->frames_to_clean == 0);
         clear_from = rage_interpolated_view_get_pos(truck->prep_view[0]) - truck->frames_prepared;
-        for (uint32_t j = 0; j < truck->elem->cet->controls.len; j++) {
-            rage_interpolated_view_seek(truck->prep_view[j], clear_from);
-        }
+        seek_views_to(truck->prep_view, truck->elem->cet->controls.len, clear_from);
         // FIXME: When this fails end up in an awful mess
-        err = RAGE_ELEM_CLEAR(truck->elem, truck->prep_view, 0);
+        err = RAGE_ELEM_CLEAR(truck->elem, truck->prep_view, truck->frames_prepared);
         if (RAGE_FAILED(err))
             break;
+        seek_views_to(truck->prep_view, truck->elem->cet->controls.len, target_frame);
         truck->frames_prepared = 0;
     }
     for (unsigned i = 0; i < convoy->clean_trucks->len; i++) {
-        rage_SupportTruck * truck = convoy->prep_trucks->items[i];
-        assert(truck->frames_to_clean == 0);
-        for (uint32_t j = 0; j < truck->elem->cet->controls.len; j++) {
-            rage_interpolated_view_seek(truck->clean_view[j], target_frame);
-        }
+        rage_SupportTruck * truck = convoy->clean_trucks->items[i];
+        assert(truck->frames_to_clean <= 0);
+        seek_views_to(truck->clean_view, truck->elem->cet->controls.len, target_frame);
+        truck->frames_to_clean = 0;
     }
     unlock_and_await_tick(convoy);
     return err;

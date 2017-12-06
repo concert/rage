@@ -24,7 +24,11 @@ rage_Error test_srt() {
 
 struct rage_ElementState {
     int prep_counter;
+    int last_prep_from;
     int clean_counter;
+    int last_clean_from;
+    int clear_counter;
+    int last_clear_from;
     sem_t * processed;
     rage_InterpolatedView ** prep_ctls;
     rage_InterpolatedView ** clean_ctls;
@@ -34,6 +38,7 @@ static rage_Error fake_elem_prep(
         rage_ElementState * state, rage_InterpolatedView ** controls) {
     state->prep_ctls = controls;
     state->prep_counter++;
+    state->last_prep_from = rage_interpolated_view_get_pos(controls[0]);
     sem_post(state->processed);
     rage_interpolated_view_advance(controls[0], 2048);
     return RAGE_OK;
@@ -43,17 +48,30 @@ static rage_Error fake_elem_clean(
         rage_ElementState * state, rage_InterpolatedView ** controls) {
     state->clean_ctls = controls;
     state->clean_counter++;
+    state->last_clean_from = rage_interpolated_view_get_pos(controls[0]);
     rage_interpolated_view_advance(controls[0], 2048);
+    return RAGE_OK;
+}
+
+static rage_Error fake_elem_clear(
+        rage_ElementState * state, rage_InterpolatedView ** controls, rage_FrameNo to_present) {
+    state->clear_counter++;
+    state->last_clear_from = rage_interpolated_view_get_pos(controls[0]);
+    rage_interpolated_view_advance(controls[0], 420);
     return RAGE_OK;
 }
 
 static rage_ElementType fake_element_type = {
     .prep = fake_elem_prep,
-    .clean = fake_elem_clean
+    .clean = fake_elem_clean,
+    .clear = fake_elem_clear
 };
 
+static rage_TupleDef const empty_tupledef = {};
+
 static rage_ConcreteElementType fake_concrete_type = {
-    .type = &fake_element_type
+    .type = &fake_element_type,
+    .spec = (rage_InstanceSpec) {.controls = {.len = 1, .items = &empty_tupledef}}
 };
 
 #define ERR_MSG_BUFF_SIZE 128
@@ -78,13 +96,13 @@ static rage_Error test_srt_fake_elem() {
     sem_t sync_sem;
     sem_init(&sync_sem, 0, 0);
     rage_ElementState fes = {
-        .prep_counter = 0,
-        .clean_counter = 0,
+        .last_prep_from = -1,
+        .last_clean_from =  -1,
+        .last_clear_from = -1,
         .processed = &sync_sem};
     rage_Error assertion_err = RAGE_OK;
     rage_TimePoint tp = {};
     rage_TimeSeries ts = {.len = 1, .items = &tp};
-    rage_TupleDef td = {};
     rage_InterpolatedView *prep_view, *clean_view;
     rage_Element fake_elem = {
         .cet = &fake_concrete_type,
@@ -93,7 +111,7 @@ static rage_Error test_srt_fake_elem() {
     rage_SupportConvoy * convoy = rage_support_convoy_new(1024, countdown);
     rage_Error err = rage_support_convoy_start(convoy);
     if (!RAGE_FAILED(err)) {
-        rage_InitialisedInterpolator ii = rage_interpolator_new(&td, &ts, 44100, 2);
+        rage_InitialisedInterpolator ii = rage_interpolator_new(&empty_tupledef, &ts, 44100, 2);
         if (RAGE_FAILED(ii)) {
             assertion_err = RAGE_FAILURE_CAST(rage_Error, ii);
         } else {
@@ -107,9 +125,26 @@ static rage_Error test_srt_fake_elem() {
                 rage_countdown_add(countdown, -1);
                 rage_countdown_add(countdown, -1);
                 assertion_err = counter_checks(&sync_sem, &fes, 2, 2);
+                if (!RAGE_FAILED(assertion_err)) {
+                    if (fes.last_prep_from != 2048 || fes.last_clean_from != 2048) {
+                        assertion_err = RAGE_ERROR("Bad prep start point");
+                    } else {
+                        rage_support_convoy_transport_seek(convoy, 12);
+                        assertion_err = counter_checks(&sync_sem, &fes, 3, 3);
+                        if (!RAGE_FAILED(assertion_err)) {
+                            if (fes.clear_counter != 1) {
+                                assertion_err = RAGE_ERROR("Did not clear on seek");
+                            } else if (fes.last_clear_from != 2048) {
+                                assertion_err = RAGE_ERROR("Clear called in wrong place");
+                            } else if (fes.last_prep_from != 12) {
+                                assertion_err = RAGE_ERROR("Prep after seek in wrong place");
+                            }
+                        }
+                    }
+                }
             }
             rage_support_convoy_unmount(truck);
-            rage_interpolator_free(&td, interp);
+            rage_interpolator_free(&empty_tupledef, interp);
         }
     }
     err = rage_support_convoy_stop(convoy);

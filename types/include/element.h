@@ -22,7 +22,7 @@ typedef void (*rage_ElementProcess)(
 typedef rage_Error (*rage_ElementPrepare)(
     rage_ElementState * state, rage_InterpolatedView ** controls);
 typedef rage_Error (*rage_ElementClear)(
-    rage_ElementState * state, rage_InterpolatedView ** controls, rage_FrameNo const preserve);
+    rage_ElementState * state, rage_InterpolatedView ** controls, rage_FrameNo const to_present);
 typedef rage_Error (*rage_ElementClean)(
     rage_ElementState * state, rage_InterpolatedView ** controls);
 
