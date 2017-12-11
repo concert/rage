@@ -21,3 +21,5 @@ void rage_jack_binding_unmount(rage_JackHarness * harness);
 
 void rage_jack_binding_set_transport_state(
     rage_JackBinding * binding, rage_TransportState state);
+rage_Error rage_jack_binding_transport_seek(
+    rage_JackBinding * binding, rage_FrameNo target);

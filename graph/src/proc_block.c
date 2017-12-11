@@ -168,6 +168,17 @@ rage_Finaliser * rage_harness_set_time_series(
 }
 
 void rage_proc_block_set_transport_state(rage_ProcBlock * pb, rage_TransportState state) {
-    rage_support_convoy_set_transport_state(pb->convoy, state);
+    // We call SRT either side of transport changes as starting may require
+    // preparation, and stopping may require cleanup, but they need to happen a
+    // different times wrt the RT change
+    rage_support_convoy_transport_state_changing(pb->convoy, state);
     rage_jack_binding_set_transport_state(pb->jack_binding, state);
+    rage_support_convoy_transport_state_changed(pb->convoy, state);
+}
+
+rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo target) {
+    rage_Error e = rage_support_convoy_transport_seek(pb->convoy, target);
+    if (RAGE_FAILED(e))
+        return e;
+    return rage_jack_binding_transport_seek(pb->jack_binding, target);
 }

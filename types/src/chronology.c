@@ -22,6 +22,10 @@ rage_Time rage_time_sample_length(uint32_t const sample_rate) {
     return (rage_Time) {.second=0, .fraction=UINT32_MAX/sample_rate};
 }
 
+rage_FrameNo rage_time_to_frame(rage_Time const * t, uint32_t sample_rate) {
+    return (sample_rate * t->second) + (sample_rate * (((float) t->fraction) / UINT32_MAX));
+}
+
 rage_Time rage_time_add(rage_Time const a, rage_Time const b) {
     uint64_t second = a.second + b.second;
     uint64_t fraction = a.fraction + b.fraction;

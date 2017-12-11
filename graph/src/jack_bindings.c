@@ -185,3 +185,16 @@ void rage_jack_binding_set_transport_state(rage_JackBinding * binding, rage_Tran
         sem_wait(&binding->transport_synced);
     }
 }
+
+rage_Error rage_jack_binding_transport_seek(rage_JackBinding * binding, rage_FrameNo target) {
+    if (binding->desired_transport == RAGE_TRANSPORT_ROLLING) {
+        return RAGE_ERROR("Seek whilst rolling not implemented");
+    }
+    for (uint32_t hid = 0; hid < binding->harnesses->len; hid++) {
+        rage_JackHarness * h = binding->harnesses->items[hid];
+        for (uint32_t j = 0; j < h->elem->cet->controls.len; j++) {
+            rage_interpolated_view_seek(h->controls[j], target);
+        }
+    }
+    return RAGE_OK;
+}

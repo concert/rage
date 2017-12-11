@@ -19,12 +19,11 @@ typedef void (*rage_ElementProcess)(
     rage_ElementState * state, rage_TransportState const transport_state,
     rage_Ports const * ports);
 
-typedef RAGE_OR_ERROR(uint32_t) rage_PreparedFrames;
-typedef rage_PreparedFrames (*rage_ElementPrepare)(
+typedef rage_Error (*rage_ElementPrepare)(
     rage_ElementState * state, rage_InterpolatedView ** controls);
 typedef rage_Error (*rage_ElementClear)(
-    rage_ElementState * state, rage_InterpolatedView ** controls, rage_FrameNo const preserve);
-typedef rage_PreparedFrames (*rage_ElementClean)(
+    rage_ElementState * state, rage_InterpolatedView ** controls, rage_FrameNo const to_present);
+typedef rage_Error (*rage_ElementClean)(
     rage_ElementState * state, rage_InterpolatedView ** controls);
 
 typedef RAGE_ARRAY(rage_TupleDef const) rage_ParamDefList;

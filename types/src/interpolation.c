@@ -7,10 +7,6 @@
 #include "interpolation.h"
 #include "countdown.h"
 
-static rage_FrameNo rage_time_to_frame(rage_Time const * t, uint32_t sample_rate) {
-    return (sample_rate * t->second) + (sample_rate * (((float) t->fraction) / UINT32_MAX));
-}
-
 #define RAGE_INTERPOLATORS_N RAGE_INTERPOLATION_LINEAR + 1
 
 static bool recognised_interpolation_mode(rage_InterpolationMode mode) {

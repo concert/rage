@@ -6,7 +6,6 @@
 #include "test_chronology.c"
 
 TEST_MAIN(
-    test_validity_add,
     interpolator_float_test,
     interpolator_int_test,
     interpolator_time_test,

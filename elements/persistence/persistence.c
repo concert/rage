@@ -217,6 +217,8 @@ static bool file_path_changed(sndfile_status * const s, char const * const path)
     return false;
 }
 
+typedef RAGE_OR_ERROR(uint32_t) rage_PreparedFrames;
+
 // Should this return rage_PreparedFrames to reduce casting?
 static rage_Error check_sfinfo(
         SF_INFO * const info, uint32_t n_channels, uint32_t sample_rate) {
@@ -278,11 +280,11 @@ static void populate_slabs(
     }
 }
 
-rage_PreparedFrames elem_prepare(rage_ElementState * data, rage_InterpolatedView ** controls) {
-    uint32_t n_prepared_frames = 0;
+rage_Error elem_prepare(rage_ElementState * data, rage_InterpolatedView ** controls) {
     size_t slabs[2];
-    rage_InterpolatedValue const * chunk = rage_interpolated_view_value(controls[0]);
-    while (chunk->valid_for != UINT32_MAX) {
+    bool future_values = true;
+    do {
+        rage_InterpolatedValue const * chunk = rage_interpolated_view_value(controls[0]);
         switch ((PersistanceMode) chunk->value[0].e) {
             case PLAY:
                 populate_slabs(
@@ -293,7 +295,7 @@ rage_PreparedFrames elem_prepare(rage_ElementState * data, rage_InterpolatedView
                 rage_PreparedFrames const read_or_fail = read_prep_sndfile(
                     data, chunk->value[1].s, chunk->value[2].frame_no, to_read, data->interleaved_buffer);
                 if (RAGE_FAILED(read_or_fail)) {
-                    return read_or_fail;
+                    return RAGE_FAILURE_CAST(rage_Error, read_or_fail);
                 }
                 uint32_t const read = RAGE_SUCCESS_VALUE(read_or_fail);
                 deinterleave(data->interleaved_buffer, (float**) data->rb_vec, data->n_channels, slabs[0]);
@@ -304,22 +306,19 @@ rage_PreparedFrames elem_prepare(rage_ElementState * data, rage_InterpolatedView
                 for (uint32_t c = 0; c < data->n_channels; c++) {
                     jack_ringbuffer_write_advance(data->play_buffs[c], read * sizeof(float));
                 }
-                n_prepared_frames += read;
+                rage_interpolated_view_advance(controls[0], read);
                 if (rb_space <= chunk->valid_for) {
-                    rage_interpolated_view_advance(controls[0], n_prepared_frames);
-                    return RAGE_SUCCESS(rage_PreparedFrames, n_prepared_frames);
+                    return RAGE_OK;
                 }
                 break;
             case IDLE:
+                future_values = chunk->valid_for != UINT32_MAX;
             case REC:
-                n_prepared_frames = RAGE_VALIDITY_ADD(n_prepared_frames, chunk->valid_for);
+                rage_interpolated_view_advance(controls[0], chunk->valid_for);
                 break;
         }
-        rage_interpolated_view_advance(controls[0], chunk->valid_for);
-        chunk = rage_interpolated_view_value(controls[0]);
-    }
-    assert(chunk->value[0].e == IDLE);
-    return RAGE_SUCCESS(rage_PreparedFrames, UINT32_MAX);
+    } while (future_values);
+    return RAGE_OK;
 }
 
 static void interleave(
@@ -354,61 +353,54 @@ static rage_PreparedFrames write_buffer_to_file(
         s->sf, interleaved_buffer, to_write));
 }
 
-rage_PreparedFrames elem_cleanup(rage_ElementState * data, rage_InterpolatedView ** controls) {
-    uint32_t frames_until_buffer_full = 0;
+rage_Error elem_cleanup(rage_ElementState * data, rage_InterpolatedView ** controls) {
     size_t slabs[2] = {};
-    size_t interleaved_remaining = 0;
-    rage_InterpolatedValue const * chunk;
-    chunk = rage_interpolated_view_value(controls[0]);
-    while (chunk->valid_for != UINT32_MAX) {
+    bool future_values = true;
+    populate_slabs(
+        slabs, data->n_channels, jack_ringbuffer_get_read_vector,
+        data->rb_vec, data->rec_buffs);
+    rage_FrameNo interleaved_remaining = slabs[0] + slabs[1];
+    interleave(
+        data->interleaved_buffer, (float const**) data->rb_vec,
+        data->n_channels, slabs[0]);
+    interleave(
+        &data->interleaved_buffer[slabs[0] * data->n_channels],
+        (float const **) &data->rb_vec[data->n_channels],
+        data->n_channels, slabs[1]);
+    for (uint32_t c = 0; c < data->n_channels; c++) {
+        jack_ringbuffer_read_advance(data->rec_buffs[c], interleaved_remaining * sizeof(float));
+    }
+    do {
+        rage_InterpolatedValue const * chunk = rage_interpolated_view_value(controls[0]);
         switch ((PersistanceMode) chunk->value[0].e) {
             case IDLE:
+                future_values = chunk->valid_for != UINT32_MAX;
             case PLAY:
-                frames_until_buffer_full = RAGE_VALIDITY_ADD(frames_until_buffer_full, chunk->valid_for);
                 rage_interpolated_view_advance(controls[0], chunk->valid_for);
                 break;
-            case REC:
-                // First time around main while only
-                if (!interleaved_remaining) {
-                    populate_slabs(
-                        slabs, data->n_channels, jack_ringbuffer_get_read_vector,
-                        data->rb_vec, data->rec_buffs);
-                    interleaved_remaining = slabs[0] + slabs[1];
-                    interleave(
-                        data->interleaved_buffer, (float const**) data->rb_vec,
-                        data->n_channels, slabs[0]);
-                    interleave(
-                        &data->interleaved_buffer[slabs[0] * data->n_channels],
-                        (float const **) &data->rb_vec[data->n_channels],
-                        data->n_channels, slabs[1]);
-                    for (uint32_t c = 0; c < data->n_channels; c++) {
-                        jack_ringbuffer_read_advance(data->rec_buffs[c], interleaved_remaining * sizeof(float));
-                    }
-                }
-                size_t const to_write = (interleaved_remaining < chunk->valid_for) ? interleaved_remaining : chunk->valid_for;
+            case REC: {
+                uint32_t const to_write = (interleaved_remaining < chunk->valid_for) ? interleaved_remaining : chunk->valid_for;
                 rage_PreparedFrames const written_frames = write_buffer_to_file(
                     &data->sndfile, chunk->value[1].s,
                     chunk->value[2].frame_no, to_write,
                     data->interleaved_buffer, data->sample_rate,
                     data->n_channels);
                 if (RAGE_FAILED(written_frames)) {
-                    return written_frames;
+                    return RAGE_FAILURE_CAST(rage_Error, written_frames);
                 }
                 uint32_t const written = RAGE_SUCCESS_VALUE(written_frames);
                 if (written < to_write) {
-                    return RAGE_FAILURE(rage_PreparedFrames, "Unable to write all data to file");
+                    return RAGE_ERROR("Unable to write all data to file");
                 }
                 interleaved_remaining -= written;
                 rage_interpolated_view_advance(controls[0], written);
                 if (!interleaved_remaining) {
-                    return RAGE_SUCCESS(rage_PreparedFrames, jack_ringbuffer_write_space(data->rec_buffs[0]));
+                    return RAGE_OK;
                 }
-                break;
+                break;}
         }
-        chunk = rage_interpolated_view_value(controls[0]);
-    }
-    assert(chunk->value[0].e == IDLE);
-    return RAGE_SUCCESS(rage_PreparedFrames, UINT32_MAX);
+    } while (future_values);
+    return RAGE_OK;
 }
 
 rage_Error elem_clear(rage_ElementState * data, rage_InterpolatedView ** controls, rage_FrameNo to_present) {
