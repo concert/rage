@@ -9,15 +9,6 @@
 
 #define RAGE_INTERPOLATORS_N RAGE_INTERPOLATION_LINEAR + 1
 
-static bool recognised_interpolation_mode(rage_InterpolationMode mode) {
-    switch (mode) {
-        case (RAGE_INTERPOLATION_CONST):
-        case (RAGE_INTERPOLATION_LINEAR):
-            return true;
-    }
-    return false;
-}
-
 typedef uint32_t (*rage_AtomInterpolator)(
     rage_Atom * const target,
     rage_Atom const * const start_value, rage_Atom const * const end_value,
@@ -68,12 +59,8 @@ static void rage_interpolatedview_destroy(rage_InterpolatedView * iv) {
     free(iv->value.value);
 }
 
-static int as_interpolation_mask(rage_InterpolationMode m) {
-    return 2 ^ m;
-}
-
 static rage_Error validate_time_series(
-	rage_TimeSeries const * points, rage_InterpolationMode allowed_modes) {
+	rage_TimeSeries const * points, rage_InterpolationMode mode_limit) {
     if (points->len == 0) {
         return RAGE_ERROR("No points in time series");
     }
@@ -84,9 +71,7 @@ static rage_Error validate_time_series(
     }
     for (uint32_t i = 0; i < points->len; i++) {
         point = &points->items[i];
-        if (
-                !recognised_interpolation_mode(point->mode) ||
-                !(as_interpolation_mask(point->mode) & allowed_modes)) {
+        if ((point->mode < 0) || (point->mode > mode_limit)) {
             return RAGE_ERROR("Unsupported interpolation mode");
         }
         if (i && !rage_time_after(point->time, *t)) {
@@ -171,11 +156,9 @@ static rage_AtomInterpolator time_interpolators[RAGE_INTERPOLATORS_N] = {
     rage_time_interpolate, NULL
 };
 
-static int allowed_interpolators(
+static rage_InterpolationMode interpolation_limit(
         rage_TupleDef const * const td) {
-    rage_InterpolationMode m =
-        as_interpolation_mask(RAGE_INTERPOLATION_CONST) |
-        as_interpolation_mask(RAGE_INTERPOLATION_LINEAR);
+    rage_InterpolationMode m = RAGE_INTERPOLATION_LINEAR;
     for (unsigned i=0; i < td->len; i++) {
         switch (td->items[i].type->type) {
             case (RAGE_ATOM_FLOAT):
@@ -184,7 +167,7 @@ static int allowed_interpolators(
             case (RAGE_ATOM_TIME):
             case (RAGE_ATOM_STRING):
             case (RAGE_ATOM_ENUM):
-                m = as_interpolation_mask(RAGE_INTERPOLATION_CONST);
+                m = RAGE_INTERPOLATION_CONST;
                 break;
         }
     }
@@ -194,7 +177,7 @@ static int allowed_interpolators(
 rage_InitialisedInterpolator rage_interpolator_new(
         rage_TupleDef const * const type, rage_TimeSeries const * points,
         uint32_t const sample_rate, uint8_t const n_views) {
-    rage_Error err = validate_time_series(points, allowed_interpolators(type));
+    rage_Error err = validate_time_series(points, interpolation_limit(type));
     if (RAGE_FAILED(err)) {
         return RAGE_FAILURE_CAST(rage_InitialisedInterpolator, err);
     }
