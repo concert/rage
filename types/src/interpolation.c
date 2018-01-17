@@ -66,9 +66,6 @@ static rage_Error validate_time_series(
     }
     rage_TimePoint const * point = &points->items[0];
     rage_Time const * t = &point->time;
-    if (t->second || t->fraction) {
-        return RAGE_ERROR("First value is not at start of time series");
-    }
     for (uint32_t i = 0; i < points->len; i++) {
         point = &points->items[i];
         if ((point->mode < 0) || (point->mode > mode_limit)) {
@@ -109,7 +106,7 @@ static void frameseries_free(
     free(points);
 }
 
-static uint32_t rage_const_interpolate(
+static uint32_t rage_const_interpolate_fwd(
         rage_Atom * const target,
         rage_Atom const * const start_value, rage_Atom const * const end_value,
         const uint32_t frames_through, const uint32_t duration) {
@@ -141,15 +138,15 @@ RAGE_NUMERIC_INTERPOLATE(int, i)
 #undef RAGE_NUMERIC_INTERPOLATE
 
 static rage_AtomInterpolator const_interpolators[RAGE_INTERPOLATORS_N] = {
-    rage_const_interpolate, NULL
+    rage_const_interpolate_fwd, NULL
 };
 
 static rage_AtomInterpolator int_interpolators[RAGE_INTERPOLATORS_N] = {
-    rage_const_interpolate, rage_int_linear_interpolate
+    rage_const_interpolate_fwd, rage_int_linear_interpolate
 };
 
 static rage_AtomInterpolator float_interpolators[RAGE_INTERPOLATORS_N] = {
-    rage_const_interpolate, rage_float_linear_interpolate
+    rage_const_interpolate_fwd, rage_float_linear_interpolate
 };
 
 static rage_AtomInterpolator time_interpolators[RAGE_INTERPOLATORS_N] = {
@@ -235,22 +232,29 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
         }
         start = &(view->points->items[i]);
     }
-    if (end == NULL) {
-        duration = UINT32_MAX;
-        end = start;
+    if (start == NULL) {
+        view->value.valid_for = view->points->items[0].frame - view->pos;
+        for (i = 0; i < view->interpolator->interpolators.len; i++) {
+            view->value.value[i] = end->value[i];
+        }
+    } else if (end == NULL) {
+        view->value.valid_for = UINT32_MAX;
+        for (i = 0; i < view->interpolator->interpolators.len; i++) {
+            view->value.value[i] = start->value[i];
+        }
     } else {
         duration = end->frame - start->frame;
+        for (i = 0; i < view->interpolator->interpolators.len; i++) {
+            view->value.valid_for = view->interpolator->interpolators.items[i][start->mode](
+                view->value.value + i, start->value + i, end->value + i,
+                view->pos - start->frame, duration);
+        }
+        // FIXME: this is ugly because the interpolators set it to the how much of
+        // the duration remains, but because UINT32_MAX essentially means forever,
+        // this isn't what we want
+        if (duration == UINT32_MAX)
+            view->value.valid_for = duration;
     }
-    for (i = 0; i < view->interpolator->interpolators.len; i++) {
-        view->value.valid_for = view->interpolator->interpolators.items[i][start->mode](
-            view->value.value + i, start->value + i, end->value + i,
-            view->pos - start->frame, duration);
-    }
-    // FIXME: this is ugly because the interpolators set it to the how much of
-    // the duration remains, but because UINT32_MAX essentially means forever,
-    // this isn't what we want
-    if (duration == UINT32_MAX)
-        view->value.valid_for = duration;
     // Take into account that timeseries might have changed in the future
     // FIXME: a lot of commonality with seek!
     rage_FrameSeries * active_pts = atomic_load_explicit(
