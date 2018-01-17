@@ -150,7 +150,7 @@ static rage_Error time_checks(rage_Interpolator * interpolator) {
     if (frame_no_check(v, 1))
         return RAGE_ERROR("Mismatch at t=4");
     rage_interpolated_view_advance(v, 120);
-    if (frame_no_check(v, 121))
+    if (frame_no_check(v, 1))
         return RAGE_ERROR("Mismatch at t=124");
     return RAGE_OK;
 }
@@ -186,9 +186,22 @@ static rage_Error interpolator_new_with_no_timepoints() {
     return RAGE_OK;
 }
 
+static rage_Error check_offset_first_timepoint(rage_Interpolator * interpolator) {
+    rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
+    if (i_check(v, 3))
+        return RAGE_ERROR("Bad value at t=0");
+    rage_interpolated_view_advance(v, 20);
+    if (i_check(v, 3))
+        return RAGE_ERROR("Bad value at t=20");
+    rage_interpolated_view_advance(v, 200);
+    if (i_check(v, 3))
+        return RAGE_ERROR("Bad value at t=220");
+    return RAGE_OK;
+}
+
 static rage_Error interpolator_new_first_timepoint_not_start() {
     rage_Atom vals[] = {
-        {.i = 0}
+        {.i = 3}
     };
     rage_TimePoint tps[] = {
         {
@@ -198,10 +211,8 @@ static rage_Error interpolator_new_first_timepoint_not_start() {
         }
     };
     rage_Error err = check_with_single_field_interpolator(
-        &unconstrained_int, tps, 1, NULL, 1);
-    if (!RAGE_FAILED(err))
-        return RAGE_ERROR("Interpolator create did not fail");
-    return RAGE_OK;
+        &unconstrained_int, tps, 1, check_offset_first_timepoint, 1);
+    return err;
 }
 
 static rage_Error interpolator_ambiguous_interpolation_mode() {
