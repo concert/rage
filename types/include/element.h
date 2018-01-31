@@ -31,9 +31,8 @@ typedef RAGE_ARRAY(rage_TupleDef const) rage_ParamDefList;
 typedef struct {
     // Mandatory:
     rage_ParamDefList const * const parameters;
-    // FIXME: these members defy the usual naming convention of thing_action
-    rage_ElementGetPortsDescription const get_ports;
-    rage_ElementFreePortsDescription const free_ports;
+    rage_ElementGetPortsDescription const ports_get;
+    rage_ElementFreePortsDescription const ports_free;
     rage_ElementStateNew const state_new;
     rage_ElementProcess const process;
     rage_ElementStateFree const state_free;
