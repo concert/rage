@@ -1,14 +1,14 @@
 language: c
 sudo: false
 compiler:
- - gcc-5
+ - gcc-7
  - clang
 addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
     packages:
-      - gcc-5
+      - gcc-7
       - clang
       - libsndfile-dev
       - libjack-jackd2-dev
