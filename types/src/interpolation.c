@@ -68,7 +68,7 @@ static rage_Error validate_time_series(
     rage_Time const * t = &point->time;
     for (uint32_t i = 0; i < points->len; i++) {
         point = &points->items[i];
-        if ((point->mode < 0) || (point->mode > mode_limit)) {
+        if ((point->mode < RAGE_INTERPOLATION_CONST) || (point->mode > mode_limit)) {
             return RAGE_ERROR("Unsupported interpolation mode");
         }
         if (i && !rage_time_after(point->time, *t)) {

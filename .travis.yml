@@ -1,11 +1,15 @@
 language: c
 sudo: false
+compiler:
+ - gcc-7
+ - clang
 addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
     packages:
-      - gcc-5
+      - gcc-7
+      - clang
       - libsndfile-dev
       - libjack-jackd2-dev
       - jackd2
@@ -16,8 +20,8 @@ before_install:
  - unzip -d ~/.local/bin /tmp/ninja-linux.zip
  - pyenv shell 3.6
  - pip install meson
- - CC=gcc-5 meson build
 install:
+ - meson build
  - ninja -C build
 script:
  - jackd -r -d dummy -r 44100 &
