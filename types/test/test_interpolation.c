@@ -357,4 +357,67 @@ static rage_Error interpolator_delayed_change_test() {
     return zero_float_start(delayed_change_checks, 2);
 }
 
-// TODO: change part way through to halfway through interpolation test
+static rage_Error change_during_interpolation_checks(rage_Interpolator * interpolator) {
+    rage_Atom vals[] = {
+        {.f = 20},
+        {.f = 30}
+    };
+    rage_TimePoint tps[] = {
+        {
+            .time = {.second = 0},
+            .value = &vals[0],
+            .mode = RAGE_INTERPOLATION_LINEAR
+        },
+        {
+            .time = {.second = 10},
+            .value = &vals[1],
+            .mode = RAGE_INTERPOLATION_LINEAR
+        }
+    };
+    rage_TimeSeries ts = {
+        .len = 2,
+        .items = tps
+    };
+    rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
+    rage_Finaliser * f = rage_interpolator_change_timeseries(interpolator, &ts, 5);
+    rage_InterpolatedValue const * r = rage_interpolated_view_value(v);
+    rage_Error rv = check_float_value(r, 0.0, 1);
+    if (!RAGE_FAILED(rv)) {
+        rage_interpolated_view_advance(v, 3);
+        r = rage_interpolated_view_value(v);
+        rv = check_float_value(r, 3.0, 1);
+        if (!RAGE_FAILED(rv)) {
+            rage_interpolated_view_advance(v, 3);
+            r = rage_interpolated_view_value(v);
+            rv = check_float_value(r, 26.0, 1);
+            if (!RAGE_FAILED(rv)) {
+                rage_interpolated_view_seek(v, 2);
+                r = rage_interpolated_view_value(v);
+                rv = check_float_value(r, 22.0, 1);
+            }
+        }
+    }
+    rage_finaliser_wait(f);
+    return rv;
+};
+
+static rage_Error interpolator_change_during_interpolation_test() {
+    rage_Atom vals[] = {
+        {.f = 0},
+        {.f = 10}
+    };
+    rage_TimePoint tps[] = {
+        {
+            .time = {.second = 0},
+            .value = &vals[0],
+            .mode = RAGE_INTERPOLATION_LINEAR
+        },
+        {
+            .time = {.second = 10},
+            .value = &vals[1],
+            .mode = RAGE_INTERPOLATION_LINEAR
+        }
+    };
+    return check_with_single_field_interpolator(
+        &unconstrained_float, tps, 2, change_during_interpolation_checks, 1);
+}

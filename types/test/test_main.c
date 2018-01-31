@@ -15,6 +15,7 @@ TEST_MAIN(
     interpolator_timeseries_not_monotonic,
     interpolator_immediate_change_test,
     interpolator_delayed_change_test,
+    interpolator_change_during_interpolation_test,
     test_ports,
     test_time_series_new,
     test_time_after,
