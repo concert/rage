@@ -83,8 +83,8 @@ rage_ElementKindLoadResult rage_element_loader_load(char const * type_name) {
     RAGE_ETL_MANDATORY_PARAM(parameters)
     RAGE_ETL_MANDATORY_PARAM(state_new)
     RAGE_ETL_MANDATORY_PARAM(state_free)
-    RAGE_ETL_MANDATORY_PARAM(get_ports)
-    RAGE_ETL_MANDATORY_PARAM(free_ports)
+    RAGE_ETL_MANDATORY_PARAM(ports_get)
+    RAGE_ETL_MANDATORY_PARAM(ports_free)
     RAGE_ETL_MANDATORY_PARAM(process)
     #undef RAGE_ETL_MANDATORY_PARAM
     if (type->prep != NULL && type->clear == NULL) {
@@ -125,7 +125,7 @@ static void rage_params_free(rage_ParamDefList const * pds, rage_Atom ** params)
 
 rage_NewConcreteElementType rage_element_type_specialise(
         rage_ElementKind * kind, rage_Atom ** params) {
-    rage_NewInstanceSpec new_ports = kind->type->get_ports(params);
+    rage_NewInstanceSpec new_ports = kind->type->ports_get(params);
     if (RAGE_FAILED(new_ports))
         return RAGE_FAILURE_CAST(rage_NewConcreteElementType, new_ports);
     rage_InstanceSpec spec = RAGE_SUCCESS_VALUE(new_ports);
@@ -137,7 +137,7 @@ rage_NewConcreteElementType rage_element_type_specialise(
 }
 
 void rage_concrete_element_type_free(rage_ConcreteElementType * cet) {
-    cet->type->free_ports(cet->spec);
+    cet->type->ports_free(cet->spec);
     rage_params_free(cet->type->parameters, cet->params);
     free(cet);
 }
