@@ -18,10 +18,6 @@ typedef struct {
 typedef uint64_t rage_FrameNo;
 
 /*
- * The number of seconds between two times.
- */
-float rage_time_delta(rage_Time a, rage_Time b);
-/*
  * Returns true if b is later than a.
  */
 bool rage_time_after(rage_Time a, rage_Time b);
