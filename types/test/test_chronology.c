@@ -3,51 +3,6 @@
 #include "error.h"
 #include "chronology.h"
 
-typedef struct {
-    unsigned size;
-    char * buf;
-} StringBuffer;
-
-// FIXME: This really either ought to be part of the top level test runner or
-// should go.
-static rage_Error error_context(rage_Error (*f)(StringBuffer b)) {
-    const unsigned buf_size = 80;
-    char buf[buf_size];
-    StringBuffer sb = {.buf=buf, .size=buf_size};
-    rage_Error e = f(sb);
-    if (RAGE_FAILED(e)) {
-        printf("%s\n", RAGE_FAILURE_VALUE(e));
-        return RAGE_ERROR("Failed in error context");
-    }
-    return RAGE_OK;
-}
-
-#define ASSERT_EQUAL(a, b, msg) \
-    if (a != b) { \
-        snprintf(eb.buf, eb.size, "%s: %f != %f", msg, a, b); \
-        return RAGE_ERROR(eb.buf); \
-    }
-
-#define ASSERT_WITHIN(a, b, slop, msg) \
-    if (a - b > slop || b - a > slop) { \
-        snprintf(eb.buf, eb.size, "%s: %f != %f", msg, a, b); \
-        return RAGE_ERROR(eb.buf); \
-    }
-
-// FIXME: this is testing code not used elsewhere, remove?
-static rage_Error time_delta_checks(StringBuffer eb) {
-    rage_Time a = {.fraction = UINT32_MAX * 0.1};
-    ASSERT_EQUAL(rage_time_delta(a, a), 0.0, "Same time")
-    rage_Time b = {.second = 1, .fraction = UINT32_MAX * 0.2};
-    ASSERT_WITHIN(rage_time_delta(b, a), 1.1, 1E-6, "Ahead")
-    ASSERT_WITHIN(rage_time_delta(a, b), -1.1, 1E-6, "Behind")
-    return RAGE_OK;
-}
-
-static rage_Error test_time_delta() {
-    return error_context(time_delta_checks);
-}
-
 static rage_Error test_time_after() {
     rage_Time a = {.second = 2, .fraction = 200};
     if (rage_time_after(a, a))

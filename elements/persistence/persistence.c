@@ -96,6 +96,7 @@ typedef struct {
     SNDFILE * sf;
     SF_INFO sf_info;
     char * open_path;
+    int open_mode;
 } sndfile_status;
 
 struct rage_ElementState {
@@ -204,14 +205,14 @@ void elem_process(rage_ElementState * data, rage_TransportState const transport_
     }
 }
 
-// FIXME: doesn't handle mode switching with same path, also could do more
-static bool file_path_changed(sndfile_status * const s, char const * const path) {
-    if (s->open_path == NULL || strcmp(path, s->open_path)) {
+static bool file_path_changed(sndfile_status * const s, char const * const path, int mode) {
+    if (s->open_path == NULL || strcmp(path, s->open_path) || mode != s->open_mode) {
         if (s->sf != NULL) {
             sf_close(s->sf);
         }
         free(s->open_path);
         s->open_path = strdup(path);
+        s->open_mode = mode;
         return true;
     }
     return false;
@@ -234,7 +235,7 @@ static rage_Error check_sfinfo(
 static rage_PreparedFrames read_prep_sndfile(
         rage_ElementState * const data, char const * const path, size_t pos,
         uint32_t to_read, float * interleaved_buffer) {
-    if (file_path_changed(&data->sndfile, path)) {
+    if (file_path_changed(&data->sndfile, path, SFM_READ)) {
         data->sndfile.sf = sf_open(path, SFM_READ, &data->sndfile.sf_info);
         const rage_Error info_check = check_sfinfo(
             &data->sndfile.sf_info, data->n_channels, data->sample_rate);
@@ -335,7 +336,7 @@ static rage_PreparedFrames write_buffer_to_file(
         sndfile_status * const s, char const * const path, uint32_t pos,
         uint32_t to_write, float * interleaved_buffer, uint32_t sample_rate,
         uint32_t n_channels) {
-    if (file_path_changed(s, path)) {
+    if (file_path_changed(s, path, SFM_WRITE)) {
         s->sf_info.samplerate = sample_rate;
         s->sf_info.channels = n_channels;
         s->sf_info.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;

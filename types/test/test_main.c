@@ -18,5 +18,4 @@ TEST_MAIN(
     interpolator_change_during_interpolation_test,
     test_ports,
     test_time_series_new,
-    test_time_after,
-    test_time_delta)
+    test_time_after)
