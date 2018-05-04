@@ -153,7 +153,7 @@ static rage_AtomInterpolator time_interpolators[RAGE_INTERPOLATORS_N] = {
     rage_time_interpolate, NULL
 };
 
-static rage_InterpolationMode interpolation_limit(
+rage_InterpolationMode rage_interpolation_limit(
         rage_TupleDef const * const td) {
     rage_InterpolationMode m = RAGE_INTERPOLATION_LINEAR;
     for (unsigned i=0; i < td->len; i++) {
@@ -174,7 +174,7 @@ static rage_InterpolationMode interpolation_limit(
 rage_InitialisedInterpolator rage_interpolator_new(
         rage_TupleDef const * const type, rage_TimeSeries const * points,
         uint32_t const sample_rate, uint8_t const n_views) {
-    rage_Error err = validate_time_series(points, interpolation_limit(type));
+    rage_Error err = validate_time_series(points, rage_interpolation_limit(type));
     if (RAGE_FAILED(err)) {
         return RAGE_FAILURE_CAST(rage_InitialisedInterpolator, err);
     }

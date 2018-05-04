@@ -38,3 +38,5 @@ rage_Finaliser * rage_interpolator_change_timeseries(
     rage_Interpolator * const state, rage_TimeSeries const * const ts,
     rage_FrameNo change_at);
 rage_InterpolatedView * rage_interpolator_get_view(rage_Interpolator * state, uint8_t idx);
+
+rage_InterpolationMode rage_interpolation_limit(rage_TupleDef const * const td);
