@@ -53,6 +53,7 @@ rage_NewInstanceSpec elem_describe_ports(rage_Atom ** params) {
     int const n_channels = params[0][0].i;
     rage_InstanceSpec rval;
     rval.max_uncleaned_frames = UINT32_MAX;
+    rval.max_period_size = UINT32_MAX;
     rval.controls.len = 1;
     rval.controls.items = &gain_def;
     rage_StreamDef * stream_defs = calloc(n_channels, sizeof(rage_StreamDef));
