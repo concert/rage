@@ -105,7 +105,6 @@ typedef struct {
 
 struct rage_ElementState {
     unsigned n_channels;
-    uint32_t frame_size; // Doesn't everyone HAVE to do this?
     uint32_t sample_rate;
     jack_ringbuffer_t ** rec_buffs;
     jack_ringbuffer_t ** play_buffs;
@@ -129,11 +128,10 @@ static void sndfile_status_destroy(sndfile_status * const s) {
 }
 
 rage_NewElementState elem_new(
-        uint32_t sample_rate, uint32_t frame_size, rage_Atom ** params) {
+        uint32_t sample_rate, rage_Atom ** params) {
     rage_ElementState * ad = malloc(sizeof(rage_ElementState));
     // Not sure I like way the indices tie up here
     ad->n_channels = params[0][0].i;
-    ad->frame_size = frame_size;
     ad->sample_rate = sample_rate;
     ad->rec_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
     ad->play_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
@@ -168,18 +166,18 @@ static inline void zero_fill_outputs(
     }
 }
 
-void elem_process(rage_ElementState * data, rage_TransportState const transport_state, rage_Ports const * ports) {
+void elem_process(rage_ElementState * data, rage_TransportState const transport_state, uint32_t period_size, rage_Ports const * ports) {
     rage_InterpolatedValue const * chunk;
-    uint32_t step_frames, remaining = data->frame_size;
+    uint32_t step_frames, remaining = period_size;
     uint32_t c, frame_pos = 0;
     size_t chunk_size;
     if (transport_state == RAGE_TRANSPORT_STOPPED) {
-        zero_fill_outputs(data, ports, 0, data->frame_size * sizeof(float));
+        zero_fill_outputs(data, ports, 0, period_size * sizeof(float));
         return;
     }
     while (remaining) {
         chunk = rage_interpolated_view_value(ports->controls[0]);
-        frame_pos = data->frame_size - remaining;
+        frame_pos = period_size - remaining;
         step_frames = (remaining > chunk->valid_for) ?
             chunk->valid_for : remaining;
         chunk_size = step_frames * sizeof(float);
@@ -201,7 +199,7 @@ void elem_process(rage_ElementState * data, rage_TransportState const transport_
                 }
             case IDLE:
                 zero_fill_outputs(
-                    data, ports, frame_pos, data->frame_size * sizeof(float));
+                    data, ports, frame_pos, period_size * sizeof(float));
                 break;
         }
         remaining -= step_frames;

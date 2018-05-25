@@ -89,7 +89,7 @@ rage_Error test_loader() {
                     err = RAGE_ERROR("Parameters not copied");
                 }
                 free_tuples(rage_element_kind_parameters(ek), tups);
-                rage_ElementNewResult elem_ = rage_element_new(cet, 44100, 256);
+                rage_ElementNewResult elem_ = rage_element_new(cet, 44100);
                 if (!RAGE_FAILED(elem_)) {
                     rage_Element * elem = RAGE_SUCCESS_VALUE(elem_);
                     rage_Ports ports = rage_ports_new(&cet->spec);
@@ -97,8 +97,8 @@ rage_Error test_loader() {
                     rage_Interpolators ii = new_interpolators(&ports, cet->spec);
                     if (!RAGE_FAILED(ii)) {
                         rage_InterpolatorArray interpolators = RAGE_SUCCESS_VALUE(ii);
-                        rage_element_process(elem, RAGE_TRANSPORT_STOPPED, &ports);
-                        rage_element_process(elem, RAGE_TRANSPORT_ROLLING, &ports);
+                        rage_element_process(elem, RAGE_TRANSPORT_STOPPED, 256, &ports);
+                        rage_element_process(elem, RAGE_TRANSPORT_ROLLING, 256, &ports);
                         free_interpolators(interpolators, cet->spec);
                     } else {
                         err = RAGE_AS_ERROR(ii);

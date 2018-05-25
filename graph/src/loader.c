@@ -147,10 +147,9 @@ void rage_concrete_element_type_free(rage_ConcreteElementType * cet) {
 // Element
 
 rage_ElementNewResult rage_element_new(
-        rage_ConcreteElementType * cet, uint32_t sample_rate,
-        uint32_t frame_size) {
+        rage_ConcreteElementType * cet, uint32_t sample_rate) {
     rage_NewElementState new_state = cet->type->state_new(
-        sample_rate, frame_size, cet->params);
+        sample_rate, cet->params);
     if (RAGE_FAILED(new_state))
         return RAGE_FAILURE_CAST(rage_ElementNewResult, new_state);
     void * state = RAGE_SUCCESS_VALUE(new_state);
@@ -167,6 +166,7 @@ void rage_element_free(rage_Element * elem) {
 
 void rage_element_process(
         rage_Element const * const elem,
-        rage_TransportState const transport_state, rage_Ports const * ports) {
-    elem->cet->type->process(elem->state, transport_state, ports);
+        rage_TransportState const transport_state, uint32_t period_size,
+        rage_Ports const * ports) {
+    elem->cet->type->process(elem->state, transport_state, period_size, ports);
 }

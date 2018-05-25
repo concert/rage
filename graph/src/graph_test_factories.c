@@ -45,7 +45,7 @@ rage_NewTestElem new_test_elem(char const * elem_so) {
         return RAGE_FAILURE_CAST(rage_NewTestElem, ncet);
     }
     rv.cet = RAGE_SUCCESS_VALUE(ncet);
-    rage_ElementNewResult elem_ = rage_element_new(rv.cet, 44100, rv.elem_frame_size);
+    rage_ElementNewResult elem_ = rage_element_new(rv.cet, 44100);
     if (RAGE_FAILED(elem_)) {
         free_test_elem(rv);
         return RAGE_FAILURE_CAST(rage_NewTestElem, elem_);
