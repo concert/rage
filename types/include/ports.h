@@ -17,6 +17,7 @@ typedef struct {
     rage_InstanceSpecControls controls;
     rage_InstanceSpecStreams inputs;
     rage_InstanceSpecStreams outputs;
+    uint32_t max_uncleaned_frames;
 } rage_InstanceSpec;
 
 // FIXME: typedeffed pointers

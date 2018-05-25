@@ -129,6 +129,8 @@ rage_NewConcreteElementType rage_element_type_specialise(
     if (RAGE_FAILED(new_ports))
         return RAGE_FAILURE_CAST(rage_NewConcreteElementType, new_ports);
     rage_InstanceSpec spec = RAGE_SUCCESS_VALUE(new_ports);
+    if (spec.max_uncleaned_frames == 0)
+        return RAGE_FAILURE(rage_NewConcreteElementType, "max_uncleaned_frames == 0");
     rage_ConcreteElementType * cet = malloc(sizeof(rage_ConcreteElementType));
     cet->type = kind->type;
     cet->params = rage_params_copy(rage_element_kind_parameters(kind), params);
