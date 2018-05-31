@@ -10,10 +10,17 @@ struct rage_ProcBlock {
     uint32_t sample_rate;
 };
 
+typedef struct {
+    rage_InterpolatedView ** prep;
+    rage_InterpolatedView ** clean;
+    rage_InterpolatedView ** rt;
+} rage_ProcBlockViews;
+
 struct rage_Harness {
     rage_JackHarness * jack_harness;
     rage_SupportTruck * truck;
     rage_Interpolator ** interpolators;
+    rage_ProcBlockViews views;
 };
 
 rage_NewProcBlock rage_proc_block_new(uint32_t sample_rate) {
@@ -104,6 +111,39 @@ static inline uint8_t view_count_for_type(rage_ElementType const * const type) {
     return n_views;
 }
 
+static rage_ProcBlockViews rage_proc_block_initialise_views(
+        rage_ConcreteElementType * cet, rage_Harness * harness) {
+    rage_ProcBlockViews views;
+    views.rt = calloc(
+        cet->controls.len, sizeof(rage_InterpolatedView *));
+    if (cet->type->prep == NULL) {
+        views.prep = NULL;
+    } else {
+        views.prep = calloc(
+            cet->controls.len, sizeof(rage_InterpolatedView *));
+    }
+    if (cet->type->clean == NULL) {
+        views.clean = NULL;
+    } else {
+        views.clean = calloc(
+            cet->controls.len, sizeof(rage_InterpolatedView *));
+    }
+    for (uint32_t i = 0; i < cet->controls.len; i++) {
+        uint8_t view_idx = 0;
+        views.rt[i] = rage_interpolator_get_view(
+            harness->interpolators[i], view_idx);
+        if (views.prep != NULL) {
+            views.prep[i] = rage_interpolator_get_view(
+                harness->interpolators[i], ++view_idx);
+        }
+        if (views.clean != NULL) {
+            views.clean[i] = rage_interpolator_get_view(
+                harness->interpolators[i], ++view_idx);
+        }
+    }
+    return views;
+}
+
 rage_MountResult rage_proc_block_mount(
         rage_ProcBlock * pb, rage_Element * elem,
         rage_TimeSeries const * controls, char const * name) {
@@ -112,39 +152,12 @@ rage_MountResult rage_proc_block_mount(
     // FIXME: Error handling
     harness->interpolators = RAGE_SUCCESS_VALUE(interpolators_for(
         pb->sample_rate, &elem->cet->controls, controls, n_views));
-    rage_InterpolatedView ** rt_views = calloc(
-        elem->cet->controls.len, sizeof(rage_InterpolatedView *));
-    rage_InterpolatedView ** prep_views, ** clean_views;
-    if (elem->cet->type->prep == NULL) {
-        prep_views = NULL;
-    } else {
-        prep_views = calloc(
-            elem->cet->controls.len, sizeof(rage_InterpolatedView *));
-    }
-    if (elem->cet->type->clean == NULL) {
-        clean_views = NULL;
-    } else {
-        clean_views = calloc(
-            elem->cet->controls.len, sizeof(rage_InterpolatedView *));
-    }
-    for (uint32_t i = 0; i < elem->cet->controls.len; i++) {
-        uint8_t view_idx = 0;
-        rt_views[i] = rage_interpolator_get_view(
-            harness->interpolators[i], view_idx);
-        if (prep_views != NULL) {
-            prep_views[i] = rage_interpolator_get_view(
-                harness->interpolators[i], ++view_idx);
-        }
-        if (clean_views != NULL) {
-            clean_views[i] = rage_interpolator_get_view(
-                harness->interpolators[i], ++view_idx);
-        }
-    }
+    harness->views = rage_proc_block_initialise_views(elem->cet, harness);
     // FIXME: could be more efficient, and not add this if not required
     harness->truck = rage_support_convoy_mount(
-        pb->convoy, elem, prep_views, clean_views);
+        pb->convoy, elem, harness->views.prep, harness->views.clean);
     harness->jack_harness = rage_jack_binding_mount(
-        pb->jack_binding, elem, rt_views, name);
+        pb->jack_binding, elem, harness->views.rt, name);
     return RAGE_SUCCESS(rage_MountResult, harness);
 }
 
@@ -153,6 +166,9 @@ void rage_proc_block_unmount(rage_Harness * harness) {
     // from (reducing backrefs)
     rage_jack_binding_unmount(harness->jack_harness);
     rage_support_convoy_unmount(harness->truck);
+    free(harness->views.prep);
+    free(harness->views.clean);
+    free(harness->views.rt);
 }
 
 rage_Finaliser * rage_harness_set_time_series(
