@@ -71,9 +71,13 @@ static rage_TupleDef const tst_def = {
     .items = tst_fields
 };
 
+#define RAGE_PERSISTANCE_MAX_FRAMES 4096
+
 rage_NewInstanceSpec elem_describe_ports(rage_Atom ** params) {
     int const n_channels = params[0][0].i;
     rage_InstanceSpec rval;
+    rval.max_uncleaned_frames = RAGE_PERSISTANCE_MAX_FRAMES;
+    rval.max_period_size = RAGE_PERSISTANCE_MAX_FRAMES / 2;
     rval.controls.len = 1;
     rval.controls.items = &tst_def;
     rage_StreamDef * stream_defs = calloc(n_channels, sizeof(rage_StreamDef));
@@ -101,7 +105,6 @@ typedef struct {
 
 struct rage_ElementState {
     unsigned n_channels;
-    uint32_t frame_size; // Doesn't everyone HAVE to do this?
     uint32_t sample_rate;
     jack_ringbuffer_t ** rec_buffs;
     jack_ringbuffer_t ** play_buffs;
@@ -125,20 +128,19 @@ static void sndfile_status_destroy(sndfile_status * const s) {
 }
 
 rage_NewElementState elem_new(
-        uint32_t sample_rate, uint32_t frame_size, rage_Atom ** params) {
+        uint32_t sample_rate, rage_Atom ** params) {
     rage_ElementState * ad = malloc(sizeof(rage_ElementState));
     // Not sure I like way the indices tie up here
     ad->n_channels = params[0][0].i;
-    ad->frame_size = frame_size;
     ad->sample_rate = sample_rate;
     ad->rec_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
     ad->play_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
     for (uint32_t c = 0; c < ad->n_channels; c++) {
-        ad->rec_buffs[c] = jack_ringbuffer_create(2 * frame_size * sizeof(float));
-        ad->play_buffs[c] = jack_ringbuffer_create(2 * frame_size * sizeof(float));
+        ad->rec_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float) + 1);
+        ad->play_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float) + 1);
     }
     ad->rb_vec = calloc(2 * ad->n_channels, sizeof(float *));
-    ad->interleaved_buffer = calloc(ad->n_channels * 2 * frame_size, sizeof(float));
+    ad->interleaved_buffer = calloc(ad->n_channels * RAGE_PERSISTANCE_MAX_FRAMES, sizeof(float));
     sndfile_status_init(&ad->sndfile);
     return RAGE_SUCCESS(rage_NewElementState, ad);
 }
@@ -164,18 +166,18 @@ static inline void zero_fill_outputs(
     }
 }
 
-void elem_process(rage_ElementState * data, rage_TransportState const transport_state, rage_Ports const * ports) {
+void elem_process(rage_ElementState * data, rage_TransportState const transport_state, uint32_t period_size, rage_Ports const * ports) {
     rage_InterpolatedValue const * chunk;
-    uint32_t step_frames, remaining = data->frame_size;
+    uint32_t step_frames, remaining = period_size;
     uint32_t c, frame_pos = 0;
     size_t chunk_size;
     if (transport_state == RAGE_TRANSPORT_STOPPED) {
-        zero_fill_outputs(data, ports, 0, data->frame_size * sizeof(float));
+        zero_fill_outputs(data, ports, 0, period_size * sizeof(float));
         return;
     }
     while (remaining) {
         chunk = rage_interpolated_view_value(ports->controls[0]);
-        frame_pos = data->frame_size - remaining;
+        frame_pos = period_size - remaining;
         step_frames = (remaining > chunk->valid_for) ?
             chunk->valid_for : remaining;
         chunk_size = step_frames * sizeof(float);
@@ -197,7 +199,7 @@ void elem_process(rage_ElementState * data, rage_TransportState const transport_
                 }
             case IDLE:
                 zero_fill_outputs(
-                    data, ports, frame_pos, data->frame_size * sizeof(float));
+                    data, ports, frame_pos, period_size * sizeof(float));
                 break;
         }
         remaining -= step_frames;

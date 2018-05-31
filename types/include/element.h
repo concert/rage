@@ -10,14 +10,14 @@ typedef struct rage_ElementState rage_ElementState;
 
 typedef RAGE_OR_ERROR(rage_ElementState *) rage_NewElementState;
 typedef rage_NewElementState (*rage_ElementStateNew)(
-    uint32_t sample_rate, uint32_t frame_size, rage_Atom ** params);
+    uint32_t sample_rate, rage_Atom ** params);
 typedef void (*rage_ElementStateFree)(rage_ElementState * state);
 typedef RAGE_OR_ERROR(rage_InstanceSpec) rage_NewInstanceSpec;
 typedef rage_NewInstanceSpec (*rage_ElementGetPortsDescription)(rage_Atom ** params);
 typedef void (*rage_ElementFreePortsDescription)(rage_InstanceSpec);
 typedef void (*rage_ElementProcess)(
     rage_ElementState * state, rage_TransportState const transport_state,
-    rage_Ports const * ports);
+    uint32_t period_size, rage_Ports const * ports);
 
 typedef rage_Error (*rage_ElementPrepare)(
     rage_ElementState * state, rage_InterpolatedView ** controls);
