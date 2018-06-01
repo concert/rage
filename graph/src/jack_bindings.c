@@ -48,8 +48,8 @@ static int process(jack_nframes_t nframes, void * arg) {
         for (i = 0; i < harness->n_outputs; i++) {
             harness->outputs[i] = jack_port_get_buffer(harness->jack_outputs[i], nframes);
         }
-        // FIXME: interpolator clock&transport sync
-        rage_element_process(harness->elem, e->rt_transport, &harness->ports);
+        // FIXME: interpolator clock&transport sync, what if nframes > max_frames_period
+        rage_element_process(harness->elem, e->rt_transport, nframes, &harness->ports);
     }
     switch (e->rt_transport) {
         case RAGE_TRANSPORT_ROLLING:

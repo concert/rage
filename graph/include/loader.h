@@ -50,11 +50,11 @@ void rage_concrete_element_type_free(rage_ConcreteElementType * ct);
 
 typedef RAGE_OR_ERROR(rage_Element *) rage_ElementNewResult;
 rage_ElementNewResult rage_element_new(
-    rage_ConcreteElementType * type, uint32_t sample_rate, uint32_t frame_size);
+    rage_ConcreteElementType * type, uint32_t sample_rate);
 void rage_element_free(rage_Element * elem);
 void rage_element_process(
     rage_Element const * const elem, rage_TransportState const transport_state,
-    rage_Ports const * ports);
+    uint32_t period_size, rage_Ports const * ports);
 
 
 // FIXME: better or worse?

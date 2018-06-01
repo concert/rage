@@ -118,22 +118,20 @@ static rage_Error clear(rage_Trucks * trucks, rage_FrameNo invalid_after) {
     return RAGE_OK;
 }
 
-static uint32_t n_frames_grace(rage_Trucks * trucks, uint32_t period_size) {
-    uint32_t min_prepared = UINT32_MAX;
-    bool needs_clean = false;
+#define RAGE_MIN(a, b) (a < b) ? a : b
+
+static uint32_t n_frames_grace(rage_Trucks * trucks) {
+    uint32_t min_frames_until_clean = UINT32_MAX, min_prepared = UINT32_MAX;
     for (unsigned i = 0; i < trucks->len; i++) {
         rage_SupportTruck * truck = trucks->items[i];
-        min_prepared = (truck->frames_prepared < min_prepared) ? truck->frames_prepared : min_prepared;
-        if (!needs_clean) {
-            needs_clean = truck->frames_to_clean >= 0;
-        }
+        min_prepared = RAGE_MIN(truck->frames_prepared, min_prepared);
+        int64_t frames_until_clean = truck->elem->cet->spec.max_uncleaned_frames - truck->frames_to_clean;
+        min_frames_until_clean = RAGE_MIN(min_frames_until_clean, frames_until_clean);
     }
-    if (needs_clean) {  // FIXME: cleanup excessively frequent
-        return period_size;
-    } else {
-        return min_prepared;
-    }
+    return RAGE_MIN(min_prepared, min_frames_until_clean);
 }
+
+#undef RAGE_MIN
 
 static void account_for_rt_frames(rage_Trucks * trucks, uint32_t frames_passed) {
     for (unsigned i = 0; i < trucks->len; i++) {
@@ -172,7 +170,7 @@ static void * rage_support_convoy_worker(void * ptr) {
         convoy->counts_skipped = 0;
         // FIXME: Should be all trucks not just prep
         account_for_rt_frames(convoy->prep_trucks, counts_waited * convoy->period_size);
-        min_frames_wait = n_frames_grace(convoy->prep_trucks, convoy->period_size);
+        min_frames_wait = n_frames_grace(convoy->prep_trucks);
         counts_to_wait = min_frames_wait / convoy->period_size;
         if (0 > rage_countdown_add(convoy->countdown, counts_to_wait)) {
             err = "SupportConvoy failed to keep up";
