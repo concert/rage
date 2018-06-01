@@ -81,7 +81,6 @@ rage_Error test_loader() {
         if (!RAGE_FAILED(ek_)) {
             rage_ElementKind * ek = RAGE_SUCCESS_VALUE(ek_);
             rage_Atom ** tups = generate_tuples(rage_element_kind_parameters(ek));
-            // FIXME: error handling of next line
             rage_NewConcreteElementType cet_ = rage_element_type_specialise(ek, tups);
             if (!RAGE_FAILED(cet_)) {
                 rage_ConcreteElementType * cet = RAGE_SUCCESS_VALUE(cet_);
