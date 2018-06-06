@@ -3,7 +3,7 @@
 struct rage_Set {
     unsigned usage_count;
     rage_Set * next;
-    int value;
+    rage_SetElem * value;
 };
 
 rage_Set * rage_set_new() {
@@ -22,7 +22,7 @@ void rage_set_free(rage_Set * s) {
     }
 }
 
-static rage_Set * rage_set_item_matching(rage_Set * s, int v) {
+static rage_Set * rage_set_item_matching(rage_Set * s, rage_SetElem * v) {
     while (s != NULL) {
         if (s->value == v) {
             break;
@@ -32,11 +32,11 @@ static rage_Set * rage_set_item_matching(rage_Set * s, int v) {
     return s;
 }
 
-bool rage_set_contains(rage_Set * s, int v) {
+bool rage_set_contains(rage_Set * s, rage_SetElem * v) {
     return rage_set_item_matching(s, v) != NULL;
 }
 
-static rage_Set * rage_set_unchecked_add(rage_Set * s, int v) {
+static rage_Set * rage_set_unchecked_add(rage_Set * s, rage_SetElem * v) {
     rage_Set * new = malloc(sizeof(rage_Set));
     new->value = v;
     new->next = s;
@@ -44,7 +44,7 @@ static rage_Set * rage_set_unchecked_add(rage_Set * s, int v) {
     return new;
 }
 
-rage_Set * rage_set_add(rage_Set * s, int v) {
+rage_Set * rage_set_add(rage_Set * s, rage_SetElem * v) {
     if (s != NULL) {
         s->usage_count++;
     }
@@ -55,7 +55,7 @@ rage_Set * rage_set_add(rage_Set * s, int v) {
     }
 }
 
-rage_Set * rage_set_remove(rage_Set * s, int v) {
+rage_Set * rage_set_remove(rage_Set * s, rage_SetElem * v) {
     rage_Set * matching = rage_set_item_matching(s, v);
     if (matching == NULL) {
         s->usage_count++;
