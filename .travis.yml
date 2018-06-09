@@ -13,6 +13,7 @@ addons:
       - libsndfile-dev
       - libjack-jackd2-dev
       - jackd2
+      - ruby
 before_install:
  - "travis_retry curl -L
     https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
