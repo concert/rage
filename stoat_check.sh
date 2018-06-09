@@ -5,7 +5,7 @@ if [[ $CC != clang* ]]; then
     exit
 fi
 
-ln -s /usr/lib/libstdc++.so.6 /usr/lib/libstdc++.so
+#ln -s /usr/lib/libstdc++.so.6 /usr/lib/libstdc++.so
 
 git clone https://github.com/fundamental/stoat && pushd stoat
 mkdir build && cd build
