@@ -5,13 +5,13 @@ if [[ $CC != clang* ]]; then
     exit
 fi
 
-apt-get install ruby
-ln -s /usr/lib/libstdc++.so.6 /usr/lib/libstdc++.so
+sudo apt-get install ruby
+sudo ln -s /usr/lib/libstdc++.so.6 /usr/lib/libstdc++.so
 
 git clone https://github.com/fundamental/stoat && pushd stoat
 mkdir build && cd build
 cmake .. && make && make test
-make install
+sudo make install
 popd
 
 export CC=stoat-compile
