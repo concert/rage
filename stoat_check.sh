@@ -6,6 +6,7 @@ if [[ $CC != clang* ]]; then
 fi
 
 apt-get install ruby
+ln -s /usr/lib/libstdc++.so.6 /usr/lib/libstdc++.so
 
 git clone https://github.com/fundamental/stoat && pushd stoat
 mkdir build && cd build
