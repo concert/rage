@@ -1,3 +1,5 @@
+set -e
+
 if [[ $CC != clang* ]]; then
     echo "Stoat checks only supported for clang builds"
     exit
@@ -11,7 +13,9 @@ cmake .. && make && make test
 make install
 popd
 
-rm -r build/
 export CC=stoat-compile
-meson -C build/
+rm -r build/
+mkdir build
+meson build
+ninja -C build
 stoat --recursive build/
