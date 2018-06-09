@@ -23,6 +23,7 @@ before_install:
 install:
  - meson build
  - ninja -C build
+ - bash stoat_check.sh
 script:
  - jackd -r -d dummy -r 44100 &
  - until jack_lsp; do sleep 0.01; done  # Wait for jackd
