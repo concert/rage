@@ -293,7 +293,7 @@ rage_Error elem_prepare(rage_ElementState * data, rage_InterpolatedView ** contr
                 populate_slabs(
                     slabs, data->n_channels, jack_ringbuffer_get_write_vector,
                     data->rb_vec, data->play_buffs);
-                size_t const rb_space = slabs[0] + slabs[1];
+                size_t const rb_space = (slabs[0] + slabs[1]) / sizeof(float);
                 size_t const to_read = (rb_space < chunk->valid_for) ? rb_space : chunk->valid_for;
                 rage_PreparedFrames const read_or_fail = read_prep_sndfile(
                     data, chunk->value[1].s, chunk->value[2].frame_no, to_read, data->interleaved_buffer);
