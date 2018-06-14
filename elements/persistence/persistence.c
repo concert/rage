@@ -429,7 +429,7 @@ rage_Error elem_clear(rage_ElementState * data, rage_InterpolatedView ** control
     for (uint32_t i = 0; i < data->n_channels; i++) {
         jack_ringbuffer_t * const rb = data->play_buffs[i];
         // Roll back the write pointer
-        jack_ringbuffer_write_advance(rb, -to_erase);
+        jack_ringbuffer_write_advance(rb, -(to_erase * sizeof(float)));
     }
     return RAGE_OK;
 }
