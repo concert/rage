@@ -11,7 +11,7 @@ rage_Error test_set() {
     } else if (!rage_int_set_contains(s1, 3)) {
         err = RAGE_ERROR("New set does not contain added value");
     } else if (rage_int_set_is_weak_subset(s1, s0)) {
-        err = RAGE_ERROR("Claimed non-empty set to be subset of set with item");
+        err = RAGE_ERROR("Claimed non-empty set to be subset of empty set");
     } else if (!rage_int_set_is_weak_subset(s0, s1)) {
         err = RAGE_ERROR("Claimed empty set wasn't subset of set with item");
     } else {
