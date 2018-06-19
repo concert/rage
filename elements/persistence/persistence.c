@@ -71,7 +71,7 @@ static rage_TupleDef const tst_def = {
     .items = tst_fields
 };
 
-#define RAGE_PERSISTANCE_MAX_FRAMES 4096
+#define RAGE_PERSISTANCE_MAX_FRAMES 4095
 
 rage_NewInstanceSpec elem_describe_ports(rage_Atom ** params) {
     int const n_channels = params[0][0].i;
@@ -136,8 +136,9 @@ rage_NewElementState elem_new(
     ad->rec_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
     ad->play_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
     for (uint32_t c = 0; c < ad->n_channels; c++) {
-        ad->rec_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float) + 1);
-        ad->play_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float) + 1);
+        // Snaps to the next power of 2 up - 1 byte in size
+        ad->rec_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float));
+        ad->play_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float));
     }
     ad->rb_vec = calloc(2 * ad->n_channels, sizeof(float *));
     ad->interleaved_buffer = calloc(ad->n_channels * RAGE_PERSISTANCE_MAX_FRAMES, sizeof(float));
