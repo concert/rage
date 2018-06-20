@@ -8,7 +8,7 @@ struct rage_Graph {
 };
 
 rage_NewGraph rage_graph_new(uint32_t sample_rate) {
-    rage_NewProcBlock npb = rage_proc_block_new(sample_rate);
+    rage_NewProcBlock npb = rage_proc_block_new(sample_rate, RAGE_TRANSPORT_STOPPED);
     if (RAGE_FAILED(npb)) {
         return RAGE_FAILURE_CAST(rage_NewGraph, npb);
     }
