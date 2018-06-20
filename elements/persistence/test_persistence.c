@@ -42,6 +42,7 @@ static rage_Error test_pause_silent() {
     rage_element_process(te.elem, RAGE_TRANSPORT_STOPPED, te.elem_frame_size, &ports);
     rage_Error rv = check_outs_silent(&ports, te.cet->spec.inputs.len, te.elem_frame_size);
     free_out_buffers(&ports, te.cet->spec.inputs.len);
+    rage_ports_free(ports);
     free_test_elem(te);
     return rv;
 }
