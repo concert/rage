@@ -153,8 +153,9 @@ void elem_free(rage_ElementState * ad) {
     }
     free(ad->rec_buffs);
     free(ad->play_buffs);
-    sndfile_status_destroy(&ad->sndfile);
+    free(ad->interleaved_buffer);
     free(ad->rb_vec);
+    sndfile_status_destroy(&ad->sndfile);
     free(ad);
 }
 
