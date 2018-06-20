@@ -23,7 +23,8 @@ struct rage_Harness {
     rage_ProcBlockViews views;
 };
 
-rage_NewProcBlock rage_proc_block_new(uint32_t sample_rate) {
+rage_NewProcBlock rage_proc_block_new(
+        uint32_t sample_rate, rage_TransportState transp_state) {
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_NewJackBinding njb = rage_jack_binding_new(countdown, sample_rate);
     if (RAGE_FAILED(njb)) {
@@ -35,7 +36,7 @@ rage_NewProcBlock rage_proc_block_new(uint32_t sample_rate) {
         pb->sample_rate = sample_rate;
         // FIXME: FIXED PERIOD SIZE!!!!!
         // The success value should probably be some kind of handy struct
-        pb->convoy = rage_support_convoy_new(1024, countdown);
+        pb->convoy = rage_support_convoy_new(1024, countdown, transp_state);
         pb->countdown = countdown;
         return RAGE_SUCCESS(rage_NewProcBlock, pb);
     }
