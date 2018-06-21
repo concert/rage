@@ -9,7 +9,8 @@ langext_inc = include_directories('langext/include')
 langext_sources = [
     'langext/src/countdown.c',
     'langext/src/finaliser.c',
-    'langext/src/set.c'
+    'langext/src/set.c',
+    'langext/src/rtcrit.c'
 ]
 
 sem = dependency('threads')
