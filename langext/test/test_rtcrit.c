@@ -13,11 +13,15 @@ typedef struct {
 void * faux_rt_process(void * data) {
     rage_NonBlockTestData * td = data;
     bool first_iter = true;
+    bool fire_on_change = true;
     while (td->processing) {
         td->process_data = rage_rt_crit_data_latest(td->crit);
         if (first_iter) {
             sem_post(&td->main_sem);
             first_iter = false;
+        } else if (fire_on_change && td->process_data == NULL) {
+            sem_post(&td->main_sem);
+            fire_on_change = false;
         }
     }
     return NULL;
@@ -40,7 +44,9 @@ rage_Error test_rtcrit() {
         if (td.process_data != &i) {
             err = RAGE_ERROR("Initial data not received by proc thread");
         } else {
-            if (rage_rt_crit_data_update(td.crit, NULL) != &i) {
+            int * p = rage_rt_crit_data_update(td.crit, NULL);
+            sem_wait(&td.main_sem);
+            if (p != &i) {
                 err = RAGE_ERROR("Unexpected old ptr val");
             } else if (td.process_data != NULL) {
                 err = RAGE_ERROR("Update failed");
