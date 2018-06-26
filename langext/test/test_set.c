@@ -31,6 +31,13 @@ rage_Error test_set() {
             } else if (!rage_int_set_contains(s0, 5)) {
                 err = RAGE_ERROR("Lost 5 removing 4");
             }
+            rage_IntSet * s2 = rage_int_set_subtract(s1, s0);
+            if (rage_int_set_contains(s2, 3) || rage_int_set_contains(s2, 5)) {
+                err = RAGE_ERROR("Subtract contains common value");
+            } else if (!rage_int_set_contains(s2, 4)) {
+                err = RAGE_ERROR("Subtract missing differing value");
+            }
+            rage_int_set_free(s2);
         }
     }
     rage_int_set_free(s0);
