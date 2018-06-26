@@ -62,7 +62,9 @@ rage_Set * rage_set_remove(rage_Set * s, rage_SetElem * v) {
         return s;
     }
     rage_Set * new = matching->next;
-    new->usage_count++;
+    if (new != NULL) {
+        new->usage_count++;
+    }
     while (s != matching) {
         new = rage_set_unchecked_add(new, s->value);
         s = s->next;
@@ -78,4 +80,14 @@ bool rage_set_is_weak_subset(rage_Set * s0, rage_Set * s1) {
         s0 = s0->next;
     }
     return true;
+}
+
+rage_Set * rage_set_subtract(rage_Set * s0, rage_Set * s1) {
+    s0->usage_count++;
+    for (; s1 != NULL; s1 = s1->next) {
+        rage_Set * result = rage_set_remove(s0, s1->value);
+        rage_set_free(s0);
+        s0 = result;
+    }
+    return s0;
 }
