@@ -63,6 +63,9 @@ void rage_buffer_allocs_free(rage_BufferAllocs * const alloc) {
     if (largest_remaining != NULL) {
         i = largest_remaining->n_buffers;
     }
+    for (rage_BufferAllocs * ba = alloc->next; ba != NULL; ba = ba->next) {
+        i = (ba->n_buffers > i) ? ba->n_buffers : i;
+    }
     if (alloc->next != NULL) {
         alloc->next->prev = alloc->prev;
     }
