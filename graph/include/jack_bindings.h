@@ -2,6 +2,7 @@
 #include "error.h"
 #include "loader.h"
 #include "countdown.h"
+#include "binding_interface.h"
 
 typedef struct rage_JackBinding rage_JackBinding;
 typedef RAGE_OR_ERROR(rage_JackBinding *) rage_NewJackBinding;
