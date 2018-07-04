@@ -79,7 +79,8 @@ rage_graph = library(
     'rage_graph',
     [
         'graph/src/loader.c', 'graph/src/jack_bindings.c', 'graph/src/srt.c',
-        'graph/src/proc_block.c', 'graph/src/graph.c'
+        'graph/src/proc_block.c', 'graph/src/graph.c',
+        'graph/src/binding_interface.c'
     ],
     include_directories: [graph_inc, types_inc, langext_inc],
     dependencies: [dyn_load, jack, sem],

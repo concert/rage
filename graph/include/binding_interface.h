@@ -1,4 +1,6 @@
 #pragma once
+#include <stdint.h>
+#include "macros.h"
 
 typedef struct rage_BackendState rage_BackendState;
 
