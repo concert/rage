@@ -1,6 +1,7 @@
 #include "proc_block.h"
 #include "jack_bindings.h"
 #include "srt.h"
+#include "element_helpers.h"
 #include <stdlib.h>
 
 struct rage_ProcBlock {
@@ -99,17 +100,6 @@ static InterpolatorsForResult interpolators_for(
         }
     }
     return RAGE_SUCCESS(InterpolatorsForResult, new_interpolators);
-}
-
-static inline uint8_t view_count_for_type(rage_ElementType const * const type) {
-    uint8_t n_views = 1;
-    if (type->prep != NULL) {
-        n_views++;
-    }
-    if (type->clean != NULL) {
-        n_views++;
-    }
-    return n_views;
 }
 
 static rage_ProcBlockViews rage_proc_block_initialise_views(

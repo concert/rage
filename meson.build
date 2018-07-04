@@ -37,7 +37,8 @@ sources = [
     'types/src/interpolation.c',
     'types/src/chronology.c',
     'types/src/test_factories.c',
-    'types/src/atoms.c'
+    'types/src/atoms.c',
+    'types/src/element_helpers.c'
 ]
 
 rage_types = library(
