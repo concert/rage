@@ -66,42 +66,6 @@ rage_Error rage_proc_block_stop(rage_ProcBlock * pb) {
     return rage_support_convoy_stop(pb->convoy);
 }
 
-typedef RAGE_OR_ERROR(rage_Interpolator **) InterpolatorsForResult;
-
-static InterpolatorsForResult interpolators_for(
-        uint32_t sample_rate,
-        rage_InstanceSpecControls const * control_spec,
-        rage_TimeSeries const * const control_values, uint8_t const n_views) {
-    uint32_t const n_controls = control_spec->len;
-    rage_Interpolator ** new_interpolators = calloc(
-        n_controls, sizeof(rage_Interpolator *));
-    if (new_interpolators == NULL) {
-        return RAGE_FAILURE(
-            InterpolatorsForResult,
-            "Unable to allocate memory for new interpolators");
-    }
-    for (uint32_t i = 0; i < n_controls; i++) {
-        rage_InitialisedInterpolator ii = rage_interpolator_new(
-            &control_spec->items[i], &control_values[i], sample_rate,
-            n_views);
-        if (RAGE_FAILED(ii)) {
-            if (i) {
-                do {
-                    i--;
-                    rage_interpolator_free(
-                        &control_spec->items[i], new_interpolators[i]);
-                } while (i > 0);
-            }
-            free(new_interpolators);
-            return RAGE_FAILURE_CAST(InterpolatorsForResult, ii);
-            break;
-        } else {
-            new_interpolators[i] = RAGE_SUCCESS_VALUE(ii);
-        }
-    }
-    return RAGE_SUCCESS(InterpolatorsForResult, new_interpolators);
-}
-
 static rage_ProcBlockViews rage_proc_block_initialise_views(
         rage_ConcreteElementType * cet, rage_Harness * harness) {
     rage_ProcBlockViews views;
