@@ -46,7 +46,7 @@ struct rage_ProcBlock {
     rage_RtCrit * syncy;
 };
 
-rage_NewProcBlock rage_proc_block_new(
+rage_ProcBlock * rage_proc_block_new(
         uint32_t sample_rate, rage_TransportState transp_state) {
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
@@ -58,13 +58,13 @@ rage_NewProcBlock rage_proc_block_new(
     pb->rolling_countdown = countdown;
     pb->convoy = rage_support_convoy_new(1024, countdown, transp_state);
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
-    rtb->transp = RAGE_TRANSPORT_STOPPED;
+    rtb->transp = transp_state;
     // FIXME: fixed all_buffers thing
     rtb->all_buffers = calloc(2, sizeof(void *));
     rtb->steps.len = 0;
     rtb->steps.items = NULL;
     pb->syncy = rage_rt_crit_new(rtb);
-    return RAGE_SUCCESS(rage_NewProcBlock, pb);
+    return pb;
 }
 
 void rage_proc_block_free(rage_ProcBlock * pb) {
