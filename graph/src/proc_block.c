@@ -146,6 +146,7 @@ rage_MountResult rage_proc_block_mount(
             // FIXME: Everything reads & writes only to the first buffer
             doodad->in_buffer_allocs = calloc(elem->cet->inputs.len, sizeof(uint32_t));
             doodad->out_buffer_allocs = calloc(elem->cet->outputs.len, sizeof(uint32_t));
+            doodad->out_buffer_allocs[0] = 1;
             doodad->thingy = harness;
         }
     }
