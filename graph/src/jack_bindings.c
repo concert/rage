@@ -33,6 +33,7 @@ void rage_jack_backend_get_buffers(
 
 int rage_values_eq(jack_nframes_t new_rate, void * p) {
     uint32_t * required_rate = p;
+    // success code 0 if rates are equal
     return *required_rate != new_rate;
 }
 
