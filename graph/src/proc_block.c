@@ -37,6 +37,14 @@ typedef struct {
     RAGE_ARRAY(rage_Doodad) steps;
 } rage_RtBits;
 
+typedef struct rage_PBConnection {
+    rage_Harness * source_harness;
+    uint32_t source_idx;
+    rage_Harness * sink_harness;
+    uint32_t sink_idx;
+    struct rage_PBConnection * next;
+} rage_PBConnection;
+
 struct rage_ProcBlock {
     uint32_t sample_rate;
     uint32_t n_inputs;
@@ -44,12 +52,14 @@ struct rage_ProcBlock {
     rage_Countdown * rolling_countdown;
     rage_SupportConvoy * convoy;
     rage_RtCrit * syncy;
+    rage_PBConnection * cons;
 };
 
 rage_ProcBlock * rage_proc_block_new(
         uint32_t sample_rate, rage_TransportState transp_state) {
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
+    pb->cons = NULL;
     pb->sample_rate = sample_rate;
     // FIXME: hard coded mono
     pb->n_inputs = pb->n_outputs = 1;
@@ -155,7 +165,25 @@ rage_MountResult rage_proc_block_mount(
     return RAGE_SUCCESS(rage_MountResult, harness);
 }
 
+static void rage_remove_connections_for(
+        rage_PBConnection ** initial, rage_Harness * tgt) {
+    rage_PBConnection * c, * prev_con = NULL;
+    for (c = *initial; c != NULL; c = c->next) {
+        if (c->source_harness == tgt || c->sink_harness == tgt) {
+            if (prev_con) {
+                prev_con->next = c->next;
+            } else {
+                *initial = c;
+            }
+            break;
+        }
+        prev_con = c;
+    }
+    free(c);
+}
+
 void rage_proc_block_unmount(rage_Harness * harness) {
+    rage_remove_connections_for(&harness->pb->cons, harness);
     rage_RtBits const * old = rage_rt_crit_update_start(harness->pb->syncy);
     rage_RtBits * new = malloc(sizeof(rage_RtBits));
     *new = *old;
@@ -249,6 +277,51 @@ void rage_proc_block_process(
     if (rtd->transp == RAGE_TRANSPORT_ROLLING) {
         rage_countdown_add(pb->rolling_countdown, -1);
     }
+}
+
+rage_Error rage_proc_block_connect(
+        rage_ProcBlock * pb,
+        rage_Harness * source, uint32_t source_idx,
+        rage_Harness * sink, uint32_t sink_idx) {
+    rage_PBConnection new = {
+        .source_harness = source, .source_idx = source_idx,
+        .sink_harness = sink, .sink_idx = sink_idx,
+        .next = pb->cons
+    };
+    return RAGE_ERROR("Actual connection handling not implemented");
+    rage_PBConnection * newp = malloc(sizeof(rage_PBConnection));
+    *newp = new;
+    pb->cons = newp;
+    return RAGE_OK;
+}
+
+static void rage_remove_connection(
+        rage_PBConnection ** initial,
+        rage_Harness * source, uint32_t source_idx,
+        rage_Harness * sink, uint32_t sink_idx) {
+    rage_PBConnection * c, * prev_con = NULL;
+    for (c = *initial; c != NULL; c = c->next) {
+        if (
+                c->source_harness == source && c->source_idx == source_idx &&
+                c->sink_harness == sink && c->sink_idx == sink_idx) {
+            if (prev_con) {
+                prev_con->next = c->next;
+            } else {
+                *initial = c;
+            }
+            break;
+        }
+        prev_con = c;
+    }
+    free(c);
+}
+
+rage_Error rage_proc_block_disconnect(
+        rage_ProcBlock * pb,
+        rage_Harness * source, uint32_t source_idx,
+        rage_Harness * sink, uint32_t sink_idx) {
+    rage_remove_connection(&pb->cons, source, source_idx, sink, sink_idx);
+    return RAGE_ERROR("Defo not implemented");
 }
 
 static char * desc[] = {
