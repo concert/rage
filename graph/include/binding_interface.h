@@ -27,5 +27,5 @@ typedef struct {
 } rage_BackendConfig;
 
 void rage_backend_get_buffers(
-        rage_BackendInterface const * b, uint32_t n_frames,
-        void ** inputs, void ** outputs);
+    rage_BackendInterface const * b, uint32_t n_frames,
+    void ** inputs, void ** outputs);

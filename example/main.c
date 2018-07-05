@@ -98,7 +98,7 @@ int main() {
         .items = tps
     };
     rage_NewGraphNode new_node = rage_graph_add_node(
-        bits.graph, bits.cet, "persistance", &ts);
+        bits.graph, bits.cet, &ts);
     if (RAGE_FAILED(new_node)) {
         printf("Node creation failed: %s\n", RAGE_FAILURE_VALUE(new_node));
         free_bits(&bits);

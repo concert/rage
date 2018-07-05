@@ -46,14 +46,13 @@ struct rage_GraphNode {
 
 rage_NewGraphNode rage_graph_add_node(
         rage_Graph * g, rage_ConcreteElementType * cet,
-        // Not sure I like that name seems to be required, is that a good idea?
-        char const * name, rage_TimeSeries const * ts) {
+        rage_TimeSeries const * ts) {
     rage_ElementNewResult new_elem = rage_element_new(cet, g->sample_rate);
     if (RAGE_FAILED(new_elem)) {
         return RAGE_FAILURE_CAST(rage_NewGraphNode, new_elem);
     }
     rage_Element * elem = RAGE_SUCCESS_VALUE(new_elem);
-    rage_MountResult mr = rage_proc_block_mount(g->pb, elem, ts, name);
+    rage_MountResult mr = rage_proc_block_mount(g->pb, elem, ts);
     if (RAGE_FAILED(mr)) {
         rage_element_free(elem);
     }

@@ -19,12 +19,14 @@ rage_RtCrit * rage_rt_crit_new(void * initial_data) {
     return r;
 }
 
-void rage_rt_crit_free(rage_RtCrit * c) {
+void * rage_rt_crit_free(rage_RtCrit * c) {
+    void * final_content = c->next_data;
     pthread_mutex_destroy(&c->mutex);
     if (c->update_sem != NULL) {
         sem_post(c->update_sem);
     }
     free(c);
+    return final_content;
 }
 
 void * rage_rt_crit_data_latest(rage_RtCrit * crit) {
@@ -39,10 +41,14 @@ void * rage_rt_crit_data_latest(rage_RtCrit * crit) {
     return crit->rt_data;
 }
 
-void * rage_rt_crit_data_update(rage_RtCrit * crit, void * next_data) {
+void const * rage_rt_crit_update_start(rage_RtCrit * crit) {
+    pthread_mutex_lock(&crit->mutex);
+    return crit->next_data;
+}
+
+void * rage_rt_crit_update_finish(rage_RtCrit * crit, void * next_data) {
     sem_t * our_sem = malloc(sizeof(sem_t));
     sem_init(our_sem, 0, 0);
-    pthread_mutex_lock(&crit->mutex);
     if (crit->update_sem != NULL) {
         sem_post(crit->update_sem);
     }
@@ -54,4 +60,13 @@ void * rage_rt_crit_data_update(rage_RtCrit * crit, void * next_data) {
     sem_destroy(our_sem);
     free(our_sem);
     return old_data;
+}
+
+void const * rage_rt_crit_freeze(rage_RtCrit * crit) {
+    pthread_mutex_lock(&crit->mutex);
+    return crit->rt_data;
+}
+
+void rage_rt_crit_thaw(rage_RtCrit * crit) {
+    pthread_mutex_unlock(&crit->mutex);
 }
