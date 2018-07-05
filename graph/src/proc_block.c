@@ -121,6 +121,8 @@ rage_MountResult rage_proc_block_mount(
         rage_ProcBlock * pb, rage_Element * elem,
         rage_TimeSeries const * controls) {
     rage_Harness * harness = malloc(sizeof(rage_Harness));
+    harness->pb = pb;
+    harness->elem = elem;
     uint8_t n_views = view_count_for_type(elem->cet->type);
     // FIXME: Error handling
     harness->interpolators = RAGE_SUCCESS_VALUE(interpolators_for(
@@ -130,7 +132,9 @@ rage_MountResult rage_proc_block_mount(
     harness->truck = rage_support_convoy_mount(
         pb->convoy, elem, harness->views.prep, harness->views.clean);
     harness->ports.controls = harness->views.rt;
-    // TODO: Add doodad to the rt stuff
+    // FIXME: Should there be one of these per harness?
+    harness->ports.inputs = calloc(elem->cet->inputs.len, sizeof(void *));
+    harness->ports.outputs = calloc(elem->cet->outputs.len, sizeof(void *));
     rage_RtBits const * old = rage_rt_crit_update_start(harness->pb->syncy);
     rage_RtBits * new = malloc(sizeof(rage_RtBits));
     *new = *old;
@@ -169,6 +173,8 @@ void rage_proc_block_unmount(rage_Harness * harness) {
     rage_support_convoy_unmount(harness->truck);
     free(doodad->in_buffer_allocs);
     free(doodad->out_buffer_allocs);
+    free(harness->ports.inputs);
+    free(harness->ports.outputs);
     free(harness->views.prep);
     free(harness->views.clean);
     free(harness->views.rt);
@@ -240,12 +246,16 @@ void rage_proc_block_process(
             step->thingy->elem, rtd->transp, n_frames, &step->thingy->ports);
     }
     if (rtd->transp == RAGE_TRANSPORT_ROLLING) {
-        rage_countdown_add(pb->rolling_countdown, -n_frames);
+        rage_countdown_add(pb->rolling_countdown, -1);
     }
 }
 
 static char * desc[] = {
     "port"
+};
+
+static char * desc2[] = {
+    "portly"
 };
 
 rage_BackendConfig rage_proc_block_get_backend_config(rage_ProcBlock * pb) {
@@ -254,7 +264,7 @@ rage_BackendConfig rage_proc_block_get_backend_config(rage_ProcBlock * pb) {
         .buffer_size = 1024, // FIXME: FIXED BUFFER SIZE
         .ports = {
             .inputs = {.len = 1, .items = desc},
-            .outputs = {.len = 1, .items = desc}
+            .outputs = {.len = 1, .items = desc2}
         },
         .process = rage_proc_block_process,
         .data = pb
