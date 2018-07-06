@@ -28,13 +28,13 @@ struct rage_Harness {
 typedef struct {
     uint32_t * in_buffer_allocs;
     uint32_t * out_buffer_allocs;
-    rage_Harness * thingy;
-} rage_Doodad;
+    rage_Harness * harness;
+} rage_ProcStep;
 
 typedef struct {
     rage_TransportState transp;
     void ** all_buffers;
-    RAGE_ARRAY(rage_Doodad) steps;
+    RAGE_ARRAY(rage_ProcStep) steps;
 } rage_RtBits;
 
 typedef struct rage_PBConnection {
@@ -152,15 +152,15 @@ rage_MountResult rage_proc_block_mount(
         if (i != old->steps.len) {
             new->steps.items[i] = old->steps.items[i];
         } else {
-            rage_Doodad * doodad = &new->steps.items[i];
+            rage_ProcStep * proc_step = &new->steps.items[i];
             // FIXME: Everything reads & writes only to the first buffer
-            doodad->in_buffer_allocs = calloc(elem->cet->inputs.len, sizeof(uint32_t));
-            doodad->out_buffer_allocs = calloc(elem->cet->outputs.len, sizeof(uint32_t));
-            doodad->out_buffer_allocs[0] = 1;
-            doodad->thingy = harness;
+            proc_step->in_buffer_allocs = calloc(elem->cet->inputs.len, sizeof(uint32_t));
+            proc_step->out_buffer_allocs = calloc(elem->cet->outputs.len, sizeof(uint32_t));
+            proc_step->out_buffer_allocs[0] = 1;
+            proc_step->harness = harness;
         }
     }
-    // FIXME: Leaks doodad array
+    // FIXME: Leaks proc_step array
     free(rage_rt_crit_update_finish(harness->pb->syncy, new));
     return RAGE_SUCCESS(rage_MountResult, harness);
 }
@@ -187,21 +187,21 @@ void rage_proc_block_unmount(rage_Harness * harness) {
     rage_RtBits const * old = rage_rt_crit_update_start(harness->pb->syncy);
     rage_RtBits * new = malloc(sizeof(rage_RtBits));
     *new = *old;
-    rage_Doodad * doodad = NULL;
+    rage_ProcStep * proc_step = NULL;
     for (uint32_t i = 0; i < old->steps.len; i++) {
-        if (old->steps.items[i].thingy == harness) {
-            doodad = &old->steps.items[i];
+        if (old->steps.items[i].harness == harness) {
+            proc_step = &old->steps.items[i];
         } else {
-            uint32_t const j = (doodad == NULL) ? i : i - 1;
+            uint32_t const j = (proc_step == NULL) ? i : i - 1;
             new->steps.items[j] = old->steps.items[i];
         }
     }
     new->steps.len = old->steps.len - 1;
-    // FIXME: Leaks the doodad array
+    // FIXME: Leaks the proc_step array
     free(rage_rt_crit_update_finish(harness->pb->syncy, new));
     rage_support_convoy_unmount(harness->truck);
-    free(doodad->in_buffer_allocs);
-    free(doodad->out_buffer_allocs);
+    free(proc_step->in_buffer_allocs);
+    free(proc_step->out_buffer_allocs);
     free(harness->ports.inputs);
     free(harness->ports.outputs);
     free(harness->views.prep);
@@ -244,9 +244,9 @@ rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo targ
         if (!RAGE_FAILED(e)) {
             for (uint32_t i = 0; i < rtd->steps.len; i++) {
                 uint32_t const n_controls =
-                    rtd->steps.items[i].thingy->elem->cet->controls.len;
+                    rtd->steps.items[i].harness->elem->cet->controls.len;
                 for (uint32_t j = 0; j < n_controls; j++) {
-                    rage_interpolated_view_seek(rtd->steps.items[i].thingy->ports.controls[j], target);
+                    rage_interpolated_view_seek(rtd->steps.items[i].harness->ports.controls[j], target);
                 }
             }
         }
@@ -262,17 +262,17 @@ void rage_proc_block_process(
     rage_backend_get_buffers(
         b, n_frames, rtd->all_buffers, rtd->all_buffers + pb->n_inputs);
     for (uint32_t i = 0; i < rtd->steps.len; i++) {
-        rage_Doodad * step = &rtd->steps.items[i];
-        for (uint32_t j = 0; j < step->thingy->elem->cet->inputs.len; j++) {
-            step->thingy->inputs[j] =
+        rage_ProcStep * step = &rtd->steps.items[i];
+        for (uint32_t j = 0; j < step->harness->elem->cet->inputs.len; j++) {
+            step->harness->inputs[j] =
                 rtd->all_buffers[step->in_buffer_allocs[j]];
         }
-        for (uint32_t j = 0; j < step->thingy->elem->cet->outputs.len; j++) {
-            step->thingy->outputs[j] =
+        for (uint32_t j = 0; j < step->harness->elem->cet->outputs.len; j++) {
+            step->harness->outputs[j] =
                 rtd->all_buffers[step->out_buffer_allocs[j]];
         }
         rage_element_process(
-            step->thingy->elem, rtd->transp, n_frames, &step->thingy->ports);
+            step->harness->elem, rtd->transp, n_frames, &step->harness->ports);
     }
     if (rtd->transp == RAGE_TRANSPORT_ROLLING) {
         rage_countdown_add(pb->rolling_countdown, -1);
