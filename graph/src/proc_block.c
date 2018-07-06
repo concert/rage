@@ -3,6 +3,8 @@
 #include "element_helpers.h"
 #include "rtcrit.h"
 #include "binding_interface.h"
+#include "set.h"
+#include "buffer_pile.h"
 #include <stdlib.h>
 
 
@@ -31,10 +33,12 @@ typedef struct {
     rage_Harness * harness;
 } rage_ProcStep;
 
+typedef RAGE_ARRAY(rage_ProcStep) rage_ProcSteps;
+
 typedef struct {
     rage_TransportState transp;
     void ** all_buffers;
-    RAGE_ARRAY(rage_ProcStep) steps;
+    rage_ProcSteps steps;
 } rage_RtBits;
 
 typedef struct rage_PBConnection {
@@ -53,6 +57,9 @@ struct rage_ProcBlock {
     rage_SupportConvoy * convoy;
     rage_RtCrit * syncy;
     rage_PBConnection * cons;
+    rage_BufferAllocs * allocs;
+    void * silent_buffer;
+    void * unrouted_buffer;
 };
 
 rage_ProcBlock * rage_proc_block_new(
@@ -74,6 +81,9 @@ rage_ProcBlock * rage_proc_block_new(
     rtb->steps.len = 0;
     rtb->steps.items = NULL;
     pb->syncy = rage_rt_crit_new(rtb);
+    pb->allocs = rage_buffer_allocs_new(1024);
+    pb->silent_buffer = calloc(1024, sizeof(float));
+    pb->unrouted_buffer = calloc(1024, sizeof(float));
     return pb;
 }
 
@@ -83,6 +93,9 @@ void rage_proc_block_free(rage_ProcBlock * pb) {
     rage_RtBits * rtb = rage_rt_crit_free(pb->syncy);
     free(rtb->all_buffers);
     // FIXME: free steps
+    rage_buffer_allocs_free(pb->allocs);
+    free(pb->silent_buffer);
+    free(pb->unrouted_buffer);
     free(pb);
 }
 
@@ -279,6 +292,199 @@ void rage_proc_block_process(
     }
 }
 
+typedef RAGE_OR_ERROR(rage_ProcSteps) rage_OrderedProcSteps;
+RAGE_SET_OPS(Step, step, rage_ProcStep *)
+
+static bool rage_conn_is_external(rage_PBConnection const * const con) {
+    return con->sink_harness == NULL || con->source_harness == NULL;
+}
+
+typedef struct {
+    uint32_t idx;
+    rage_ProcStep * step;
+} rage_StepIdx;
+
+static rage_StepIdx rage_step_for(
+        rage_ProcSteps const * steps, rage_Harness const * const harness) {
+    rage_StepIdx rv = {.idx = UINT32_MAX, .step = NULL};
+    for (uint32_t i = 0; i < steps->len; i++) {
+        if (steps->items[i].harness == harness) {
+            rv.idx = i;
+            rv.step = &steps->items[i];
+            break;
+        }
+    }
+    return rv;
+}
+
+static rage_StepSet ** rage_step_deps(
+        rage_ProcSteps const * steps, rage_PBConnection const * cons) {
+    rage_StepSet ** deps = calloc(steps->len, sizeof(rage_StepSet *));
+    for (uint32_t i = 0; i < steps->len; i++) {
+        deps[i] = rage_step_set_new();
+    }
+    for (; cons != NULL; cons = cons->next) {
+        if (!rage_conn_is_external(cons)) {
+            rage_StepIdx const i = rage_step_for(steps, cons->sink_harness);
+            rage_StepSet * const extended_deps = rage_step_set_add(deps[i.idx], i.step);
+            rage_step_set_free(deps[i.idx]);
+            deps[i.idx] = extended_deps;
+        }
+    }
+    return deps;
+}
+
+static void rage_free_steps_deps(rage_ProcSteps const * steps, rage_StepSet ** deps) {
+    for (uint32_t i = 0; i < steps->len; i++) {
+        rage_step_set_free(deps[i]);
+    }
+    free(deps);
+}
+
+static rage_OrderedProcSteps rage_order_proc_steps(
+        rage_ProcSteps const * steps, rage_PBConnection const * cons) {
+    rage_StepSet ** deps = rage_step_deps(steps, cons);
+    rage_StepSet * resolved = rage_step_set_new();
+    bool failed = false;
+    rage_ProcSteps ordered_steps;
+    RAGE_ARRAY_INIT(&ordered_steps, steps->len, resolved_idx) {
+        failed = true;
+        for (uint32_t i = 0; i < steps->len; i++) {
+            if (rage_step_set_contains(resolved, &steps->items[i])) {
+                continue;
+            }
+            if (rage_step_set_is_weak_subset(deps[i], resolved)) {
+                ordered_steps.items[resolved_idx] = steps->items[i];
+                ordered_steps.items[resolved_idx].in_buffer_allocs = calloc(
+                    steps->items[i].harness->elem->cet->inputs.len,
+                    sizeof(uint32_t));
+                ordered_steps.items[resolved_idx].out_buffer_allocs = calloc(
+                    steps->items[i].harness->elem->cet->outputs.len,
+                    sizeof(uint32_t));
+                for (
+                        uint32_t j = 0;
+                        j < steps->items[i].harness->elem->cet->outputs.len;
+                        j++) {
+                    ordered_steps.items[resolved_idx].out_buffer_allocs[j] = 1;
+                }
+                failed = false;
+                break;
+            }
+        }
+        if (failed) {
+            break;
+        }
+    }
+    rage_free_steps_deps(steps, deps);
+    rage_step_set_free(resolved);
+    if (failed) {
+        free(ordered_steps.items);
+        return RAGE_FAILURE(rage_OrderedProcSteps, "Circular connections");
+    }
+    return RAGE_SUCCESS(rage_OrderedProcSteps, ordered_steps);
+}
+
+typedef struct rage_ConnTarget {
+    rage_Harness * tgt_harness;
+    uint32_t tgt_idx;
+    struct rage_ConnTarget * next;
+} rage_ConnTarget;
+
+typedef struct rage_AssignedConnection {
+    uint32_t assignment;
+    struct rage_AssignedConnection * next;
+    rage_Harness * source_harness;
+    uint32_t source_idx;
+    rage_ConnTarget * con_tgt;
+} rage_AssignedConnection;
+
+static rage_AssignedConnection * rage_cons_from(
+        rage_PBConnection const * cons, rage_Harness const * const tgt) {
+    rage_AssignedConnection * cons_from = NULL;
+    for (; cons != NULL; cons = cons->next) {
+        if (cons->source_harness == tgt) {
+            bool create = true;
+            rage_ConnTarget * new_tgt = malloc(sizeof(rage_ConnTarget));
+            new_tgt->tgt_harness = cons->sink_harness;
+            new_tgt->tgt_idx = cons->sink_idx;
+            for (rage_AssignedConnection * c = cons_from; c != NULL; c = c->next) {
+                if (c->source_harness == tgt && c->source_idx == cons->source_idx) {
+                    new_tgt->next = c->con_tgt;
+                    c->con_tgt = new_tgt;
+                    create = false;
+                    break;
+                }
+            }
+            if (create) {
+                rage_AssignedConnection * new_con = malloc(sizeof(rage_AssignedConnection));
+                new_con->source_harness = cons->source_harness;
+                new_con->source_idx = cons->source_idx;
+                new_tgt->next = NULL;
+                new_con->con_tgt = new_tgt;
+                new_con->next = cons_from;
+                cons_from = new_con;
+            }
+        }
+    }
+    return cons_from;
+}
+
+static uint32_t rage_lowest_avail_assign(
+        uint32_t i, rage_AssignedConnection const * const assigned_cons,
+        uint32_t * const highest_assignment) {
+    bool found;
+    do {
+        found = false;
+        for (rage_AssignedConnection const * ac = assigned_cons; ac != NULL; ac = ac->next) {
+            if (i == ac->assignment) {
+                i++;
+                found = true;
+            }
+        }
+    } while (found);
+    if (i  > *highest_assignment) {
+        *highest_assignment = i;
+    }
+    return i;
+}
+
+static uint32_t rage_step_idx(rage_ProcSteps const * steps, rage_Harness const * const tgt) {
+    for (uint32_t i = 0; i < steps->len; i++) {
+        if (steps->items[i].harness == tgt) {
+            return i;
+        }
+    }
+    return UINT32_MAX;
+}
+
+static rage_AssignedConnection * rage_remove_cons_targetted(
+        rage_AssignedConnection * assigned_cons, rage_Harness const * const tgt) {
+    rage_AssignedConnection * remaining_cons = NULL;
+    while (assigned_cons != NULL) {
+        rage_ConnTarget * new_targets = NULL;
+        while (assigned_cons->con_tgt != NULL) {
+            rage_ConnTarget * next_con_tgt = assigned_cons->con_tgt->next;
+            if (assigned_cons->con_tgt->tgt_harness == tgt) {
+                free(assigned_cons->con_tgt);
+            } else {
+                assigned_cons->con_tgt->next = new_targets;
+                new_targets = assigned_cons->con_tgt;
+            }
+            assigned_cons->con_tgt = next_con_tgt;
+        }
+        rage_AssignedConnection * next_con = assigned_cons->next;
+        if (new_targets == NULL) {
+            free(assigned_cons);
+        } else {
+            assigned_cons->con_tgt = new_targets;
+            assigned_cons->next = remaining_cons;
+            remaining_cons = assigned_cons;
+        }
+        assigned_cons = next_con;
+    }
+    return remaining_cons;
+}
+
 rage_Error rage_proc_block_connect(
         rage_ProcBlock * pb,
         rage_Harness * source, uint32_t source_idx,
@@ -288,10 +494,50 @@ rage_Error rage_proc_block_connect(
         .sink_harness = sink, .sink_idx = sink_idx,
         .next = pb->cons
     };
-    return RAGE_ERROR("Actual connection handling not implemented");
+    rage_RtBits const * old_rt = rage_rt_crit_update_start(pb->syncy);
+    rage_OrderedProcSteps ops = rage_order_proc_steps(&old_rt->steps, &new);
+    if (RAGE_FAILED(ops)) {
+        return RAGE_FAILURE_CAST(rage_Error, ops);
+    }
+    rage_ProcSteps os = RAGE_SUCCESS_VALUE(ops);
+    uint32_t const pre_allocated = pb->n_inputs + pb->n_outputs + 2;
+    rage_AssignedConnection * assigned_cons = NULL;
+    uint32_t highest_assignment = pre_allocated;
+    for (uint32_t i = 0; i < os.len; i++) {
+        rage_AssignedConnection * step_cons = rage_cons_from(&new, os.items[i].harness);
+        while (step_cons != NULL) {
+            rage_AssignedConnection * const c = step_cons;
+            step_cons = step_cons->next;
+            c->assignment = rage_lowest_avail_assign(
+                pre_allocated, assigned_cons, &highest_assignment);
+            c->next = assigned_cons;
+            os.items[i].out_buffer_allocs[c->source_idx] = c->assignment;
+            for (rage_ConnTarget * ct = c->con_tgt; ct != NULL; ct = ct->next) {
+                uint32_t const step_idx = rage_step_idx(&os, ct->tgt_harness);
+                os.items[step_idx].in_buffer_allocs[ct->tgt_idx] = c->assignment;
+            }
+            assigned_cons = c;
+        }
+        assigned_cons = rage_remove_cons_targetted(assigned_cons, os.items[i].harness);
+    }
+    rage_BufferAllocs * const old_allocs = pb->allocs;
+    pb->allocs = rage_buffer_allocs_alloc(
+        pb->allocs, highest_assignment - pre_allocated);
+    rage_RtBits * new_rt = malloc(sizeof(rage_RtBits));
+    new_rt->transp = old_rt->transp;
+    new_rt->all_buffers = calloc(highest_assignment, sizeof(void *));
+    new_rt->all_buffers[0] = pb->silent_buffer;
+    new_rt->all_buffers[1] = pb->unrouted_buffer;
+    rage_BuffersInfo const * buffer_info = rage_buffer_allocs_get_buffers_info(pb->allocs);
+    memcpy(&new_rt->all_buffers[pre_allocated], buffer_info->buffers, buffer_info->n_buffers * sizeof(void *));
     rage_PBConnection * newp = malloc(sizeof(rage_PBConnection));
     *newp = new;
     pb->cons = newp;
+    rage_RtBits * replaced = rage_rt_crit_update_finish(pb->syncy, new_rt);
+    rage_buffer_allocs_free(old_allocs);
+    // FIXME: free old ordered steps
+    free(replaced->all_buffers);
+    free(replaced);
     return RAGE_OK;
 }
 
