@@ -89,12 +89,36 @@ rage_ProcBlock * rage_proc_block_new(
     return pb;
 }
 
+static void rage_harness_free(rage_Harness * harness) {
+    rage_support_convoy_unmount(harness->truck);
+    free(harness->ports.inputs);
+    free(harness->ports.outputs);
+    for (uint32_t i = 0; i < harness->elem->cet->spec.controls.len; i++) {
+        rage_interpolator_free(&harness->elem->cet->spec.controls.items[i], harness->interpolators[i]);
+    }
+    free(harness->interpolators);
+    free(harness->views.prep);
+    free(harness->views.clean);
+    free(harness->views.rt);
+    free(harness);
+}
+
+static void rage_procsteps_free(rage_ProcSteps * steps) {
+    for (uint32_t i = 0; i < steps->len; i++) {
+        free(steps->items[i].in_buffer_allocs);
+        free(steps->items[i].out_buffer_allocs);
+        rage_harness_free(steps->items[i].harness);
+    }
+    free(steps->items);
+}
+
 void rage_proc_block_free(rage_ProcBlock * pb) {
     rage_countdown_free(pb->rolling_countdown);
     rage_support_convoy_free(pb->convoy);
     rage_RtBits * rtb = rage_rt_crit_free(pb->syncy);
     free(rtb->all_buffers);
-    // FIXME: free steps
+    rage_procsteps_free(&rtb->steps);
+    free(rtb);
     rage_buffer_allocs_free(pb->allocs);
     free(pb->silent_buffer);
     free(pb->unrouted_buffer);
@@ -175,8 +199,9 @@ rage_MountResult rage_proc_block_mount(
             proc_step->harness = harness;
         }
     }
-    // FIXME: Leaks proc_step array
-    free(rage_rt_crit_update_finish(harness->pb->syncy, new));
+    rage_RtBits * rt_to_free = rage_rt_crit_update_finish(harness->pb->syncy, new);
+    free(rt_to_free->steps.items);
+    free(rt_to_free);
     return RAGE_SUCCESS(rage_MountResult, harness);
 }
 
@@ -203,6 +228,7 @@ void rage_proc_block_unmount(rage_Harness * harness) {
     rage_RtBits * new = malloc(sizeof(rage_RtBits));
     *new = *old;
     rage_ProcStep * proc_step = NULL;
+    new->steps.items = calloc(old->steps.len - 1, sizeof(rage_ProcStep));
     for (uint32_t i = 0; i < old->steps.len; i++) {
         if (old->steps.items[i].harness == harness) {
             proc_step = &old->steps.items[i];
@@ -212,16 +238,12 @@ void rage_proc_block_unmount(rage_Harness * harness) {
         }
     }
     new->steps.len = old->steps.len - 1;
-    // FIXME: Leaks the proc_step array
-    free(rage_rt_crit_update_finish(harness->pb->syncy, new));
-    rage_support_convoy_unmount(harness->truck);
+    rage_RtBits * old_rt = rage_rt_crit_update_finish(harness->pb->syncy, new);
+    rage_harness_free(proc_step->harness);
     free(proc_step->in_buffer_allocs);
     free(proc_step->out_buffer_allocs);
-    free(harness->ports.inputs);
-    free(harness->ports.outputs);
-    free(harness->views.prep);
-    free(harness->views.clean);
-    free(harness->views.rt);
+    free(old_rt->steps.items);
+    free(old_rt);
 }
 
 rage_Finaliser * rage_harness_set_time_series(
@@ -537,7 +559,7 @@ rage_Error rage_proc_block_connect(
     pb->cons = newp;
     rage_RtBits * replaced = rage_rt_crit_update_finish(pb->syncy, new_rt);
     rage_buffer_allocs_free(old_allocs);
-    // FIXME: free old ordered steps
+    free(&replaced->steps);
     free(replaced->all_buffers);
     free(replaced);
     return RAGE_OK;
