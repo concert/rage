@@ -77,13 +77,15 @@ rage_ProcBlock * rage_proc_block_new(
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
     rtb->transp = transp_state;
     // FIXME: fixed all_buffers thing
-    rtb->all_buffers = calloc(2, sizeof(void *));
+    rtb->all_buffers = calloc(2 + 2, sizeof(void *));
     rtb->steps.len = 0;
     rtb->steps.items = NULL;
     pb->syncy = rage_rt_crit_new(rtb);
     pb->allocs = rage_buffer_allocs_new(1024);
     pb->silent_buffer = calloc(1024, sizeof(float));
+    rtb->all_buffers[0] = pb->silent_buffer;
     pb->unrouted_buffer = calloc(1024, sizeof(float));
+    rtb->all_buffers[1] = pb->unrouted_buffer;
     return pb;
 }
 
@@ -273,7 +275,7 @@ void rage_proc_block_process(
     rage_ProcBlock * pb = data;
     rage_RtBits * rtd = rage_rt_crit_data_latest(pb->syncy);
     rage_backend_get_buffers(
-        b, n_frames, rtd->all_buffers, rtd->all_buffers + pb->n_inputs);
+        b, n_frames, rtd->all_buffers + 2, rtd->all_buffers + pb->n_inputs + 2);
     for (uint32_t i = 0; i < rtd->steps.len; i++) {
         rage_ProcStep * step = &rtd->steps.items[i];
         for (uint32_t j = 0; j < step->harness->elem->cet->inputs.len; j++) {
