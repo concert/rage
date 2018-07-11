@@ -164,7 +164,7 @@ static inline void zero_fill_outputs(
         uint32_t chunk_size) {
     for (uint32_t c = 0; c < data->n_channels; c++) {
         memset(
-            &ports->outputs[c][frame_pos], 0x00, chunk_size);
+            &ports->outputs[c][frame_pos], 0x0, chunk_size);
     }
 }
 
