@@ -17,6 +17,5 @@ typedef struct rage_GraphNode rage_GraphNode;
 typedef RAGE_OR_ERROR(rage_GraphNode *) rage_NewGraphNode;
 rage_NewGraphNode rage_graph_add_node(
         rage_Graph * g, rage_ConcreteElementType * cet,
-        // Not sure I like that name seems to be required, is that a good idea?
-        char const * name, rage_TimeSeries const * ts);
+        rage_TimeSeries const * ts);
 void rage_graph_remove_node(rage_Graph * g, rage_GraphNode * n);

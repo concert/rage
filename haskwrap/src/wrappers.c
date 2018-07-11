@@ -20,8 +20,8 @@ RAGE_HS_STRUCT_WRAPPER(
     rage_graph_new, (sample_rate))
 
 RAGE_HS_STRUCT_WRAPPER(
-    rage_NewGraphNode, (rage_Graph * g, rage_ConcreteElementType * cet, char const * name, rage_TimeSeries const * ts),
-    rage_graph_add_node, (g, cet, name, ts))
+    rage_NewGraphNode, (rage_Graph * g, rage_ConcreteElementType * cet, rage_TimeSeries const * ts),
+    rage_graph_add_node, (g, cet, ts))
 
 RAGE_HS_STRUCT_WRAPPER(
     rage_Error, (rage_Graph * g, rage_Time const * t),

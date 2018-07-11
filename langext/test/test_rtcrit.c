@@ -44,7 +44,8 @@ rage_Error test_rtcrit() {
         if (td.process_data != &i) {
             err = RAGE_ERROR("Initial data not received by proc thread");
         } else {
-            int * p = rage_rt_crit_data_update(td.crit, NULL);
+            rage_rt_crit_update_start(td.crit);
+            int * p = rage_rt_crit_update_finish(td.crit, NULL);
             sem_wait(&td.main_sem);
             if (p != &i) {
                 err = RAGE_ERROR("Unexpected old ptr val");

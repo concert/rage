@@ -1,15 +1,10 @@
 #include "proc_block.h"
-#include "jack_bindings.h"
 #include "srt.h"
 #include "element_helpers.h"
+#include "rtcrit.h"
+#include "binding_interface.h"
 #include <stdlib.h>
 
-struct rage_ProcBlock {
-    rage_Countdown * countdown;
-    rage_JackBinding * jack_binding;
-    rage_SupportConvoy * convoy;
-    uint32_t sample_rate;
-};
 
 typedef struct {
     rage_InterpolatedView ** prep;
@@ -18,88 +13,75 @@ typedef struct {
 } rage_ProcBlockViews;
 
 struct rage_Harness {
-    rage_JackHarness * jack_harness;
+    rage_Element * elem;
+    // FIXME: Don't actually need a ports per elem (but 1 of the largest size)?
+    union {
+        rage_Ports;
+        rage_Ports ports;
+    };
     rage_SupportTruck * truck;
     rage_Interpolator ** interpolators;
     rage_ProcBlockViews views;
+    rage_ProcBlock * pb;
 };
 
-rage_NewProcBlock rage_proc_block_new(
+typedef struct {
+    uint32_t * in_buffer_allocs;
+    uint32_t * out_buffer_allocs;
+    rage_Harness * harness;
+} rage_ProcStep;
+
+typedef struct {
+    rage_TransportState transp;
+    void ** all_buffers;
+    RAGE_ARRAY(rage_ProcStep) steps;
+} rage_RtBits;
+
+struct rage_ProcBlock {
+    uint32_t sample_rate;
+    uint32_t n_inputs;
+    uint32_t n_outputs;
+    rage_Countdown * rolling_countdown;
+    rage_SupportConvoy * convoy;
+    rage_RtCrit * syncy;
+};
+
+rage_ProcBlock * rage_proc_block_new(
         uint32_t sample_rate, rage_TransportState transp_state) {
     rage_Countdown * countdown = rage_countdown_new(0);
-    rage_NewJackBinding njb = rage_jack_binding_new(countdown, sample_rate);
-    if (RAGE_FAILED(njb)) {
-        rage_countdown_free(countdown);
-        return RAGE_FAILURE_CAST(rage_NewProcBlock, njb);
-    } else {
-        rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
-        pb->jack_binding = RAGE_SUCCESS_VALUE(njb);
-        pb->sample_rate = sample_rate;
-        // FIXME: FIXED PERIOD SIZE!!!!!
-        // The success value should probably be some kind of handy struct
-        pb->convoy = rage_support_convoy_new(1024, countdown, transp_state);
-        pb->countdown = countdown;
-        return RAGE_SUCCESS(rage_NewProcBlock, pb);
-    }
+    rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
+    pb->sample_rate = sample_rate;
+    // FIXME: hard coded mono
+    pb->n_inputs = pb->n_outputs = 1;
+    // FIXME: FIXED PERIOD SIZE!!!!!
+    // The success value should probably be some kind of handy struct
+    pb->rolling_countdown = countdown;
+    pb->convoy = rage_support_convoy_new(1024, countdown, transp_state);
+    rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
+    rtb->transp = transp_state;
+    // FIXME: fixed all_buffers thing
+    rtb->all_buffers = calloc(2, sizeof(void *));
+    rtb->steps.len = 0;
+    rtb->steps.items = NULL;
+    pb->syncy = rage_rt_crit_new(rtb);
+    return pb;
 }
 
 void rage_proc_block_free(rage_ProcBlock * pb) {
-    rage_countdown_free(pb->countdown);
-    rage_jack_binding_free(pb->jack_binding);
+    rage_countdown_free(pb->rolling_countdown);
     rage_support_convoy_free(pb->convoy);
+    rage_RtBits * rtb = rage_rt_crit_free(pb->syncy);
+    free(rtb->all_buffers);
+    // FIXME: free steps
     free(pb);
 }
 
 rage_Error rage_proc_block_start(rage_ProcBlock * pb) {
-    rage_Error rv = rage_support_convoy_start(pb->convoy);
-    if (RAGE_FAILED(rv)) {
-        return rv;
-    }
-    return rage_jack_binding_start(pb->jack_binding);
+    return rage_support_convoy_start(pb->convoy);
 }
 
 rage_Error rage_proc_block_stop(rage_ProcBlock * pb) {
-    rage_Error rv = rage_jack_binding_stop(pb->jack_binding);
-    if (RAGE_FAILED(rv)) {
-        return rv;
-    }
     return rage_support_convoy_stop(pb->convoy);
-}
-
-typedef RAGE_OR_ERROR(rage_Interpolator **) InterpolatorsForResult;
-
-static InterpolatorsForResult interpolators_for(
-        uint32_t sample_rate,
-        rage_InstanceSpecControls const * control_spec,
-        rage_TimeSeries const * const control_values, uint8_t const n_views) {
-    uint32_t const n_controls = control_spec->len;
-    rage_Interpolator ** new_interpolators = calloc(
-        n_controls, sizeof(rage_Interpolator *));
-    if (new_interpolators == NULL) {
-        return RAGE_FAILURE(
-            InterpolatorsForResult,
-            "Unable to allocate memory for new interpolators");
-    }
-    for (uint32_t i = 0; i < n_controls; i++) {
-        rage_InitialisedInterpolator ii = rage_interpolator_new(
-            &control_spec->items[i], &control_values[i], sample_rate,
-            n_views);
-        if (RAGE_FAILED(ii)) {
-            if (i) {
-                do {
-                    i--;
-                    rage_interpolator_free(
-                        &control_spec->items[i], new_interpolators[i]);
-                } while (i > 0);
-            }
-            free(new_interpolators);
-            return RAGE_FAILURE_CAST(InterpolatorsForResult, ii);
-            break;
-        } else {
-            new_interpolators[i] = RAGE_SUCCESS_VALUE(ii);
-        }
-    }
-    return RAGE_SUCCESS(InterpolatorsForResult, new_interpolators);
 }
 
 static rage_ProcBlockViews rage_proc_block_initialise_views(
@@ -137,8 +119,10 @@ static rage_ProcBlockViews rage_proc_block_initialise_views(
 
 rage_MountResult rage_proc_block_mount(
         rage_ProcBlock * pb, rage_Element * elem,
-        rage_TimeSeries const * controls, char const * name) {
+        rage_TimeSeries const * controls) {
     rage_Harness * harness = malloc(sizeof(rage_Harness));
+    harness->pb = pb;
+    harness->elem = elem;
     uint8_t n_views = view_count_for_type(elem->cet->type);
     // FIXME: Error handling
     harness->interpolators = RAGE_SUCCESS_VALUE(interpolators_for(
@@ -147,16 +131,51 @@ rage_MountResult rage_proc_block_mount(
     // FIXME: could be more efficient, and not add this if not required
     harness->truck = rage_support_convoy_mount(
         pb->convoy, elem, harness->views.prep, harness->views.clean);
-    harness->jack_harness = rage_jack_binding_mount(
-        pb->jack_binding, elem, harness->views.rt, name);
+    harness->ports.controls = harness->views.rt;
+    // FIXME: Should there be one of these per harness?
+    harness->ports.inputs = calloc(elem->cet->inputs.len, sizeof(void *));
+    harness->ports.outputs = calloc(elem->cet->outputs.len, sizeof(void *));
+    rage_RtBits const * old = rage_rt_crit_update_start(harness->pb->syncy);
+    rage_RtBits * new = malloc(sizeof(rage_RtBits));
+    *new = *old;
+    RAGE_ARRAY_INIT(&new->steps, old->steps.len + 1, i) {
+        if (i != old->steps.len) {
+            new->steps.items[i] = old->steps.items[i];
+        } else {
+            rage_ProcStep * proc_step = &new->steps.items[i];
+            // FIXME: Everything reads & writes only to the first buffer
+            proc_step->in_buffer_allocs = calloc(elem->cet->inputs.len, sizeof(uint32_t));
+            proc_step->out_buffer_allocs = calloc(elem->cet->outputs.len, sizeof(uint32_t));
+            proc_step->out_buffer_allocs[0] = 1;
+            proc_step->harness = harness;
+        }
+    }
+    // FIXME: Leaks proc_step array
+    free(rage_rt_crit_update_finish(harness->pb->syncy, new));
     return RAGE_SUCCESS(rage_MountResult, harness);
 }
 
 void rage_proc_block_unmount(rage_Harness * harness) {
-    // This could handle the aligning of unmounts and the thing being unmounted
-    // from (reducing backrefs)
-    rage_jack_binding_unmount(harness->jack_harness);
+    rage_RtBits const * old = rage_rt_crit_update_start(harness->pb->syncy);
+    rage_RtBits * new = malloc(sizeof(rage_RtBits));
+    *new = *old;
+    rage_ProcStep * proc_step = NULL;
+    for (uint32_t i = 0; i < old->steps.len; i++) {
+        if (old->steps.items[i].harness == harness) {
+            proc_step = &old->steps.items[i];
+        } else {
+            uint32_t const j = (proc_step == NULL) ? i : i - 1;
+            new->steps.items[j] = old->steps.items[i];
+        }
+    }
+    new->steps.len = old->steps.len - 1;
+    // FIXME: Leaks the proc_step array
+    free(rage_rt_crit_update_finish(harness->pb->syncy, new));
     rage_support_convoy_unmount(harness->truck);
+    free(proc_step->in_buffer_allocs);
+    free(proc_step->out_buffer_allocs);
+    free(harness->ports.inputs);
+    free(harness->ports.outputs);
     free(harness->views.prep);
     free(harness->views.clean);
     free(harness->views.rt);
@@ -179,13 +198,76 @@ void rage_proc_block_set_transport_state(rage_ProcBlock * pb, rage_TransportStat
     // preparation, and stopping may require cleanup, but they need to happen at
     // different times wrt the RT change
     rage_support_convoy_transport_state_changing(pb->convoy, state);
-    rage_jack_binding_set_transport_state(pb->jack_binding, state);
+    rage_RtBits const * old = rage_rt_crit_update_start(pb->syncy);
+    rage_RtBits * new = malloc(sizeof(rage_RtBits));
+    *new = *old;
+    new->transp = state;
+    free(rage_rt_crit_update_finish(pb->syncy, new));
     rage_support_convoy_transport_state_changed(pb->convoy, state);
 }
 
 rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo target) {
-    rage_Error e = rage_support_convoy_transport_seek(pb->convoy, target);
-    if (RAGE_FAILED(e))
-        return e;
-    return rage_jack_binding_transport_seek(pb->jack_binding, target);
+    rage_Error e = RAGE_OK;
+    rage_RtBits const * rtd = rage_rt_crit_freeze(pb->syncy);
+    if (rtd->transp == RAGE_TRANSPORT_ROLLING) {
+        e = RAGE_ERROR("Seek whilst rolling not implemented");
+    } else {
+        e = rage_support_convoy_transport_seek(pb->convoy, target);
+        if (!RAGE_FAILED(e)) {
+            for (uint32_t i = 0; i < rtd->steps.len; i++) {
+                uint32_t const n_controls =
+                    rtd->steps.items[i].harness->elem->cet->controls.len;
+                for (uint32_t j = 0; j < n_controls; j++) {
+                    rage_interpolated_view_seek(rtd->steps.items[i].harness->ports.controls[j], target);
+                }
+            }
+        }
+    }
+    rage_rt_crit_thaw(pb->syncy);
+    return e;
+}
+
+void rage_proc_block_process(
+        rage_BackendInterface const * b, uint32_t n_frames, void * data) {
+    rage_ProcBlock * pb = data;
+    rage_RtBits * rtd = rage_rt_crit_data_latest(pb->syncy);
+    rage_backend_get_buffers(
+        b, n_frames, rtd->all_buffers, rtd->all_buffers + pb->n_inputs);
+    for (uint32_t i = 0; i < rtd->steps.len; i++) {
+        rage_ProcStep * step = &rtd->steps.items[i];
+        for (uint32_t j = 0; j < step->harness->elem->cet->inputs.len; j++) {
+            step->harness->inputs[j] =
+                rtd->all_buffers[step->in_buffer_allocs[j]];
+        }
+        for (uint32_t j = 0; j < step->harness->elem->cet->outputs.len; j++) {
+            step->harness->outputs[j] =
+                rtd->all_buffers[step->out_buffer_allocs[j]];
+        }
+        rage_element_process(
+            step->harness->elem, rtd->transp, n_frames, &step->harness->ports);
+    }
+    if (rtd->transp == RAGE_TRANSPORT_ROLLING) {
+        rage_countdown_add(pb->rolling_countdown, -1);
+    }
+}
+
+static char * desc[] = {
+    "port"
+};
+
+static char * desc2[] = {
+    "portly"
+};
+
+rage_BackendConfig rage_proc_block_get_backend_config(rage_ProcBlock * pb) {
+    return (rage_BackendConfig) {
+        .sample_rate = pb->sample_rate,
+        .buffer_size = 1024, // FIXME: FIXED BUFFER SIZE
+        .ports = {
+            .inputs = {.len = 1, .items = desc},
+            .outputs = {.len = 1, .items = desc2}
+        },
+        .process = rage_proc_block_process,
+        .data = pb
+    };
 }
