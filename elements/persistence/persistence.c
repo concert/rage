@@ -201,7 +201,7 @@ void elem_process(rage_ElementState * data, rage_TransportState const transport_
                 }
             case IDLE:
                 zero_fill_outputs(
-                    data, ports, frame_pos, period_size * sizeof(float));
+                    data, ports, frame_pos, step_frames * sizeof(float));
                 break;
         }
         remaining -= step_frames;
