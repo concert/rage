@@ -624,6 +624,7 @@ rage_Error rage_proc_block_connect(
     new_rt->all_buffers = calloc(highest_assignment, sizeof(void *));
     new_rt->all_buffers[0] = pb->silent_buffer;
     new_rt->all_buffers[1] = pb->unrouted_buffer;
+    new_rt->steps = os;
     new_rt->ext_outs = ext_outs;
     rage_BuffersInfo const * buffer_info = rage_buffer_allocs_get_buffers_info(pb->allocs);
     memcpy(&new_rt->all_buffers[pre_allocated], buffer_info->buffers, buffer_info->n_buffers * sizeof(void *));
