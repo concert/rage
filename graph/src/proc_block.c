@@ -186,6 +186,14 @@ static rage_ProcBlockViews rage_proc_block_initialise_views(
     return views;
 }
 
+static uint32_t * rage_alloc_int_array(uint32_t n_ints, uint32_t value) {
+    uint32_t * a = malloc(n_ints * sizeof(uint32_t));
+    while (n_ints--) {
+        a[n_ints] = value;
+    }
+    return a;
+}
+
 rage_MountResult rage_proc_block_mount(
         rage_ProcBlock * pb, rage_Element * elem,
         rage_TimeSeries const * controls) {
@@ -212,10 +220,8 @@ rage_MountResult rage_proc_block_mount(
             new->steps.items[i] = old->steps.items[i];
         } else {
             rage_ProcStep * proc_step = &new->steps.items[i];
-            // FIXME: Everything reads & writes only to the first buffer
             proc_step->in_buffer_allocs = calloc(elem->cet->inputs.len, sizeof(uint32_t));
-            proc_step->out_buffer_allocs = calloc(elem->cet->outputs.len, sizeof(uint32_t));
-            proc_step->out_buffer_allocs[0] = 1;
+            proc_step->out_buffer_allocs = rage_alloc_int_array(elem->cet->outputs.len, 1);
             proc_step->harness = harness;
         }
     }
