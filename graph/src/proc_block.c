@@ -35,10 +35,17 @@ typedef struct {
 
 typedef RAGE_ARRAY(rage_ProcStep) rage_ProcSteps;
 
+typedef struct rage_ExternalOut {
+    uint32_t primary;
+    RAGE_ARRAY(uint32_t);
+    struct rage_ExternalOut * next;
+} rage_ExternalOut;
+
 typedef struct {
     rage_TransportState transp;
     void ** all_buffers;
     rage_ProcSteps steps;
+    rage_ExternalOut * ext_outs;
 } rage_RtBits;
 
 typedef struct rage_PBConnection {
@@ -86,6 +93,7 @@ rage_ProcBlock * rage_proc_block_new(
     rtb->all_buffers[0] = pb->silent_buffer;
     pb->unrouted_buffer = calloc(1024, sizeof(float));
     rtb->all_buffers[1] = pb->unrouted_buffer;
+    rtb->ext_outs = NULL;
     return pb;
 }
 
@@ -112,12 +120,22 @@ static void rage_procsteps_free(rage_ProcSteps * steps) {
     free(steps->items);
 }
 
+static void rage_ext_outs_free(rage_ExternalOut * ext) {
+    while (ext != NULL) {
+        rage_ExternalOut * next = ext->next;
+        free(ext->items);
+        free(ext);
+        ext = next;
+    }
+}
+
 void rage_proc_block_free(rage_ProcBlock * pb) {
     rage_countdown_free(pb->rolling_countdown);
     rage_support_convoy_free(pb->convoy);
     rage_RtBits * rtb = rage_rt_crit_free(pb->syncy);
     free(rtb->all_buffers);
     rage_procsteps_free(&rtb->steps);
+    rage_ext_outs_free(rtb->ext_outs);
     free(rtb);
     rage_buffer_allocs_free(pb->allocs);
     free(pb->silent_buffer);
@@ -310,6 +328,13 @@ void rage_proc_block_process(
         }
         rage_element_process(
             step->harness->elem, rtd->transp, n_frames, &step->harness->ports);
+    }
+    for (rage_ExternalOut * d = rtd->ext_outs; d != NULL; d = d->next) {
+        for (uint32_t i = 0; i < d->len; i++) {
+            memcpy(
+                rtd->all_buffers[d->primary], rtd->all_buffers[d->items[i]],
+                n_frames * sizeof(float));
+        }
     }
     if (rtd->transp == RAGE_TRANSPORT_ROLLING) {
         rage_countdown_add(pb->rolling_countdown, -1);
@@ -509,6 +534,38 @@ static rage_AssignedConnection * rage_remove_cons_targetted(
     return remaining_cons;
 }
 
+static rage_ExternalOut * rage_get_ext_outs(uint32_t const output_offset, rage_AssignedConnection * c) {
+    unsigned n_ext = 0;
+    for (rage_ConnTarget const * t = c->con_tgt; t != NULL; t = t->next) {
+        if (t->tgt_harness == NULL) {
+            n_ext++;
+        }
+    }
+    if (n_ext) {
+        rage_ExternalOut * ext_out = malloc(sizeof(rage_ExternalOut));
+        ext_out->len = n_ext - 1;
+        if (ext_out->len) {
+            ext_out->items = calloc(ext_out->len, sizeof(uint32_t));
+        }
+        bool primary_set = false;
+        uint32_t i = 0;
+        for (rage_ConnTarget const * t = c->con_tgt; t != NULL; t = t->next) {
+            if (t->tgt_harness == NULL) {
+                uint32_t const all_idx = output_offset + t->tgt_idx;
+                if (primary_set) {
+                    ext_out->items[i++] = all_idx;
+                } else {
+                    ext_out->primary = all_idx;
+                    primary_set = true;
+                }
+            }
+        }
+        return ext_out;
+    } else {
+        return NULL;
+    }
+}
+
 rage_Error rage_proc_block_connect(
         rage_ProcBlock * pb,
         rage_Harness * source, uint32_t source_idx,
@@ -527,16 +584,31 @@ rage_Error rage_proc_block_connect(
     uint32_t const pre_allocated = pb->n_inputs + pb->n_outputs + 2;
     rage_AssignedConnection * assigned_cons = NULL;
     uint32_t highest_assignment = pre_allocated;
+    rage_ExternalOut * ext_outs = NULL;
     for (uint32_t i = 0; i < os.len; i++) {
         rage_AssignedConnection * step_cons = rage_cons_from(&new, os.items[i].harness);
         while (step_cons != NULL) {
             rage_AssignedConnection * const c = step_cons;
             step_cons = step_cons->next;
-            c->assignment = rage_lowest_avail_assign(
-                pre_allocated, assigned_cons, &highest_assignment);
+            rage_ExternalOut * ext = rage_get_ext_outs(pb->n_inputs + 2, c);
+            if (ext != NULL) {
+                c->assignment = ext->primary;
+                if (ext->len) {
+                    ext->next = ext_outs;
+                    ext_outs = ext;
+                } else {
+                    free(ext);
+                }
+            } else {
+                c->assignment = rage_lowest_avail_assign(
+                    pre_allocated, assigned_cons, &highest_assignment);
+            }
             c->next = assigned_cons;
             os.items[i].out_buffer_allocs[c->source_idx] = c->assignment;
             for (rage_ConnTarget * ct = c->con_tgt; ct != NULL; ct = ct->next) {
+                if (ct->tgt_harness == NULL) {  // External connection
+                    continue;  // FIXME: should the external and internal connections be mixed up?
+                }
                 uint32_t const step_idx = rage_step_idx(&os, ct->tgt_harness);
                 os.items[step_idx].in_buffer_allocs[ct->tgt_idx] = c->assignment;
             }
@@ -552,6 +624,7 @@ rage_Error rage_proc_block_connect(
     new_rt->all_buffers = calloc(highest_assignment, sizeof(void *));
     new_rt->all_buffers[0] = pb->silent_buffer;
     new_rt->all_buffers[1] = pb->unrouted_buffer;
+    new_rt->ext_outs = ext_outs;
     rage_BuffersInfo const * buffer_info = rage_buffer_allocs_get_buffers_info(pb->allocs);
     memcpy(&new_rt->all_buffers[pre_allocated], buffer_info->buffers, buffer_info->n_buffers * sizeof(void *));
     rage_PBConnection * newp = malloc(sizeof(rage_PBConnection));
@@ -559,8 +632,9 @@ rage_Error rage_proc_block_connect(
     pb->cons = newp;
     rage_RtBits * replaced = rage_rt_crit_update_finish(pb->syncy, new_rt);
     rage_buffer_allocs_free(old_allocs);
-    free(&replaced->steps);
+    free(replaced->steps.items);
     free(replaced->all_buffers);
+    rage_ext_outs_free(replaced->ext_outs);
     free(replaced);
     return RAGE_OK;
 }
