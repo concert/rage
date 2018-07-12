@@ -67,6 +67,7 @@ struct rage_ProcBlock {
     rage_BufferAllocs * allocs;
     void * silent_buffer;
     void * unrouted_buffer;
+    uint32_t min_dynamic_buffer;
 };
 
 rage_ProcBlock * rage_proc_block_new(
@@ -94,6 +95,7 @@ rage_ProcBlock * rage_proc_block_new(
     pb->unrouted_buffer = calloc(1024, sizeof(float));
     rtb->all_buffers[1] = pb->unrouted_buffer;
     rtb->ext_outs = NULL;
+    pb->min_dynamic_buffer = 2 + pb->n_inputs + pb->n_outputs;
     return pb;
 }
 
@@ -566,6 +568,14 @@ static rage_ExternalOut * rage_get_ext_outs(uint32_t const output_offset, rage_A
     }
 }
 
+static void rage_pb_init_all_buffers(rage_ProcBlock const * pb, rage_RtBits * rt, uint32_t highest_assignment) {
+    rt->all_buffers = calloc(highest_assignment, sizeof(void *));
+    rt->all_buffers[0] = pb->silent_buffer;
+    rt->all_buffers[1] = pb->unrouted_buffer;
+    rage_BuffersInfo const * buffer_info = rage_buffer_allocs_get_buffers_info(pb->allocs);
+    memcpy(&rt->all_buffers[pb->min_dynamic_buffer], buffer_info->buffers, buffer_info->n_buffers * sizeof(void *));
+}
+
 rage_Error rage_proc_block_connect(
         rage_ProcBlock * pb,
         rage_Harness * source, uint32_t source_idx,
@@ -581,9 +591,8 @@ rage_Error rage_proc_block_connect(
         return RAGE_FAILURE_CAST(rage_Error, ops);
     }
     rage_ProcSteps os = RAGE_SUCCESS_VALUE(ops);
-    uint32_t const pre_allocated = pb->n_inputs + pb->n_outputs + 2;
     rage_AssignedConnection * assigned_cons = NULL;
-    uint32_t highest_assignment = pre_allocated;
+    uint32_t highest_assignment = pb->min_dynamic_buffer;
     rage_ExternalOut * ext_outs = NULL;
     for (uint32_t i = 0; i < os.len; i++) {
         rage_AssignedConnection * step_cons = rage_cons_from(&new, os.items[i].harness);
@@ -601,7 +610,7 @@ rage_Error rage_proc_block_connect(
                 }
             } else {
                 c->assignment = rage_lowest_avail_assign(
-                    pre_allocated, assigned_cons, &highest_assignment);
+                    pb->min_dynamic_buffer, assigned_cons, &highest_assignment);
             }
             c->next = assigned_cons;
             os.items[i].out_buffer_allocs[c->source_idx] = c->assignment;
@@ -618,16 +627,12 @@ rage_Error rage_proc_block_connect(
     }
     rage_BufferAllocs * const old_allocs = pb->allocs;
     pb->allocs = rage_buffer_allocs_alloc(
-        pb->allocs, highest_assignment - pre_allocated);
+        pb->allocs, highest_assignment - pb->min_dynamic_buffer);
     rage_RtBits * new_rt = malloc(sizeof(rage_RtBits));
     new_rt->transp = old_rt->transp;
-    new_rt->all_buffers = calloc(highest_assignment, sizeof(void *));
-    new_rt->all_buffers[0] = pb->silent_buffer;
-    new_rt->all_buffers[1] = pb->unrouted_buffer;
     new_rt->steps = os;
     new_rt->ext_outs = ext_outs;
-    rage_BuffersInfo const * buffer_info = rage_buffer_allocs_get_buffers_info(pb->allocs);
-    memcpy(&new_rt->all_buffers[pre_allocated], buffer_info->buffers, buffer_info->n_buffers * sizeof(void *));
+    rage_pb_init_all_buffers(pb, new_rt, highest_assignment);
     rage_PBConnection * newp = malloc(sizeof(rage_PBConnection));
     *newp = new;
     pb->cons = newp;
