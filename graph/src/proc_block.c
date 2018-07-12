@@ -78,14 +78,14 @@ rage_ProcBlock * rage_proc_block_new(
     pb->sample_rate = sample_rate;
     // FIXME: hard coded mono
     pb->n_inputs = pb->n_outputs = 1;
+    pb->min_dynamic_buffer = 2 + pb->n_inputs + pb->n_outputs;
     // FIXME: FIXED PERIOD SIZE!!!!!
     // The success value should probably be some kind of handy struct
     pb->rolling_countdown = countdown;
     pb->convoy = rage_support_convoy_new(1024, countdown, transp_state);
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
     rtb->transp = transp_state;
-    // FIXME: fixed all_buffers thing
-    rtb->all_buffers = calloc(2 + 2, sizeof(void *));
+    rtb->all_buffers = calloc(pb->min_dynamic_buffer, sizeof(void *));
     rtb->steps.len = 0;
     rtb->steps.items = NULL;
     pb->syncy = rage_rt_crit_new(rtb);
@@ -95,7 +95,6 @@ rage_ProcBlock * rage_proc_block_new(
     pb->unrouted_buffer = calloc(1024, sizeof(float));
     rtb->all_buffers[1] = pb->unrouted_buffer;
     rtb->ext_outs = NULL;
-    pb->min_dynamic_buffer = 2 + pb->n_inputs + pb->n_outputs;
     return pb;
 }
 
