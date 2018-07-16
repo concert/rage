@@ -619,6 +619,7 @@ rage_Error rage_proc_block_connect(
                     pb->min_dynamic_buffer, assigned_cons, &highest_assignment);
             }
             c->next = assigned_cons;
+            assigned_cons = c;
             os.items[i].out_buffer_allocs[c->source_idx] = c->assignment;
             for (rage_ConnTarget * ct = c->con_tgt; ct != NULL; ct = ct->next) {
                 if (ct->tgt_harness == NULL) {  // External connection
@@ -627,7 +628,6 @@ rage_Error rage_proc_block_connect(
                 uint32_t const step_idx = rage_step_idx(&os, ct->tgt_harness);
                 os.items[step_idx].in_buffer_allocs[ct->tgt_idx] = c->assignment;
             }
-            assigned_cons = c;
         }
         assigned_cons = rage_remove_cons_targetted(assigned_cons, os.items[i].harness);
     }
