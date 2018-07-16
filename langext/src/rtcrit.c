@@ -62,6 +62,10 @@ void * rage_rt_crit_update_finish(rage_RtCrit * crit, void * next_data) {
     return old_data;
 }
 
+void rage_rt_crit_update_abort(rage_RtCrit * crit) {
+    pthread_mutex_unlock(&crit->mutex);
+}
+
 void const * rage_rt_crit_freeze(rage_RtCrit * crit) {
     pthread_mutex_lock(&crit->mutex);
     return crit->rt_data;

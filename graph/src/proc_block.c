@@ -593,6 +593,7 @@ rage_Error rage_proc_block_connect(
     rage_RtBits const * old_rt = rage_rt_crit_update_start(pb->syncy);
     rage_OrderedProcSteps ops = rage_order_proc_steps(&old_rt->steps, &new);
     if (RAGE_FAILED(ops)) {
+        rage_rt_crit_update_abort(pb->syncy);
         return RAGE_FAILURE_CAST(rage_Error, ops);
     }
     rage_ProcSteps os = RAGE_SUCCESS_VALUE(ops);
