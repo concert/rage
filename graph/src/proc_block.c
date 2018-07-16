@@ -78,6 +78,7 @@ rage_ProcBlock * rage_proc_block_new(
     pb->cons = NULL;
     pb->sample_rate = sample_rate;
     pb->period_size = period_size;
+    pb->be_ports = ports;
     pb->min_dynamic_buffer = 2 + ports.inputs.len + ports.outputs.len;
     pb->rolling_countdown = countdown;
     pb->convoy = rage_support_convoy_new(period_size, countdown, transp_state);
