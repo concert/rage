@@ -109,6 +109,15 @@ int main() {
         free_bits(&bits);
         return 4;
     }
+    rage_Error connect_result = rage_graph_connect(
+        bits.graph, RAGE_SUCCESS_VALUE(new_node), 0, NULL, 0);
+    if (RAGE_FAILED(connect_result)) {
+        printf(
+            "Failed to connect to output: %s\n",
+            RAGE_FAILURE_VALUE(connect_result));
+        free_bits(&bits);
+        return 7;
+    }
     printf("Node added\n");
     sleep(5);
     printf("Recording...\n");

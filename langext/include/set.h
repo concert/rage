@@ -30,11 +30,13 @@ rage_Set * rage_set_subtract(rage_Set * s0, rage_Set * s1);
     static rage_##name##Set * rage_##lower##_set_add(rage_##name##Set * s, ty v) { \
         return (rage_##name##Set *) rage_set_add((rage_Set *) s, (rage_SetElem *) v); \
     } \
-    static rage_##name##Set * rage_##lower##_set_remove(rage_##name##Set * s, ty v) { \
-        return (rage_##name##Set *) rage_set_remove((rage_Set *) s, (rage_SetElem *) v); \
-    } \
     static bool rage_##lower##_set_is_weak_subset(rage_##name##Set * s0, rage_##name##Set * s1) { \
         return rage_set_is_weak_subset((rage_Set *) s0, (rage_Set *) s1); \
+    }
+
+#define RAGE_SET_REMOVAL_OPS(name, lower, ty) \
+    static rage_##name##Set * rage_##lower##_set_remove(rage_##name##Set * s, ty v) { \
+        return (rage_##name##Set *) rage_set_remove((rage_Set *) s, (rage_SetElem *) v); \
     } \
     static rage_##name##Set * rage_##lower##_set_subtract(rage_##name##Set * s0, rage_##name##Set * s1) { \
         return (rage_##name##Set *) rage_set_subtract((rage_Set *) s0, (rage_Set *) s1); \

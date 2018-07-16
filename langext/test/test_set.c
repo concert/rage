@@ -1,6 +1,7 @@
 #include "set.h"
 
 RAGE_SET_OPS(Int, int, long)
+RAGE_SET_REMOVAL_OPS(Int, int, long)
 
 rage_Error test_set() {
     rage_Error err = RAGE_OK;
