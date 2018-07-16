@@ -580,17 +580,9 @@ static void rage_pb_init_all_buffers(rage_ProcBlock const * pb, rage_RtBits * rt
     memcpy(&rt->all_buffers[pb->min_dynamic_buffer], buffer_info->buffers, buffer_info->n_buffers * sizeof(void *));
 }
 
-rage_Error rage_proc_block_connect(
-        rage_ProcBlock * pb,
-        rage_Harness * source, uint32_t source_idx,
-        rage_Harness * sink, uint32_t sink_idx) {
-    rage_PBConnection new = {
-        .source_harness = source, .source_idx = source_idx,
-        .sink_harness = sink, .sink_idx = sink_idx,
-        .next = pb->cons
-    };
+static rage_Error rage_proc_block_recalculate_routing(rage_ProcBlock * pb) {
     rage_RtBits const * old_rt = rage_rt_crit_update_start(pb->syncy);
-    rage_OrderedProcSteps ops = rage_order_proc_steps(&old_rt->steps, &new);
+    rage_OrderedProcSteps ops = rage_order_proc_steps(&old_rt->steps, pb->cons);
     if (RAGE_FAILED(ops)) {
         rage_rt_crit_update_abort(pb->syncy);
         return RAGE_FAILURE_CAST(rage_Error, ops);
@@ -600,7 +592,7 @@ rage_Error rage_proc_block_connect(
     uint32_t highest_assignment = pb->min_dynamic_buffer;
     rage_ExternalOut * ext_outs = NULL;
     for (uint32_t i = 0; i < os.len; i++) {
-        rage_AssignedConnection * step_cons = rage_cons_from(&new, os.items[i].harness);
+        rage_AssignedConnection * step_cons = rage_cons_from(pb->cons, os.items[i].harness);
         while (step_cons != NULL) {
             rage_AssignedConnection * const c = step_cons;
             step_cons = step_cons->next;
@@ -638,9 +630,6 @@ rage_Error rage_proc_block_connect(
     new_rt->steps = os;
     new_rt->ext_outs = ext_outs;
     rage_pb_init_all_buffers(pb, new_rt, highest_assignment);
-    rage_PBConnection * newp = malloc(sizeof(rage_PBConnection));
-    *newp = new;
-    pb->cons = newp;
     rage_RtBits * replaced = rage_rt_crit_update_finish(pb->syncy, new_rt);
     rage_buffer_allocs_free(old_allocs);
     free(replaced->steps.items);
@@ -648,6 +637,25 @@ rage_Error rage_proc_block_connect(
     rage_ext_outs_free(replaced->ext_outs);
     free(replaced);
     return RAGE_OK;
+}
+
+rage_Error rage_proc_block_connect(
+        rage_ProcBlock * pb,
+        rage_Harness * source, uint32_t source_idx,
+        rage_Harness * sink, uint32_t sink_idx) {
+    rage_PBConnection * new = malloc(sizeof(rage_PBConnection));
+    new->source_harness = source;
+    new->source_idx = source_idx;
+    new->sink_harness = sink;
+    new->sink_idx = sink_idx;
+    new->next = pb->cons;
+    pb->cons = new;
+    rage_Error err = rage_proc_block_recalculate_routing(pb);
+    if (RAGE_FAILED(err)) {
+        pb->cons = new->next;
+        free(new);
+    }
+    return err;
 }
 
 static void rage_remove_connection(
@@ -676,7 +684,7 @@ rage_Error rage_proc_block_disconnect(
         rage_Harness * source, uint32_t source_idx,
         rage_Harness * sink, uint32_t sink_idx) {
     rage_remove_connection(&pb->cons, source, source_idx, sink, sink_idx);
-    return RAGE_ERROR("Defo not implemented");
+    return rage_proc_block_recalculate_routing(pb);
 }
 
 static char * desc[] = {
