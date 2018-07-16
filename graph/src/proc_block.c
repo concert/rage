@@ -58,6 +58,7 @@ typedef struct rage_PBConnection {
 
 struct rage_ProcBlock {
     uint32_t sample_rate;
+    uint32_t period_size;
     uint32_t n_inputs;
     uint32_t n_outputs;
     rage_Countdown * rolling_countdown;
@@ -71,28 +72,28 @@ struct rage_ProcBlock {
 };
 
 rage_ProcBlock * rage_proc_block_new(
-        uint32_t sample_rate, rage_TransportState transp_state) {
+        uint32_t sample_rate, uint32_t period_size,
+        rage_TransportState transp_state) {
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
     pb->cons = NULL;
     pb->sample_rate = sample_rate;
+    pb->period_size = period_size;
     // FIXME: hard coded mono
     pb->n_inputs = pb->n_outputs = 1;
     pb->min_dynamic_buffer = 2 + pb->n_inputs + pb->n_outputs;
-    // FIXME: FIXED PERIOD SIZE!!!!!
-    // The success value should probably be some kind of handy struct
     pb->rolling_countdown = countdown;
-    pb->convoy = rage_support_convoy_new(1024, countdown, transp_state);
+    pb->convoy = rage_support_convoy_new(period_size, countdown, transp_state);
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
     rtb->transp = transp_state;
     rtb->all_buffers = calloc(pb->min_dynamic_buffer, sizeof(void *));
     rtb->steps.len = 0;
     rtb->steps.items = NULL;
     pb->syncy = rage_rt_crit_new(rtb);
-    pb->allocs = rage_buffer_allocs_new(1024);
-    pb->silent_buffer = calloc(1024, sizeof(float));
+    pb->allocs = rage_buffer_allocs_new(period_size);
+    pb->silent_buffer = calloc(period_size, sizeof(float));
     rtb->all_buffers[0] = pb->silent_buffer;
-    pb->unrouted_buffer = calloc(1024, sizeof(float));
+    pb->unrouted_buffer = calloc(period_size, sizeof(float));
     rtb->all_buffers[1] = pb->unrouted_buffer;
     rtb->ext_outs = NULL;
     return pb;
@@ -690,7 +691,7 @@ static char * desc2[] = {
 rage_BackendConfig rage_proc_block_get_backend_config(rage_ProcBlock * pb) {
     return (rage_BackendConfig) {
         .sample_rate = pb->sample_rate,
-        .buffer_size = 1024, // FIXME: FIXED BUFFER SIZE
+        .buffer_size = pb->period_size,
         .ports = {
             .inputs = {.len = 1, .items = desc},
             .outputs = {.len = 1, .items = desc2}
