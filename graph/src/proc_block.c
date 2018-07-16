@@ -684,7 +684,7 @@ rage_Error rage_proc_block_disconnect(
         rage_Harness * source, uint32_t source_idx,
         rage_Harness * sink, uint32_t sink_idx) {
     rage_remove_connection(&pb->cons, source, source_idx, sink, sink_idx);
-    return RAGE_ERROR("Defo not implemented");
+    return rage_proc_block_recalculate_routing(pb);
 }
 
 static char * desc[] = {
