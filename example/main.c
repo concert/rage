@@ -22,10 +22,25 @@ static void free_bits(example_Bits * bits) {
         rage_graph_free(bits->graph);
 }
 
+static char * input_names[] = {
+    "i0",
+    "i1"
+};
+
+static char * output_names[] = {
+    "o0",
+    "o1"
+};
+
+static rage_BackendPorts ext_ports = {
+    .inputs = {.len = 2, .items = input_names},
+    .outputs = {.len = 2, .items = output_names}
+};
+
 int main() {
     example_Bits bits = {};
     printf("Example started\n");
-    rage_NewGraph new_graph = rage_graph_new(44100);
+    rage_NewGraph new_graph = rage_graph_new(ext_ports, 44100);
     if (RAGE_FAILED(new_graph)) {
         printf("Graph init failed: %s\n", RAGE_FAILURE_VALUE(new_graph));
         return 1;

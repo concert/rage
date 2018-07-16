@@ -59,8 +59,7 @@ typedef struct rage_PBConnection {
 struct rage_ProcBlock {
     uint32_t sample_rate;
     uint32_t period_size;
-    uint32_t n_inputs;
-    uint32_t n_outputs;
+    rage_BackendPorts be_ports;
     rage_Countdown * rolling_countdown;
     rage_SupportConvoy * convoy;
     rage_RtCrit * syncy;
@@ -73,15 +72,13 @@ struct rage_ProcBlock {
 
 rage_ProcBlock * rage_proc_block_new(
         uint32_t sample_rate, uint32_t period_size,
-        rage_TransportState transp_state) {
+        rage_BackendPorts ports, rage_TransportState transp_state) {
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
     pb->cons = NULL;
     pb->sample_rate = sample_rate;
     pb->period_size = period_size;
-    // FIXME: hard coded mono
-    pb->n_inputs = pb->n_outputs = 1;
-    pb->min_dynamic_buffer = 2 + pb->n_inputs + pb->n_outputs;
+    pb->min_dynamic_buffer = 2 + ports.inputs.len + ports.outputs.len;
     pb->rolling_countdown = countdown;
     pb->convoy = rage_support_convoy_new(period_size, countdown, transp_state);
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
@@ -323,7 +320,7 @@ void rage_proc_block_process(
     rage_ProcBlock * pb = data;
     rage_RtBits * rtd = rage_rt_crit_data_latest(pb->syncy);
     rage_backend_get_buffers(
-        b, n_frames, rtd->all_buffers + 2, rtd->all_buffers + pb->n_inputs + 2);
+        b, n_frames, rtd->all_buffers + 2, rtd->all_buffers + pb->be_ports.inputs.len + 2);
     for (uint32_t i = 0; i < rtd->steps.len; i++) {
         rage_ProcStep * step = &rtd->steps.items[i];
         for (uint32_t j = 0; j < step->harness->elem->cet->inputs.len; j++) {
@@ -605,7 +602,7 @@ rage_Error rage_proc_block_connect(
         while (step_cons != NULL) {
             rage_AssignedConnection * const c = step_cons;
             step_cons = step_cons->next;
-            rage_ExternalOut * ext = rage_get_ext_outs(pb->n_inputs + 2, c);
+            rage_ExternalOut * ext = rage_get_ext_outs(pb->be_ports.inputs.len + 2, c);
             if (ext != NULL) {
                 c->assignment = ext->primary;
                 if (ext->len) {
@@ -680,22 +677,11 @@ rage_Error rage_proc_block_disconnect(
     return RAGE_ERROR("Defo not implemented");
 }
 
-static char * desc[] = {
-    "port"
-};
-
-static char * desc2[] = {
-    "portly"
-};
-
 rage_BackendConfig rage_proc_block_get_backend_config(rage_ProcBlock * pb) {
     return (rage_BackendConfig) {
         .sample_rate = pb->sample_rate,
         .buffer_size = pb->period_size,
-        .ports = {
-            .inputs = {.len = 1, .items = desc},
-            .outputs = {.len = 1, .items = desc2}
-        },
+        .ports = pb->be_ports,
         .process = rage_proc_block_process,
         .data = pb
     };
