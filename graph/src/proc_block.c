@@ -415,15 +415,9 @@ static rage_OrderedProcSteps rage_order_proc_steps(
                 ordered_steps.items[resolved_idx].in_buffer_allocs = calloc(
                     steps->items[i].harness->elem->cet->inputs.len,
                     sizeof(uint32_t));
-                ordered_steps.items[resolved_idx].out_buffer_allocs = calloc(
-                    steps->items[i].harness->elem->cet->outputs.len,
-                    sizeof(uint32_t));
-                for (
-                        uint32_t j = 0;
-                        j < steps->items[i].harness->elem->cet->outputs.len;
-                        j++) {
-                    ordered_steps.items[resolved_idx].out_buffer_allocs[j] = 1;
-                }
+                ordered_steps.items[resolved_idx].out_buffer_allocs =
+                    rage_alloc_int_array(
+                        steps->items[i].harness->elem->cet->outputs.len, 1);
                 rage_StepSet * const new_resolved = rage_step_set_add(
                     resolved, &steps->items[i]);
                 rage_step_set_free(resolved);
