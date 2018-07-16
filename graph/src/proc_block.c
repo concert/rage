@@ -382,7 +382,8 @@ static rage_StepSet ** rage_step_deps(
     for (; cons != NULL; cons = cons->next) {
         if (!rage_conn_is_external(cons)) {
             rage_StepIdx const i = rage_step_for(steps, cons->sink_harness);
-            rage_StepSet * const extended_deps = rage_step_set_add(deps[i.idx], i.step);
+            rage_StepIdx const j = rage_step_for(steps, cons->source_harness);
+            rage_StepSet * const extended_deps = rage_step_set_add(deps[i.idx], j.step);
             rage_step_set_free(deps[i.idx]);
             deps[i.idx] = extended_deps;
         }
@@ -423,6 +424,10 @@ static rage_OrderedProcSteps rage_order_proc_steps(
                         j++) {
                     ordered_steps.items[resolved_idx].out_buffer_allocs[j] = 1;
                 }
+                rage_StepSet * const new_resolved = rage_step_set_add(
+                    resolved, &steps->items[i]);
+                rage_step_set_free(resolved);
+                resolved = new_resolved;
                 failed = false;
                 break;
             }
