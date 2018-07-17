@@ -9,7 +9,8 @@ typedef struct rage_Harness rage_Harness;
 typedef RAGE_OR_ERROR(rage_Harness *) rage_MountResult;
 
 rage_ProcBlock * rage_proc_block_new(
-    uint32_t sample_rate, rage_TransportState transp_state);
+    uint32_t sample_rate, uint32_t period_size,
+    rage_BackendPorts ports, rage_TransportState transp_state);
 void rage_proc_block_free(rage_ProcBlock * pb);
 
 rage_Error rage_proc_block_start(rage_ProcBlock * pb);

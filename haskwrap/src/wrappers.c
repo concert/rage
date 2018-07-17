@@ -16,10 +16,6 @@ RAGE_HS_STRUCT_WRAPPER(
     rage_element_type_specialise, (k, params))
 
 RAGE_HS_STRUCT_WRAPPER(
-    rage_NewGraph, (uint32_t sample_rate),
-    rage_graph_new, (sample_rate))
-
-RAGE_HS_STRUCT_WRAPPER(
     rage_NewGraphNode, (rage_Graph * g, rage_ConcreteElementType * cet, rage_TimeSeries const * ts),
     rage_graph_add_node, (g, cet, ts))
 
@@ -31,4 +27,14 @@ RAGE_HS_STRUCT_WRAPPER(
 
 rage_InstanceSpec * rage_cet_get_spec_hs(rage_ConcreteElementType * cet) {
     return &cet->spec;
+}
+
+rage_NewGraph * rage_graph_new_hs(
+        uint32_t sample_rate, rage_BackendDescriptions * inputs,
+        rage_BackendDescriptions * outputs) {
+    rage_BackendPorts p = {.inputs = *inputs, .outputs = *outputs};
+    rage_NewGraph ng = rage_graph_new(p, sample_rate);
+    rage_NewGraph * ngp = malloc(sizeof(rage_NewGraph));
+    *ngp = ng;
+    return ngp;
 }

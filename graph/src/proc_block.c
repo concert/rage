@@ -58,8 +58,8 @@ typedef struct rage_PBConnection {
 
 struct rage_ProcBlock {
     uint32_t sample_rate;
-    uint32_t n_inputs;
-    uint32_t n_outputs;
+    uint32_t period_size;
+    rage_BackendPorts be_ports;
     rage_Countdown * rolling_countdown;
     rage_SupportConvoy * convoy;
     rage_RtCrit * syncy;
@@ -71,28 +71,27 @@ struct rage_ProcBlock {
 };
 
 rage_ProcBlock * rage_proc_block_new(
-        uint32_t sample_rate, rage_TransportState transp_state) {
+        uint32_t sample_rate, uint32_t period_size,
+        rage_BackendPorts ports, rage_TransportState transp_state) {
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
     pb->cons = NULL;
     pb->sample_rate = sample_rate;
-    // FIXME: hard coded mono
-    pb->n_inputs = pb->n_outputs = 1;
-    pb->min_dynamic_buffer = 2 + pb->n_inputs + pb->n_outputs;
-    // FIXME: FIXED PERIOD SIZE!!!!!
-    // The success value should probably be some kind of handy struct
+    pb->period_size = period_size;
+    pb->be_ports = ports;
+    pb->min_dynamic_buffer = 2 + ports.inputs.len + ports.outputs.len;
     pb->rolling_countdown = countdown;
-    pb->convoy = rage_support_convoy_new(1024, countdown, transp_state);
+    pb->convoy = rage_support_convoy_new(period_size, countdown, transp_state);
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
     rtb->transp = transp_state;
     rtb->all_buffers = calloc(pb->min_dynamic_buffer, sizeof(void *));
     rtb->steps.len = 0;
     rtb->steps.items = NULL;
     pb->syncy = rage_rt_crit_new(rtb);
-    pb->allocs = rage_buffer_allocs_new(1024);
-    pb->silent_buffer = calloc(1024, sizeof(float));
+    pb->allocs = rage_buffer_allocs_new(period_size);
+    pb->silent_buffer = calloc(period_size, sizeof(float));
     rtb->all_buffers[0] = pb->silent_buffer;
-    pb->unrouted_buffer = calloc(1024, sizeof(float));
+    pb->unrouted_buffer = calloc(period_size, sizeof(float));
     rtb->all_buffers[1] = pb->unrouted_buffer;
     rtb->ext_outs = NULL;
     return pb;
@@ -322,7 +321,7 @@ void rage_proc_block_process(
     rage_ProcBlock * pb = data;
     rage_RtBits * rtd = rage_rt_crit_data_latest(pb->syncy);
     rage_backend_get_buffers(
-        b, n_frames, rtd->all_buffers + 2, rtd->all_buffers + pb->n_inputs + 2);
+        b, n_frames, rtd->all_buffers + 2, rtd->all_buffers + pb->be_ports.inputs.len + 2);
     for (uint32_t i = 0; i < rtd->steps.len; i++) {
         rage_ProcStep * step = &rtd->steps.items[i];
         for (uint32_t j = 0; j < step->harness->elem->cet->inputs.len; j++) {
@@ -580,17 +579,9 @@ static void rage_pb_init_all_buffers(rage_ProcBlock const * pb, rage_RtBits * rt
     memcpy(&rt->all_buffers[pb->min_dynamic_buffer], buffer_info->buffers, buffer_info->n_buffers * sizeof(void *));
 }
 
-rage_Error rage_proc_block_connect(
-        rage_ProcBlock * pb,
-        rage_Harness * source, uint32_t source_idx,
-        rage_Harness * sink, uint32_t sink_idx) {
-    rage_PBConnection new = {
-        .source_harness = source, .source_idx = source_idx,
-        .sink_harness = sink, .sink_idx = sink_idx,
-        .next = pb->cons
-    };
+static rage_Error rage_proc_block_recalculate_routing(rage_ProcBlock * pb) {
     rage_RtBits const * old_rt = rage_rt_crit_update_start(pb->syncy);
-    rage_OrderedProcSteps ops = rage_order_proc_steps(&old_rt->steps, &new);
+    rage_OrderedProcSteps ops = rage_order_proc_steps(&old_rt->steps, pb->cons);
     if (RAGE_FAILED(ops)) {
         rage_rt_crit_update_abort(pb->syncy);
         return RAGE_FAILURE_CAST(rage_Error, ops);
@@ -600,11 +591,11 @@ rage_Error rage_proc_block_connect(
     uint32_t highest_assignment = pb->min_dynamic_buffer;
     rage_ExternalOut * ext_outs = NULL;
     for (uint32_t i = 0; i < os.len; i++) {
-        rage_AssignedConnection * step_cons = rage_cons_from(&new, os.items[i].harness);
+        rage_AssignedConnection * step_cons = rage_cons_from(pb->cons, os.items[i].harness);
         while (step_cons != NULL) {
             rage_AssignedConnection * const c = step_cons;
             step_cons = step_cons->next;
-            rage_ExternalOut * ext = rage_get_ext_outs(pb->n_inputs + 2, c);
+            rage_ExternalOut * ext = rage_get_ext_outs(pb->be_ports.inputs.len + 2, c);
             if (ext != NULL) {
                 c->assignment = ext->primary;
                 if (ext->len) {
@@ -638,9 +629,6 @@ rage_Error rage_proc_block_connect(
     new_rt->steps = os;
     new_rt->ext_outs = ext_outs;
     rage_pb_init_all_buffers(pb, new_rt, highest_assignment);
-    rage_PBConnection * newp = malloc(sizeof(rage_PBConnection));
-    *newp = new;
-    pb->cons = newp;
     rage_RtBits * replaced = rage_rt_crit_update_finish(pb->syncy, new_rt);
     rage_buffer_allocs_free(old_allocs);
     free(replaced->steps.items);
@@ -648,6 +636,25 @@ rage_Error rage_proc_block_connect(
     rage_ext_outs_free(replaced->ext_outs);
     free(replaced);
     return RAGE_OK;
+}
+
+rage_Error rage_proc_block_connect(
+        rage_ProcBlock * pb,
+        rage_Harness * source, uint32_t source_idx,
+        rage_Harness * sink, uint32_t sink_idx) {
+    rage_PBConnection * new = malloc(sizeof(rage_PBConnection));
+    new->source_harness = source;
+    new->source_idx = source_idx;
+    new->sink_harness = sink;
+    new->sink_idx = sink_idx;
+    new->next = pb->cons;
+    pb->cons = new;
+    rage_Error err = rage_proc_block_recalculate_routing(pb);
+    if (RAGE_FAILED(err)) {
+        pb->cons = new->next;
+        free(new);
+    }
+    return err;
 }
 
 static void rage_remove_connection(
@@ -676,25 +683,14 @@ rage_Error rage_proc_block_disconnect(
         rage_Harness * source, uint32_t source_idx,
         rage_Harness * sink, uint32_t sink_idx) {
     rage_remove_connection(&pb->cons, source, source_idx, sink, sink_idx);
-    return RAGE_ERROR("Defo not implemented");
+    return rage_proc_block_recalculate_routing(pb);
 }
-
-static char * desc[] = {
-    "port"
-};
-
-static char * desc2[] = {
-    "portly"
-};
 
 rage_BackendConfig rage_proc_block_get_backend_config(rage_ProcBlock * pb) {
     return (rage_BackendConfig) {
         .sample_rate = pb->sample_rate,
-        .buffer_size = 1024, // FIXME: FIXED BUFFER SIZE
-        .ports = {
-            .inputs = {.len = 1, .items = desc},
-            .outputs = {.len = 1, .items = desc2}
-        },
+        .buffer_size = pb->period_size,
+        .ports = pb->be_ports,
         .process = rage_proc_block_process,
         .data = pb
     };

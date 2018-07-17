@@ -9,8 +9,9 @@ struct rage_Graph {
     rage_JackBackend * jb;
 };
 
-rage_NewGraph rage_graph_new(uint32_t sample_rate) {
-    rage_ProcBlock * pb = rage_proc_block_new(sample_rate, RAGE_TRANSPORT_STOPPED);
+rage_NewGraph rage_graph_new(rage_BackendPorts ports, uint32_t sample_rate) {
+    rage_ProcBlock * pb = rage_proc_block_new(
+        sample_rate, 1024, ports, RAGE_TRANSPORT_STOPPED);
     rage_NewJackBackend njb = rage_jack_backend_new(
         rage_proc_block_get_backend_config(pb));
     if (RAGE_FAILED(njb)) {
