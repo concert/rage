@@ -35,6 +35,26 @@ rage_ExtDepMap rage_depmap_connect(
     }
 }
 
+rage_DepMap * rage_depmap_disconnect(
+        rage_DepMap * initial, rage_ConnTerminal in, rage_ConnTerminal out) {
+    rage_DepMap * c, * prev_con = NULL;
+    for (c = initial; c != NULL; c = c->next) {
+        if (
+                rage_conn_terminal_eq(&c->src, &in) &&
+                rage_conn_terminal_eq(&c->sink, &out)) {
+            if (prev_con != NULL) {
+                prev_con->next = c->next;
+            } else {
+                initial = c->next;
+            }
+            free(c);
+            break;
+        }
+        prev_con = c;
+    }
+    return initial;
+}
+
 rage_MaybeConnTerminal rage_depmap_input_for(
         rage_DepMap const * dm, rage_ConnTerminal const output) {
     for (; dm != NULL; dm = dm->next) {
@@ -108,4 +128,33 @@ void rage_conn_terms_free(rage_ConnTerminals * ct) {
         free(ct);
         ct = nxt;
     }
+}
+
+rage_DepMap * rage_remove_connections_for(
+        rage_DepMap * initial, rage_Harness * tgt) {
+    rage_DepMap * c, * prev_con = NULL;
+    for (c = initial; c != NULL; c = c->next) {
+        if (c->src.harness == tgt || c->sink.harness == tgt) {
+            if (prev_con) {
+                prev_con->next = c->next;
+            } else {
+                initial = c->next;
+            }
+            free(c);
+        }
+        prev_con = c;
+    }
+    return initial;
+}
+
+rage_DepMapIter * rage_depmap_iter(rage_DepMap const * dm) {
+    return dm;
+}
+
+rage_DepMapIter * rage_depmap_iter_item(
+        rage_DepMapIter * dmi,
+        rage_ConnTerminal * src, rage_ConnTerminal * sink) {
+    *src = dmi->src;
+    *sink = dmi->sink;
+    return dmi->next;
 }
