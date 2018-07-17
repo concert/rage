@@ -68,7 +68,7 @@ rage_ProcBlock * rage_proc_block_new(
         rage_BackendPorts ports, rage_TransportState transp_state) {
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
-    pb->cons = NULL;
+    pb->cons = rage_depmap_new();
     pb->sample_rate = sample_rate;
     pb->period_size = period_size;
     pb->be_ports = ports;
@@ -131,6 +131,7 @@ void rage_proc_block_free(rage_ProcBlock * pb) {
     rage_ext_outs_free(rtb->ext_outs);
     free(rtb);
     rage_buffer_allocs_free(pb->allocs);
+    rage_depmap_free(pb->cons);
     free(pb->silent_buffer);
     free(pb->unrouted_buffer);
     free(pb);

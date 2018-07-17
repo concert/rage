@@ -1,19 +1,11 @@
 #include "depmap.h"
+#include "categorisation.h"
 #include <stdlib.h>
-
-typedef RAGE_ARRAY(rage_Harness *) rage_HarnessArray;
 
 typedef struct {
     bool ext_in;
     bool ext_out;
 } rage_Flippy;
-
-typedef struct {
-    rage_HarnessArray uncategorised;
-    rage_HarnessArray in;
-    rage_HarnessArray out;
-    rage_HarnessArray rt;
-} rage_CategorisedHarnesses;
 
 static uint32_t rage_harness_idx(
         rage_HarnessArray const * const all_harnesses,
@@ -30,26 +22,30 @@ static void rage_tag_inputs(
         rage_HarnessArray const * const all_harnesses,
         rage_Flippy * const flippy, rage_DepMap const * deps,
         rage_Harness const * conn_to) {
-    rage_ConnTerminals * ins = rage_depmap_inputs(deps, conn_to);
-    for (rage_ConnTerminals * in = ins; in != NULL; in = in->next) {
-        uint32_t harness_idx = rage_harness_idx(all_harnesses, in->term.harness);
-        flippy[harness_idx].ext_in = true;
-        rage_tag_inputs(all_harnesses, flippy, deps, in->term.harness);
+    rage_ConnTerminals * conn_outs = rage_depmap_outputs(deps, conn_to);
+    for (rage_ConnTerminals * o = conn_outs; o != NULL; o = o->next) {
+        if (o->term.harness != NULL) {
+            uint32_t const harness_idx = rage_harness_idx(all_harnesses, o->term.harness);
+            flippy[harness_idx].ext_in = true;
+            rage_tag_inputs(all_harnesses, flippy, deps, o->term.harness);
+        }
     }
-    rage_conn_terms_free(ins);
+    rage_conn_terms_free(conn_outs);
 }
 
 static void rage_tag_outputs(
         rage_HarnessArray const * const all_harnesses,
         rage_Flippy * const flippy, rage_DepMap const * deps,
         rage_Harness const * conn_to) {
-    rage_ConnTerminals * outs = rage_depmap_outputs(deps, conn_to);
-    for (rage_ConnTerminals * out = outs; out != NULL; out = out->next) {
-        uint32_t harness_idx = rage_harness_idx(all_harnesses, out->term.harness);
-        flippy[harness_idx].ext_out = true;
-        rage_tag_outputs(all_harnesses, flippy, deps, out->term.harness);
+    rage_ConnTerminals * conn_ins = rage_depmap_inputs(deps, conn_to);
+    for (rage_ConnTerminals * i = conn_ins; i != NULL; i = i->next) {
+        if (i->term.harness != NULL) {
+            uint32_t const harness_idx = rage_harness_idx(all_harnesses, i->term.harness);
+            flippy[harness_idx].ext_out = true;
+            rage_tag_outputs(all_harnesses, flippy, deps, i->term.harness);
+        }
     }
-    rage_conn_terms_free(outs);
+    rage_conn_terms_free(conn_ins);
 }
 
 rage_CategorisedHarnesses rage_categorise(
@@ -74,4 +70,11 @@ rage_CategorisedHarnesses rage_categorise(
     }
     free(flippy);
     return rv;
+}
+
+void rage_categorised_harnesses_free(rage_CategorisedHarnesses ch) {
+    free(ch.uncategorised.items);
+    free(ch.in.items);
+    free(ch.out.items);
+    free(ch.rt.items);
 }

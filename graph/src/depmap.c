@@ -15,6 +15,14 @@ rage_DepMap * rage_depmap_new() {
     return NULL;
 }
 
+void rage_depmap_free(rage_DepMap * dm) {
+    while (dm != NULL) {
+        rage_DepMap * const nxt = dm->next;
+        free(dm);
+        dm = nxt;
+    }
+}
+
 rage_ExtDepMap rage_depmap_connect(
         rage_DepMap * dm, rage_ConnTerminal input, rage_ConnTerminal output) {
     rage_MaybeConnTerminal mct = rage_depmap_input_for(dm, output);
@@ -31,7 +39,7 @@ rage_ExtDepMap rage_depmap_connect(
         new_dm->next = dm;
         new_dm->src = input;
         new_dm->sink = output;
-        return RAGE_SUCCESS(rage_ExtDepMap, dm);
+        return RAGE_SUCCESS(rage_ExtDepMap, new_dm);
     }
 }
 

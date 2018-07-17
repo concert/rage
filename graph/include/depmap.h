@@ -19,6 +19,7 @@ typedef struct rage_DepMap rage_DepMap;
 typedef RAGE_OR_ERROR(rage_DepMap *) rage_ExtDepMap;
 
 rage_DepMap * rage_depmap_new();
+void rage_depmap_free(rage_DepMap * dm);
 rage_ExtDepMap rage_depmap_connect(
     rage_DepMap * dm, rage_ConnTerminal input, rage_ConnTerminal output);
 rage_DepMap * rage_depmap_disconnect(
