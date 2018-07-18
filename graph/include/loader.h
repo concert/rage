@@ -13,10 +13,7 @@ typedef struct rage_ElementKind rage_ElementKind;
 typedef struct {
     rage_ElementType * type;
     rage_Atom ** params;
-    union {
-        rage_InstanceSpec;
-        rage_InstanceSpec spec;
-    };
+    RAGE_ANON_UNION(rage_InstanceSpec, spec);
 } rage_ConcreteElementType;
 
 typedef struct {

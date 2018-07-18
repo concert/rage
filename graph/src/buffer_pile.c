@@ -1,13 +1,11 @@
 #include "buffer_pile.h"
+#include "macros.h"
 #include <stdlib.h>
 
 struct rage_BufferAllocs {
     rage_BufferAllocs * next;
     rage_BufferAllocs * prev;
-    union {
-        rage_BuffersInfo;
-        rage_BuffersInfo info;
-    };
+    RAGE_ANON_UNION(rage_BuffersInfo, info);
 };
 
 rage_BufferAllocs * rage_buffer_allocs_new(size_t buffer_size) {

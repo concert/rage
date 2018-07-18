@@ -89,3 +89,9 @@ typedef enum {
         } \
         return new_array; \
     }
+
+#ifdef RAGE_DISABLE_ANON_UNIONS
+#define RAGE_ANON_UNION(t, v) t v
+#else
+#define RAGE_ANON_UNION(t, v) union {t; t v;}
+#endif

@@ -17,10 +17,7 @@ typedef struct {
 struct rage_Harness {
     rage_Element * elem;
     // FIXME: Don't actually need a ports per elem (but 1 of the largest size)?
-    union {
-        rage_Ports;
-        rage_Ports ports;
-    };
+    RAGE_ANON_UNION(rage_Ports, ports);
     rage_SupportTruck * truck;
     rage_Interpolator ** interpolators;
     rage_ProcBlockViews views;
