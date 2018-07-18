@@ -37,14 +37,17 @@ static rage_BackendPorts ext_ports = {
     .outputs = {.len = 2, .items = output_names}
 };
 
+#define RAGE_ABORT_ON_FAILURE(v, r) if (RAGE_FAILED(v)) { \
+    printf(#v " failed: %s\n", RAGE_FAILURE_VALUE(v)); \
+    free_bits(&bits); \
+    return r; \
+}
+
 int main() {
     example_Bits bits = {};
     printf("Example started\n");
     rage_NewGraph new_graph = rage_graph_new(ext_ports, 44100);
-    if (RAGE_FAILED(new_graph)) {
-        printf("Graph init failed: %s\n", RAGE_FAILURE_VALUE(new_graph));
-        return 1;
-    }
+    RAGE_ABORT_ON_FAILURE(new_graph, 1);
     bits.graph = RAGE_SUCCESS_VALUE(new_graph);
     bits.el = rage_element_loader_new(getenv("RAGE_ELEMENTS_PATH"));
     //rage_ElementTypes element_type_names = rage_element_loader_list(el);
@@ -52,11 +55,7 @@ int main() {
     rage_ElementKindLoadResult ek_ = rage_element_loader_load(
     //    "./build/libamp.so");
         "./build/libpersist.so");
-    if (RAGE_FAILED(ek_)) {
-        printf("Element kind load failed: %s\n", RAGE_FAILURE_VALUE(ek_));
-        free_bits(&bits);
-        return 2;
-    }
+    RAGE_ABORT_ON_FAILURE(ek_, 2);
     bits.ek = RAGE_SUCCESS_VALUE(ek_);
     printf("Element kind loaded\n");
     // FIXME: Fixed stuff for amp
@@ -66,11 +65,7 @@ int main() {
     rage_Atom * tupp = tup;
     rage_NewConcreteElementType cet_ = rage_element_type_specialise(
         bits.ek, &tupp);
-    if (RAGE_FAILED(cet_)) {
-        printf("Element type specialising failed: %s\n", RAGE_FAILURE_VALUE(cet_));
-        free_bits(&bits);
-        return 3;
-    }
+    RAGE_ABORT_ON_FAILURE(cet_, 3);
     bits.cet = RAGE_SUCCESS_VALUE(cet_);
     //rage_Atom vals[] = {{.f = 1.0}};
     rage_Atom vals[] = {
@@ -111,28 +106,14 @@ int main() {
     };
     printf("Starting graph...\n");
     rage_Error en_st = rage_graph_start_processing(bits.graph);
-    if (RAGE_FAILED(en_st)) {
-        printf("Graph start failed %s\n", RAGE_FAILURE_VALUE(en_st));
-        free_bits(&bits);
-        return 5;
-    }
+    RAGE_ABORT_ON_FAILURE(en_st, 4);
     printf("Adding node...\n");
     rage_NewGraphNode new_node = rage_graph_add_node(
         bits.graph, bits.cet, &ts);
-    if (RAGE_FAILED(new_node)) {
-        printf("Node creation failed: %s\n", RAGE_FAILURE_VALUE(new_node));
-        free_bits(&bits);
-        return 4;
-    }
+    RAGE_ABORT_ON_FAILURE(new_node, 5);
     rage_Error connect_result = rage_graph_connect(
         bits.graph, RAGE_SUCCESS_VALUE(new_node), 0, NULL, 0);
-    if (RAGE_FAILED(connect_result)) {
-        printf(
-            "Failed to connect to output: %s\n",
-            RAGE_FAILURE_VALUE(connect_result));
-        free_bits(&bits);
-        return 7;
-    }
+    RAGE_ABORT_ON_FAILURE(connect_result, 6);
     printf("Node added\n");
     sleep(5);
     printf("Recording...\n");
