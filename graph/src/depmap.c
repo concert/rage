@@ -50,7 +50,7 @@ rage_DepMap * rage_depmap_disconnect(
         if (
                 rage_conn_terminal_eq(&c->src, &in) &&
                 rage_conn_terminal_eq(&c->sink, &out)) {
-            if (prev_con != NULL) {
+            if (prev_con) {
                 prev_con->next = c->next;
             } else {
                 initial = c->next;
