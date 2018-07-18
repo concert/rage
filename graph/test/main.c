@@ -4,5 +4,8 @@
 #include "test_jack_bindings.c"
 #include "test_srt.c"
 #include "test_graph.c"
+#include "test_buffer_pile.c"
 
-TEST_MAIN(test_loader, test_jack_bindings, test_srt, test_srt_fake_elem, test_graph)
+TEST_MAIN(
+    test_loader, test_jack_bindings, test_srt, test_srt_fake_elem, test_graph,
+    test_buffer_pile)

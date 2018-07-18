@@ -164,7 +164,7 @@ static inline void zero_fill_outputs(
         uint32_t chunk_size) {
     for (uint32_t c = 0; c < data->n_channels; c++) {
         memset(
-            &ports->outputs[c][frame_pos], 0x00, chunk_size);
+            &ports->outputs[c][frame_pos], 0x0, chunk_size);
     }
 }
 
@@ -201,7 +201,7 @@ void elem_process(rage_ElementState * data, rage_TransportState const transport_
                 }
             case IDLE:
                 zero_fill_outputs(
-                    data, ports, frame_pos, period_size * sizeof(float));
+                    data, ports, frame_pos, chunk_size);
                 break;
         }
         remaining -= step_frames;
