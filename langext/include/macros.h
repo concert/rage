@@ -91,7 +91,7 @@ typedef enum {
     }
 
 #ifdef RAGE_DISABLE_ANON_UNIONS
-#define RAGE_ANON_UNION(t, v) t v
+#define RAGE_EMBED_STRUCT(t, v) t v
 #else
-#define RAGE_ANON_UNION(t, v) union {t; t v;}
+#define RAGE_EMBED_STRUCT(t, v) union {t; t v;}
 #endif

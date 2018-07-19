@@ -13,7 +13,7 @@ struct rage_BackendState {
     rage_JackPorts input_ports;
     rage_JackPorts output_ports;
     rage_BackendInterface backend;
-    RAGE_ANON_UNION(rage_BackendConfig, conf);
+    RAGE_EMBED_STRUCT(rage_BackendConfig, conf);
 };
 
 void rage_jack_backend_get_buffers(

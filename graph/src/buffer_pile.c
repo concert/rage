@@ -5,7 +5,7 @@
 struct rage_BufferAllocs {
     rage_BufferAllocs * next;
     rage_BufferAllocs * prev;
-    RAGE_ANON_UNION(rage_BuffersInfo, info);
+    RAGE_EMBED_STRUCT(rage_BuffersInfo, info);
 };
 
 rage_BufferAllocs * rage_buffer_allocs_new(size_t buffer_size) {
