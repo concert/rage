@@ -317,7 +317,7 @@ rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo targ
 }
 
 void rage_proc_block_process(
-        rage_BackendInterface const * b, uint32_t n_frames, void * data) {
+        rage_BackendInterface const * b, uint32_t const n_frames, void * data) {
     rage_ProcBlock * pb = data;
     rage_RtBits * rtd = rage_rt_crit_data_latest(pb->syncy);
     rage_backend_get_buffers(
