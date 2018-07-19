@@ -177,7 +177,8 @@ int main() {
     rage_graph_set_transport_state(bits.graph, RAGE_TRANSPORT_ROLLING);
     sleep(10);
     printf("Stopping...\n");
-    rage_graph_remove_node(bits.graph, RAGE_SUCCESS_VALUE(new_node));
+    rage_graph_remove_node(bits.graph, anode);
+    rage_graph_remove_node(bits.graph, pnode);
     rage_graph_stop_processing(bits.graph);
     free_bits(&bits);
 }
