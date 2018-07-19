@@ -88,7 +88,7 @@ rage_ProcBlock * rage_proc_block_new(
     rtb->steps.len = 0;
     rtb->steps.items = NULL;
     pb->syncy = rage_rt_crit_new(rtb);
-    pb->allocs = rage_buffer_allocs_new(period_size);
+    pb->allocs = rage_buffer_allocs_new(period_size * sizeof(float));
     pb->silent_buffer = calloc(period_size, sizeof(float));
     rtb->all_buffers[0] = pb->silent_buffer;
     pb->unrouted_buffer = calloc(period_size, sizeof(float));
@@ -572,7 +572,7 @@ static rage_ExternalOut * rage_get_ext_outs(uint32_t const output_offset, rage_A
 }
 
 static void rage_pb_init_all_buffers(rage_ProcBlock const * pb, rage_RtBits * rt, uint32_t highest_assignment) {
-    rt->all_buffers = calloc(highest_assignment, sizeof(void *));
+    rt->all_buffers = calloc(highest_assignment + 1, sizeof(void *));
     rt->all_buffers[0] = pb->silent_buffer;
     rt->all_buffers[1] = pb->unrouted_buffer;
     rage_BuffersInfo const * buffer_info = rage_buffer_allocs_get_buffers_info(pb->allocs);
@@ -588,7 +588,7 @@ static rage_Error rage_proc_block_recalculate_routing(rage_ProcBlock * pb) {
     }
     rage_ProcSteps os = RAGE_SUCCESS_VALUE(ops);
     rage_AssignedConnection * assigned_cons = NULL;
-    uint32_t highest_assignment = pb->min_dynamic_buffer;
+    uint32_t highest_assignment = pb->min_dynamic_buffer - 1;
     rage_ExternalOut * ext_outs = NULL;
     for (uint32_t i = 0; i < os.len; i++) {
         rage_AssignedConnection * step_cons = rage_cons_from(pb->cons, os.items[i].harness);
@@ -623,7 +623,7 @@ static rage_Error rage_proc_block_recalculate_routing(rage_ProcBlock * pb) {
     }
     rage_BufferAllocs * const old_allocs = pb->allocs;
     pb->allocs = rage_buffer_allocs_alloc(
-        pb->allocs, highest_assignment - pb->min_dynamic_buffer);
+        pb->allocs, highest_assignment - (pb->min_dynamic_buffer - 1));
     rage_RtBits * new_rt = malloc(sizeof(rage_RtBits));
     new_rt->transp = old_rt->transp;
     new_rt->steps = os;
