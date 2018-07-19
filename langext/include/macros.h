@@ -38,6 +38,13 @@ typedef enum {
 #define RAGE_NOTHING {.half = RAGE_EITHER_LEFT, .left = NULL}
 
 /*
+ * Check if maybe is justy
+ */
+#define RAGE_IS_JUST(v) (v.half == RAGE_EITHER_RIGHT)
+
+#define RAGE_FROM_JUST(v) v.right
+
+/*
  * Parameterised array type.
  */
 #define RAGE_ARRAY(t) \
