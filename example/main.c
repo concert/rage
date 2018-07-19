@@ -107,7 +107,7 @@ int main() {
             .mode = RAGE_INTERPOLATION_CONST
         },
         {
-            .time = {.second = 7},
+            .time = {.second = 10},
             .value = &(terminus[0]),
             .mode = RAGE_INTERPOLATION_CONST
         }
@@ -121,22 +121,27 @@ int main() {
         {.f = 1.0}
     };
     rage_Atom half_vol[] = {
-        {.f = 0.5}
+        {.f = 0.1}
     };
     rage_TimePoint amp_pts[] = {
         {
-            .time = {.second = 5},
+            .time = {.second = 0},
             .value = full_vol,
             .mode = RAGE_INTERPOLATION_CONST
         },
         {
-            .time = {.second = 6},
+            .time = {.second = 6, .fraction = 0.1 * UINT32_MAX},
+            .value = full_vol,
+            .mode = RAGE_INTERPOLATION_LINEAR
+        },
+        {
+            .time = {.second = 7},
             .value = half_vol,
             .mode = RAGE_INTERPOLATION_CONST
         }
     };
     rage_TimeSeries amp_ts = {
-        .len = 2,
+        .len = 3,
         .items = amp_pts
     };
     printf("Starting graph...\n");
@@ -170,7 +175,7 @@ int main() {
     rage_graph_set_transport_state(bits.graph, RAGE_TRANSPORT_STOPPED);
     rage_graph_transport_seek(bits.graph, &t);
     rage_graph_set_transport_state(bits.graph, RAGE_TRANSPORT_ROLLING);
-    sleep(2);
+    sleep(10);
     printf("Stopping...\n");
     rage_graph_remove_node(bits.graph, RAGE_SUCCESS_VALUE(new_node));
     rage_graph_stop_processing(bits.graph);
