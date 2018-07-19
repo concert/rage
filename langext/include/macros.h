@@ -90,6 +90,13 @@ typedef enum {
         return new_array; \
     }
 
+/*
+ * RAGE internally uses structs wrapped in anonymous unions to reduce
+ * intermediary dots in accesors (without losing the ability to take a pointer
+ * to the sub struct).
+ * However should you be using a tool (e.g. c2hs) that doesn't understand this
+ * then #define RAGE_DISABLE_ANON_UNIONS before including.
+ */
 #ifdef RAGE_DISABLE_ANON_UNIONS
 #define RAGE_EMBED_STRUCT(t, v) t v
 #else
