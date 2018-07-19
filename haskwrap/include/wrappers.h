@@ -1,4 +1,5 @@
 #pragma once
+#define RAGE_DISABLE_ANON_UNIONS 1
 #include "loader.h"
 #include "graph.h"
 
