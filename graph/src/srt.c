@@ -27,6 +27,7 @@ struct rage_SupportConvoy {
     rage_Countdown * countdown;
     // mutex to prevent truck array freeing during iteration:
     pthread_mutex_t active;
+    rage_Trucks * all_trucks;
     rage_Trucks * prep_trucks;
     rage_Trucks * clean_trucks;
     int counts_skipped;
@@ -34,6 +35,13 @@ struct rage_SupportConvoy {
     sem_t triggered_tick_sem;
     rage_TransportState transport_state;
 };
+
+static rage_Trucks * rage_new_trucks() {
+    rage_Trucks * t = malloc(sizeof(rage_Trucks));
+    t->len = 0;
+    t->items = NULL;
+    return t;
+}
 
 rage_SupportConvoy * rage_support_convoy_new(uint32_t period_size, rage_Countdown * countdown) {
     rage_SupportConvoy * convoy = malloc(sizeof(rage_SupportConvoy));
@@ -43,12 +51,9 @@ rage_SupportConvoy * rage_support_convoy_new(uint32_t period_size, rage_Countdow
     convoy->countdown = countdown;
     // FIXME: can in theory fail
     pthread_mutex_init(&convoy->active, NULL);
-    convoy->prep_trucks = malloc(sizeof(rage_Trucks));
-    convoy->prep_trucks->len = 0;
-    convoy->prep_trucks->items = NULL;
-    convoy->clean_trucks = malloc(sizeof(rage_Trucks));
-    convoy->clean_trucks->len = 0;
-    convoy->clean_trucks->items = NULL;
+    convoy->all_trucks = rage_new_trucks();
+    convoy->prep_trucks = rage_new_trucks();
+    convoy->clean_trucks = rage_new_trucks();
     convoy->counts_skipped = 0;
     convoy->triggered_tick = false;
     sem_init(&convoy->triggered_tick_sem, 0, 0);
@@ -57,9 +62,11 @@ rage_SupportConvoy * rage_support_convoy_new(uint32_t period_size, rage_Countdow
 
 void rage_support_convoy_free(rage_SupportConvoy * convoy) {
     pthread_mutex_destroy(&convoy->active);
+    assert(convoy->all_trucks->len == 0);
     assert(convoy->prep_trucks->len == 0);
     assert(convoy->clean_trucks->len == 0);
     assert(!convoy->running);
+    RAGE_ARRAY_FREE(convoy->all_trucks);
     RAGE_ARRAY_FREE(convoy->prep_trucks);
     RAGE_ARRAY_FREE(convoy->clean_trucks);
     free(convoy);
@@ -168,9 +175,8 @@ static void * rage_support_convoy_worker(void * ptr) {
             break;
         }
         convoy->counts_skipped = 0;
-        // FIXME: Should be all trucks not just prep
-        account_for_rt_frames(convoy->prep_trucks, counts_waited * convoy->period_size);
-        min_frames_wait = n_frames_grace(convoy->prep_trucks);
+        account_for_rt_frames(convoy->all_trucks, counts_waited * convoy->period_size);
+        min_frames_wait = n_frames_grace(convoy->all_trucks);
         counts_to_wait = min_frames_wait / convoy->period_size;
         if (0 > rage_countdown_add(convoy->countdown, counts_to_wait)) {
             err = "SupportConvoy failed to keep up";
@@ -238,12 +244,16 @@ static void change_trucks(
         rage_Trucks * (next_trucks)(rage_Trucks *, rage_SupportTruck * truck),
         rage_SupportConvoy * convoy,
         rage_SupportTruck * truck) {
-    // FIXME: This is assuming a single control thread
+    // Assuming a single control thread
     rage_Trucks
+        * old_all_trucks,
+        * new_all_trucks,
         * old_prep_trucks,
         * new_prep_trucks,
         * old_clean_trucks,
         * new_clean_trucks;
+    old_all_trucks = convoy->all_trucks;
+    new_all_trucks = next_trucks(old_all_trucks, truck);
     if (truck->prep_view) {
         old_prep_trucks = convoy->prep_trucks;
         new_prep_trucks = next_trucks(old_prep_trucks, truck);
@@ -259,15 +269,13 @@ static void change_trucks(
         new_clean_trucks = convoy->clean_trucks;
     }
     pthread_mutex_lock(&convoy->active);
+    convoy->all_trucks = new_all_trucks;
     convoy->prep_trucks = new_prep_trucks;
     convoy->clean_trucks = new_clean_trucks;
     unlock_and_await_tick(convoy);
-    if (old_prep_trucks != NULL) {
-        RAGE_ARRAY_FREE(old_prep_trucks);
-    }
-    if (old_clean_trucks != NULL) {
-        RAGE_ARRAY_FREE(old_clean_trucks);
-    }
+    RAGE_ARRAY_FREE(old_all_trucks);
+    RAGE_ARRAY_FREE(old_prep_trucks);
+    RAGE_ARRAY_FREE(old_clean_trucks);
 }
 
 rage_SupportTruck * rage_support_convoy_mount(
@@ -333,8 +341,8 @@ rage_Error rage_support_convoy_transport_seek(rage_SupportConvoy * convoy, rage_
         seek_views_to(truck->prep_view, truck->elem->cet->controls.len, target_frame);
         truck->frames_prepared = 0;
     }
-    for (unsigned i = 0; i < convoy->clean_trucks->len; i++) {
-        rage_SupportTruck * truck = convoy->clean_trucks->items[i];
+    for (unsigned i = 0; i < convoy->all_trucks->len; i++) {
+        rage_SupportTruck * truck = convoy->all_trucks->items[i];
         assert(truck->frames_to_clean <= 0);
         seek_views_to(truck->clean_view, truck->elem->cet->controls.len, target_frame);
         truck->frames_to_clean = 0;
