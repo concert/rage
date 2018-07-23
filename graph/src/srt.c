@@ -210,7 +210,8 @@ rage_Error rage_support_convoy_start(rage_SupportConvoy * convoy) {
     if (pthread_create(
             &convoy->worker_thread, NULL,
             rage_support_convoy_worker, convoy)) {
-        // This makes a mess if the thread doesn't start
+        convoy->running = false;
+        pthread_mutex_unlock(&convoy->active);
         return RAGE_ERROR("Failed to create worker thread");
     }
     unlock_and_await_tick(convoy);
