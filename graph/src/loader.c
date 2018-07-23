@@ -45,9 +45,7 @@ rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
     struct dirent ** entries;
     int n_items = scandir(el->elems_path, &entries, el->pf, NULL);
     if (n_items >= 0) {
-        elems->len = n_items;
-        elems->items = calloc(n_items, sizeof(char *));
-        for (uint32_t i = 0; i < n_items; i++) {
+        RAGE_ARRAY_INIT(elems, n_items, i) {
             elems->items[i] = join_path(el->elems_path, entries[i]->d_name);
             free(entries[i]);
         }
