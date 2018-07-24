@@ -14,8 +14,7 @@ rage_Atom * rage_tuple_copy(rage_TupleDef const * const td, rage_Atom const * co
                 copy[i] = orig[i];
                 break;
             case RAGE_ATOM_STRING:
-                copy[i].s = malloc(strlen(orig[i].s));
-                strcpy(copy[i].s, orig[i].s);
+                copy[i].s = strdup(orig[i].s);
                 break;
         }
     }

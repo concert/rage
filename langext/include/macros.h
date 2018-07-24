@@ -38,6 +38,13 @@ typedef enum {
 #define RAGE_NOTHING {.half = RAGE_EITHER_LEFT, .left = NULL}
 
 /*
+ * Check if maybe is justy
+ */
+#define RAGE_IS_JUST(v) (v.half == RAGE_EITHER_RIGHT)
+
+#define RAGE_FROM_JUST(v) v.right
+
+/*
  * Parameterised array type.
  */
 #define RAGE_ARRAY(t) \
@@ -58,7 +65,7 @@ typedef enum {
 /*
  * Free a heap allocated array.
  */
-#define RAGE_ARRAY_FREE(arr) if (arr != NULL && arr->items != NULL) free(arr->items); free(arr);
+#define RAGE_ARRAY_FREE(arr) if (arr != NULL) free(arr->items); free(arr);
 
 /*
  * Define a function to make an extended copy of an array.
@@ -89,3 +96,16 @@ typedef enum {
         } \
         return new_array; \
     }
+
+/*
+ * RAGE internally uses structs wrapped in anonymous unions to reduce
+ * intermediary dots in accesors (without losing the ability to take a pointer
+ * to the sub struct).
+ * However should you be using a tool (e.g. c2hs) that doesn't understand this
+ * then #define RAGE_DISABLE_ANON_UNIONS before including.
+ */
+#ifdef RAGE_DISABLE_ANON_UNIONS
+#define RAGE_EMBED_STRUCT(t, v) t v
+#else
+#define RAGE_EMBED_STRUCT(t, v) union {t; t v;}
+#endif

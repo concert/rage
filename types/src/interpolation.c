@@ -300,6 +300,7 @@ static void rage_finalise_timeseries_change(void * p) {
     rage_countdown_timed_wait(tsc->fs->c, 1000); // FIXME: ERROR HANDLING!
     sem_post(tsc->change_sem);
     frameseries_free(tsc->type, tsc->fs);
+    free(tsc);
 }
 
 rage_Finaliser * rage_interpolator_change_timeseries(

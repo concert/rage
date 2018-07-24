@@ -43,10 +43,13 @@ static rage_Trucks * rage_new_trucks() {
     return t;
 }
 
-rage_SupportConvoy * rage_support_convoy_new(uint32_t period_size, rage_Countdown * countdown) {
+rage_SupportConvoy * rage_support_convoy_new(
+        uint32_t period_size, rage_Countdown * countdown,
+        rage_TransportState transp_state) {
     rage_SupportConvoy * convoy = malloc(sizeof(rage_SupportConvoy));
     convoy->running = false;
     convoy->period_size = period_size;
+    convoy->transport_state = transp_state;
     convoy->invalid_after = UINT64_MAX;
     convoy->countdown = countdown;
     // FIXME: can in theory fail

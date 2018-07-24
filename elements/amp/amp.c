@@ -90,32 +90,29 @@ void elem_free(rage_ElementState * state) {
 void elem_process(
         rage_ElementState * state, rage_TransportState const transport_state, uint32_t period_size, rage_Ports const * ports) {
     rage_InterpolatedValue const * val = rage_interpolated_view_value(ports->controls[0]);
-    uint32_t n_to_change, remaining = period_size;
-    switch (transport_state) {
-        case RAGE_TRANSPORT_STOPPED:
-            n_to_change = period_size;
-            break;
-        case RAGE_TRANSPORT_ROLLING:
-            n_to_change = (period_size < val->valid_for) ?
-                period_size : val->valid_for;
-            break;
-    }
-    while (1) {
-        for (unsigned s = 0; s < n_to_change; s++) {
+    uint32_t pos = 0, remaining = period_size;
+    do {
+        val = rage_interpolated_view_value(ports->controls[0]);
+        uint32_t n_to_change;
+        switch (transport_state) {
+            case RAGE_TRANSPORT_STOPPED:
+                n_to_change = period_size;
+                break;
+            case RAGE_TRANSPORT_ROLLING:
+                n_to_change = (remaining < val->valid_for) ?
+                    remaining : val->valid_for;
+                rage_interpolated_view_advance(
+                    ports->controls[0], n_to_change);
+                break;
+        }
+        for (unsigned s = pos; s < pos + n_to_change; s++) {
             for (unsigned c = 0; c < state->n_channels; c++) {
                 ports->outputs[c][s] = ports->inputs[c][s] * val->value[0].f;
             }
         }
-        rage_interpolated_view_advance(ports->controls[0], n_to_change);
+        pos += n_to_change;
         remaining -= n_to_change;
-        if (remaining) {
-            val = rage_interpolated_view_value(ports->controls[0]);
-            n_to_change = (period_size < val->valid_for) ?
-                period_size : val->valid_for;
-        } else {
-            break;
-        }
-    }
+    } while (remaining);
 }
 
 rage_ElementType const elem_info = {

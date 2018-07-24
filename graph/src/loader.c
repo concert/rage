@@ -150,10 +150,9 @@ rage_ElementNewResult rage_element_new(
         sample_rate, cet->params);
     if (RAGE_FAILED(new_state))
         return RAGE_FAILURE_CAST(rage_ElementNewResult, new_state);
-    void * state = RAGE_SUCCESS_VALUE(new_state);
     rage_Element * const elem = malloc(sizeof(rage_Element));
     elem->cet = cet;
-    elem->state = state;
+    elem->state = RAGE_SUCCESS_VALUE(new_state);
     return RAGE_SUCCESS(rage_ElementNewResult, elem);
 }
 

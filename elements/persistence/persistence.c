@@ -71,7 +71,7 @@ static rage_TupleDef const tst_def = {
     .items = tst_fields
 };
 
-#define RAGE_PERSISTANCE_MAX_FRAMES 4096
+#define RAGE_PERSISTANCE_MAX_FRAMES 4095
 
 rage_NewInstanceSpec elem_describe_ports(rage_Atom ** params) {
     int const n_channels = params[0][0].i;
@@ -136,8 +136,9 @@ rage_NewElementState elem_new(
     ad->rec_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
     ad->play_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
     for (uint32_t c = 0; c < ad->n_channels; c++) {
-        ad->rec_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float) + 1);
-        ad->play_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float) + 1);
+        // Snaps to the next power of 2 up - 1 byte in size
+        ad->rec_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float));
+        ad->play_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float));
     }
     ad->rb_vec = calloc(2 * ad->n_channels, sizeof(float *));
     ad->interleaved_buffer = calloc(ad->n_channels * RAGE_PERSISTANCE_MAX_FRAMES, sizeof(float));
@@ -152,8 +153,9 @@ void elem_free(rage_ElementState * ad) {
     }
     free(ad->rec_buffs);
     free(ad->play_buffs);
-    sndfile_status_destroy(&ad->sndfile);
+    free(ad->interleaved_buffer);
     free(ad->rb_vec);
+    sndfile_status_destroy(&ad->sndfile);
     free(ad);
 }
 
@@ -162,7 +164,7 @@ static inline void zero_fill_outputs(
         uint32_t chunk_size) {
     for (uint32_t c = 0; c < data->n_channels; c++) {
         memset(
-            &ports->outputs[c][frame_pos], 0x00, chunk_size);
+            &ports->outputs[c][frame_pos], 0x0, chunk_size);
     }
 }
 
@@ -199,7 +201,7 @@ void elem_process(rage_ElementState * data, rage_TransportState const transport_
                 }
             case IDLE:
                 zero_fill_outputs(
-                    data, ports, frame_pos, period_size * sizeof(float));
+                    data, ports, frame_pos, chunk_size);
                 break;
         }
         remaining -= step_frames;
@@ -293,7 +295,7 @@ rage_Error elem_prepare(rage_ElementState * data, rage_InterpolatedView ** contr
                 populate_slabs(
                     slabs, data->n_channels, jack_ringbuffer_get_write_vector,
                     data->rb_vec, data->play_buffs);
-                size_t const rb_space = slabs[0] + slabs[1];
+                size_t const rb_space = (slabs[0] + slabs[1]) / sizeof(float);
                 size_t const to_read = (rb_space < chunk->valid_for) ? rb_space : chunk->valid_for;
                 rage_PreparedFrames const read_or_fail = read_prep_sndfile(
                     data, chunk->value[1].s, chunk->value[2].frame_no, to_read, data->interleaved_buffer);
@@ -429,7 +431,7 @@ rage_Error elem_clear(rage_ElementState * data, rage_InterpolatedView ** control
     for (uint32_t i = 0; i < data->n_channels; i++) {
         jack_ringbuffer_t * const rb = data->play_buffs[i];
         // Roll back the write pointer
-        jack_ringbuffer_write_advance(rb, -to_erase);
+        jack_ringbuffer_write_advance(rb, -(to_erase * sizeof(float)));
     }
     return RAGE_OK;
 }
