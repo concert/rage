@@ -5,11 +5,15 @@
 #include <stdio.h>
 #include <jack/jack.h>
 #include <semaphore.h>
+#include <stdatomic.h>
 
 typedef RAGE_ARRAY(jack_port_t *) rage_JackPorts;
 
+_Static_assert(ATOMIC_INT_LOCK_FREE, "Period counter atomic not lock free");
+
 struct rage_BackendState {
     jack_client_t * jack_client;
+    _Atomic unsigned period_count;
     rage_JackPorts input_ports;
     rage_JackPorts output_ports;
     rage_BackendInterface backend;
@@ -37,6 +41,7 @@ int rage_values_eq(jack_nframes_t new_rate, void * p) {
 int rage_jack_process_cb(jack_nframes_t n_frames, void * data) {
     rage_JackBackend * jb = data;
     jb->process(&jb->backend, n_frames, jb->data);
+    atomic_fetch_add_explicit(&jb->period_count, 1, memory_order_relaxed);
     return 0;
 }
 
@@ -50,6 +55,7 @@ rage_NewJackBackend rage_jack_backend_new(rage_BackendConfig const conf) {
         return RAGE_FAILURE(rage_NewJackBackend, "Mismatched sample rate");
     }
     rage_JackBackend * be = malloc(sizeof(rage_JackBackend));
+    atomic_init(&be->period_count, 0);
     be->jack_client = jc;
     be->conf = conf;
     jack_set_sample_rate_callback(jc, rage_values_eq, &be->sample_rate);  // FIXME: can fail
@@ -95,4 +101,15 @@ rage_Error rage_jack_backend_deactivate(rage_JackBackend * jbe) {
         return RAGE_ERROR("Failed to activate");
     }
     return RAGE_OK;
+}
+
+/*
+ * Monotonic estimate of time.
+ */
+rage_Time rage_jack_backend_nowish(rage_JackBackend * jbe) {
+    unsigned long n_frames = atomic_load_explicit(&jbe->period_count, memory_order_relaxed) * jbe->buffer_size;
+    return (rage_Time) {
+        .second = n_frames / jbe->sample_rate,
+        .fraction = ((n_frames % jbe->sample_rate) * UINT32_MAX) / jbe->sample_rate
+    };
 }

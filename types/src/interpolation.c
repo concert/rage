@@ -256,7 +256,6 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
             view->value.valid_for = duration;
     }
     // Take into account that timeseries might have changed in the future
-    // FIXME: a lot of commonality with seek!
     rage_FrameSeries * active_pts = atomic_load_explicit(
         &view->interpolator->points, memory_order_consume);
     if (active_pts != view->points) {
@@ -274,9 +273,9 @@ rage_FrameNo rage_interpolated_view_get_pos(
 
 void rage_interpolated_view_seek(
         rage_InterpolatedView * const view, rage_FrameNo frame_no) {
+    view->pos = frame_no;
     rage_FrameSeries * active_pts = atomic_load_explicit(
         &view->interpolator->points, memory_order_consume);
-    view->pos = frame_no;
     if (
             active_pts != view->points &&
             view->pos >= view->interpolator->valid_from) {

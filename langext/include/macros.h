@@ -65,7 +65,7 @@ typedef enum {
 /*
  * Free a heap allocated array.
  */
-#define RAGE_ARRAY_FREE(arr) free(arr->items); free(arr);
+#define RAGE_ARRAY_FREE(arr) if (arr != NULL) free(arr->items); free(arr);
 
 /*
  * Define a function to make an extended copy of an array.
