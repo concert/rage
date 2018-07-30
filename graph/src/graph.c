@@ -94,3 +94,13 @@ rage_Error rage_graph_connect(
         rage_graph_get_harness(source), source_idx,
         rage_graph_get_harness(sink), sink_idx);
 }
+
+rage_Error rage_graph_disconnect(
+        rage_Graph * g,
+        rage_GraphNode * source, uint32_t source_idx,
+        rage_GraphNode * sink, uint32_t sink_idx) {
+    return rage_proc_block_disconnect(
+        g->pb,
+        rage_graph_get_harness(source), source_idx,
+        rage_graph_get_harness(sink), sink_idx);
+}
