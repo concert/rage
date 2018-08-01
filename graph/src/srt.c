@@ -27,7 +27,6 @@ struct rage_SupportConvoy {
     rage_Countdown * countdown;
     // mutex to prevent truck array freeing during iteration:
     pthread_mutex_t active;
-    rage_Trucks * all_trucks;
     rage_Trucks * prep_trucks;
     rage_Trucks * clean_trucks;
     int counts_skipped;
@@ -54,7 +53,6 @@ rage_SupportConvoy * rage_support_convoy_new(
     convoy->countdown = countdown;
     // FIXME: can in theory fail
     pthread_mutex_init(&convoy->active, NULL);
-    convoy->all_trucks = rage_new_trucks();
     convoy->prep_trucks = rage_new_trucks();
     convoy->clean_trucks = rage_new_trucks();
     convoy->counts_skipped = 0;
@@ -65,11 +63,9 @@ rage_SupportConvoy * rage_support_convoy_new(
 
 void rage_support_convoy_free(rage_SupportConvoy * convoy) {
     pthread_mutex_destroy(&convoy->active);
-    assert(convoy->all_trucks->len == 0);
     assert(convoy->prep_trucks->len == 0);
     assert(convoy->clean_trucks->len == 0);
     assert(!convoy->running);
-    RAGE_ARRAY_FREE(convoy->all_trucks);
     RAGE_ARRAY_FREE(convoy->prep_trucks);
     RAGE_ARRAY_FREE(convoy->clean_trucks);
     free(convoy);
@@ -130,11 +126,13 @@ static rage_Error clear(rage_Trucks * trucks, rage_FrameNo invalid_after) {
 
 #define RAGE_MIN(a, b) (a < b) ? a : b
 
-static uint32_t n_frames_grace(rage_Trucks * trucks) {
+static uint32_t n_frames_grace(rage_SupportConvoy * convoy) {
     uint32_t min_frames_until_clean = UINT32_MAX, min_prepared = UINT32_MAX;
-    for (unsigned i = 0; i < trucks->len; i++) {
-        rage_SupportTruck * truck = trucks->items[i];
-        min_prepared = RAGE_MIN(truck->frames_prepared, min_prepared);
+    for (unsigned i = 0; i < convoy->prep_trucks->len; i++) {
+        min_prepared = RAGE_MIN(convoy->prep_trucks->items[i]->frames_prepared, min_prepared);
+    }
+    for (unsigned i = 0; i < convoy->clean_trucks->len; i++) {
+        rage_SupportTruck const * const truck = convoy->clean_trucks->items[i];
         int64_t frames_until_clean = truck->elem->cet->spec.max_uncleaned_frames - truck->frames_to_clean;
         min_frames_until_clean = RAGE_MIN(min_frames_until_clean, frames_until_clean);
     }
@@ -143,11 +141,12 @@ static uint32_t n_frames_grace(rage_Trucks * trucks) {
 
 #undef RAGE_MIN
 
-static void account_for_rt_frames(rage_Trucks * trucks, uint32_t frames_passed) {
-    for (unsigned i = 0; i < trucks->len; i++) {
-        rage_SupportTruck * truck = trucks->items[i];
-        truck->frames_prepared -= frames_passed;
-        truck->frames_to_clean += frames_passed;
+static void account_for_rt_frames(rage_SupportConvoy * convoy, uint32_t const frames_passed) {
+    for (unsigned i = 0; i < convoy->prep_trucks->len; i++) {
+        convoy->prep_trucks->items[i]->frames_prepared -= frames_passed;
+    }
+    for (unsigned i = 0; i < convoy->clean_trucks->len; i++) {
+        convoy->clean_trucks->items[i]->frames_to_clean += frames_passed;
     }
 }
 
@@ -178,8 +177,8 @@ static void * rage_support_convoy_worker(void * ptr) {
             break;
         }
         convoy->counts_skipped = 0;
-        account_for_rt_frames(convoy->all_trucks, counts_waited * convoy->period_size);
-        min_frames_wait = n_frames_grace(convoy->all_trucks);
+        account_for_rt_frames(convoy, counts_waited * convoy->period_size);
+        min_frames_wait = n_frames_grace(convoy);
         counts_to_wait = min_frames_wait / convoy->period_size;
         if (0 > rage_countdown_add(convoy->countdown, counts_to_wait)) {
             err = "SupportConvoy failed to keep up";
@@ -249,14 +248,10 @@ static void change_trucks(
         rage_SupportTruck * truck) {
     // Assuming a single control thread
     rage_Trucks
-        * old_all_trucks,
-        * new_all_trucks,
         * old_prep_trucks,
         * new_prep_trucks,
         * old_clean_trucks,
         * new_clean_trucks;
-    old_all_trucks = convoy->all_trucks;
-    new_all_trucks = next_trucks(old_all_trucks, truck);
     if (truck->prep_view) {
         old_prep_trucks = convoy->prep_trucks;
         new_prep_trucks = next_trucks(old_prep_trucks, truck);
@@ -272,11 +267,9 @@ static void change_trucks(
         new_clean_trucks = convoy->clean_trucks;
     }
     pthread_mutex_lock(&convoy->active);
-    convoy->all_trucks = new_all_trucks;
     convoy->prep_trucks = new_prep_trucks;
     convoy->clean_trucks = new_clean_trucks;
     unlock_and_await_tick(convoy);
-    RAGE_ARRAY_FREE(old_all_trucks);
     RAGE_ARRAY_FREE(old_prep_trucks);
     RAGE_ARRAY_FREE(old_clean_trucks);
 }
@@ -344,8 +337,8 @@ rage_Error rage_support_convoy_transport_seek(rage_SupportConvoy * convoy, rage_
         seek_views_to(truck->prep_view, truck->elem->cet->controls.len, target_frame);
         truck->frames_prepared = 0;
     }
-    for (unsigned i = 0; i < convoy->all_trucks->len; i++) {
-        rage_SupportTruck * truck = convoy->all_trucks->items[i];
+    for (unsigned i = 0; i < convoy->clean_trucks->len; i++) {
+        rage_SupportTruck * truck = convoy->clean_trucks->items[i];
         assert(truck->frames_to_clean <= 0);
         seek_views_to(truck->clean_view, truck->elem->cet->controls.len, target_frame);
         truck->frames_to_clean = 0;
