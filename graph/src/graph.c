@@ -75,6 +75,12 @@ rage_NewGraphNode rage_graph_add_node(
     return RAGE_SUCCESS(rage_NewGraphNode, node);
 }
 
+rage_Finaliser * rage_graph_update_node(
+        rage_GraphNode * n, uint32_t const series_idx,
+        rage_TimeSeries const * const ts) {
+    return rage_harness_set_time_series(n->harness, series_idx, ts);
+}
+
 void rage_graph_remove_node(rage_Graph * g, rage_GraphNode * n) {
     rage_proc_block_unmount(n->harness);
     rage_element_free(n->elem);

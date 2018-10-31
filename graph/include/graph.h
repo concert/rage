@@ -19,6 +19,9 @@ typedef RAGE_OR_ERROR(rage_GraphNode *) rage_NewGraphNode;
 rage_NewGraphNode rage_graph_add_node(
         rage_Graph * g, rage_ConcreteElementType * cet,
         rage_TimeSeries const * ts);
+rage_Finaliser * rage_graph_update_node(
+        rage_GraphNode * n, uint32_t const series_idx,
+        rage_TimeSeries const * const ts);
 void rage_graph_remove_node(rage_Graph * g, rage_GraphNode * n);
 
 rage_Error rage_graph_connect(
