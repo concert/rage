@@ -44,6 +44,8 @@ static rage_Error test_graph() {
                 rage_GraphNode * n = RAGE_SUCCESS_VALUE(ngn);
                 rage_Time target = {.second = 12};
                 rv = rage_graph_transport_seek(graph, &target);
+                rage_Finaliser * f = rage_graph_update_node(n, 0, &example_series);
+                rage_finaliser_wait(f);
                 rage_graph_set_transport_state(graph, RAGE_TRANSPORT_ROLLING);
                 rage_graph_remove_node(graph, n);
             }
