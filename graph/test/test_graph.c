@@ -22,7 +22,7 @@ static rage_Error test_graph() {
     rage_Error rv = rage_graph_start_processing(graph);
     if (!RAGE_FAILED(rv)) {
         rage_Time target = {.second = 12};
-        rage_graph_transport_seek(graph, &target);
+        rv = rage_graph_transport_seek(graph, &target);
         rage_graph_set_transport_state(graph, RAGE_TRANSPORT_ROLLING);
         rage_graph_stop_processing(graph);
     }
