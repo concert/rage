@@ -248,8 +248,16 @@ rage_Finaliser * rage_harness_set_time_series(
         rage_Harness * const harness,
         uint32_t const series_idx,
         rage_TimeSeries const * const new_controls) {
-    // FIXME: fixed offset (should be derived from sample rate and period size at least)
-    rage_FrameNo const offset = 4096;
+    rage_RtBits const * rtd = rage_rt_crit_freeze(harness->pb->syncy);
+    rage_FrameNo offset;
+    if (rtd->transp == RAGE_TRANSPORT_ROLLING) {
+        // FIXME: fixed offset (should be derived from sample rate and period size at least)
+        // Also if the transport is stopped before the offset is reached then will wedge unswapped
+        offset = 4096;
+    } else {
+        offset = 0;
+    }
+    rage_rt_crit_thaw(harness->pb->syncy);
     rage_InterpolatedView * first_rt_view = rage_interpolator_get_view(
         harness->interpolators[series_idx], 0);
     rage_FrameNo const change_at = rage_interpolated_view_get_pos(first_rt_view) + offset;
