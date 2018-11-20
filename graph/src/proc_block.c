@@ -261,7 +261,12 @@ rage_Finaliser * rage_harness_set_time_series(
     rage_InterpolatedView * first_rt_view = rage_interpolator_get_view(
         harness->interpolators[series_idx], 0);
     rage_FrameNo const change_at = rage_interpolated_view_get_pos(first_rt_view) + offset;
-    return rage_interpolator_change_timeseries(harness->interpolators[series_idx], new_controls, change_at);
+    rage_Finaliser * f = rage_interpolator_change_timeseries(
+        harness->interpolators[series_idx], new_controls, change_at);
+    // Force an SRT tick when the transport is stopped, might be better as a
+    // finaliser additional action:
+    rage_support_convoy_transport_state_changed(harness->pb->convoy, rtd->transp);
+    return f;
 }
 
 void rage_proc_block_set_transport_state(rage_ProcBlock * pb, rage_TransportState state) {
@@ -298,12 +303,26 @@ rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo targ
     return e;
 }
 
+// This is a bit of a nut/sledgehammer, it runs a fairly cheap operation on all
+// interpolators to force any time series changes to be picked up:
+static void pickup_new_timeseries(rage_ProcSteps * steps) {
+    for (uint32_t i = 0; i < steps->len; i++) {
+        rage_Harness * h = steps->items[i].harness;
+        for (uint32_t j = 0; j < h->elem->cet->spec.controls.len; j++) {
+            rage_interpolated_view_advance(h->ports.controls[j], 0);
+        }
+    }
+}
+
 void rage_proc_block_process(
         rage_BackendInterface const * b, uint32_t const n_frames, void * data) {
     rage_ProcBlock * pb = data;
     rage_RtBits * rtd = rage_rt_crit_data_latest(pb->syncy);
     rage_backend_get_buffers(
         b, n_frames, rtd->all_buffers + 2, rtd->all_buffers + pb->be_ports.inputs.len + 2);
+    if (rtd->transp == RAGE_TRANSPORT_STOPPED) {
+        pickup_new_timeseries(&rtd->steps);
+    }
     for (uint32_t i = 0; i < rtd->steps.len; i++) {
         rage_ProcStep * step = &rtd->steps.items[i];
         for (uint32_t j = 0; j < step->harness->elem->cet->inputs.len; j++) {
