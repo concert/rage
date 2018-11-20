@@ -131,17 +131,19 @@ static rage_Error test_srt_fake_elem() {
                     if (fes.last_prep_from != 2048 || fes.last_clean_from != 2048) {
                         assertion_err = RAGE_ERROR("Bad prep start point");
                     } else {
-                        rage_support_convoy_transport_seek(convoy, 12);
-                        assertion_err = counter_checks(&sync_sem, &fes, 3, 3);
+                        assertion_err = rage_support_convoy_transport_seek(convoy, 12);
                         if (!RAGE_FAILED(assertion_err)) {
-                            if (fes.clear_counter != 1) {
-                                assertion_err = RAGE_ERROR("Did not clear on seek");
-                            } else if (fes.last_clear_from != 2048) {
-                                assertion_err = RAGE_ERROR("Clear called in wrong place");
-                            } else if (fes.last_prep_from != 12) {
-                                assertion_err = RAGE_ERROR("Prep after seek in wrong place");
-                            } else if (fes.last_clean_from != 12) {
-                                assertion_err = RAGE_ERROR("Clean after seek in wrong place");
+                            assertion_err = counter_checks(&sync_sem, &fes, 3, 3);
+                            if (!RAGE_FAILED(assertion_err)) {
+                                if (fes.clear_counter != 1) {
+                                    assertion_err = RAGE_ERROR("Did not clear on seek");
+                                } else if (fes.last_clear_from != 2048) {
+                                    assertion_err = RAGE_ERROR("Clear called in wrong place");
+                                } else if (fes.last_prep_from != 12) {
+                                    assertion_err = RAGE_ERROR("Prep after seek in wrong place");
+                                } else if (fes.last_clean_from != 12) {
+                                    assertion_err = RAGE_ERROR("Clean after seek in wrong place");
+                                }
                             }
                         }
                     }
