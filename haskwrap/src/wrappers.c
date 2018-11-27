@@ -23,6 +23,24 @@ RAGE_HS_STRUCT_WRAPPER(
     rage_Error, (rage_Graph * g, rage_Time const * t),
     rage_graph_transport_seek, (g, t))
 
+RAGE_HS_STRUCT_WRAPPER(
+    rage_Error,
+    (
+        rage_Graph * g,
+        rage_GraphNode * source, uint32_t source_idx,
+        rage_GraphNode * sink, uint32_t sink_idx
+    ),
+    rage_graph_connect, (g, source, source_idx, sink, sink_idx))
+
+RAGE_HS_STRUCT_WRAPPER(
+    rage_Error,
+    (
+        rage_Graph * g,
+        rage_GraphNode * source, uint32_t source_idx,
+        rage_GraphNode * sink, uint32_t sink_idx
+    ),
+    rage_graph_disconnect, (g, source, source_idx, sink, sink_idx))
+
 #undef RAGE_HS_STRUCT_WRAPPER
 
 rage_InstanceSpec * rage_cet_get_spec_hs(rage_ConcreteElementType * cet) {
