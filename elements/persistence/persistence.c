@@ -168,7 +168,9 @@ static inline void zero_fill_outputs(
     }
 }
 
-void elem_process(rage_ElementState * data, rage_TransportState const transport_state, uint32_t period_size, rage_Ports const * ports) {
+void elem_process(
+        rage_ElementState * data, rage_TransportState const transport_state,
+        uint32_t period_size, rage_Ports const * ports) {
     rage_InterpolatedValue const * chunk;
     uint32_t step_frames, remaining = period_size;
     uint32_t c, frame_pos = 0;
@@ -317,8 +319,8 @@ rage_Error elem_prepare(rage_ElementState * data, rage_InterpolatedView ** contr
                 }
                 break;
             case IDLE:
-                future_values = chunk->valid_for != UINT32_MAX;
             case REC:
+                future_values = chunk->valid_for != UINT32_MAX;
                 rage_interpolated_view_advance(controls[0], chunk->valid_for);
                 break;
         }
