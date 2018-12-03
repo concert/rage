@@ -379,8 +379,8 @@ rage_Error elem_cleanup(rage_ElementState * data, rage_InterpolatedView ** contr
         rage_InterpolatedValue const * chunk = rage_interpolated_view_value(controls[0]);
         switch ((PersistanceMode) chunk->value[0].e) {
             case IDLE:
-                future_values = chunk->valid_for != UINT32_MAX;
             case PLAY:
+                future_values = chunk->valid_for != UINT32_MAX;
                 rage_interpolated_view_advance(controls[0], chunk->valid_for);
                 break;
             case REC: {
