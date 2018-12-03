@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <dirent.h>
+#include <sys/stat.h>
 #include "loader.h"
 
 struct rage_ElementLoader {
@@ -13,8 +14,33 @@ struct rage_ElementKind {
     rage_ElementType * type;
 };
 
+static char * join_path(char const * a, char const * b) {
+    char * joined = malloc(strlen(a) + strlen(b) + 2);
+    strncpy(joined, a, strlen(a));
+    joined[strlen(a)] = '/';
+    strcpy(joined + strlen(a) + 1, b);
+    return joined;
+}
+
+// This is pretty horrendous, but as the filter function of scandir doesn't
+// take user data this is pretty much all you can do. This makes the scanning
+// not threadsafe.
+static char const * in_progress_scan_dir;
+
+// Just enough to avoid getting '.' and '..' entries.
+static int is_plugin(const struct dirent * entry) {
+    struct stat s;
+    bool r = false;
+    char * entry_path = join_path(in_progress_scan_dir, entry->d_name);
+    if (stat(entry_path, &s) == 0) {
+        r = S_ISREG(s.st_mode);
+    }
+    free(entry_path);
+    return r;
+}
+
 rage_ElementLoader * rage_element_loader_new(char const * elems_path) {
-    return rage_fussy_element_loader_new(elems_path, NULL);
+    return rage_fussy_element_loader_new(elems_path, is_plugin);
 }
 
 rage_ElementLoader * rage_fussy_element_loader_new(
@@ -30,19 +56,12 @@ void rage_element_loader_free(rage_ElementLoader * el) {
     free(el);
 }
 
-static char * join_path(char * a, char * b) {
-    char * joined = malloc(strlen(a) + strlen(b) + 2);
-    strncpy(joined, a, strlen(a));
-    joined[strlen(a)] = '/';
-    strcpy(joined + strlen(a) + 1, b);
-    return joined;
-}
-
 rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
     rage_ElementTypes * elems = malloc(sizeof(rage_ElementTypes));
     elems->len = 0;
     elems->items = NULL;
     struct dirent ** entries;
+    in_progress_scan_dir = el->elems_path;  // Set context for scan filter *ick*
     int n_items = scandir(el->elems_path, &entries, el->pf, NULL);
     if (n_items >= 0) {
         RAGE_ARRAY_INIT(elems, n_items, i) {
