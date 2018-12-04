@@ -150,7 +150,7 @@ static rage_Error time_checks(rage_Interpolator * interpolator) {
     if (frame_no_check(v, 1))
         return RAGE_ERROR("Mismatch at t=4");
     rage_interpolated_view_advance(v, 120);
-    if (frame_no_check(v, 1))
+    if (frame_no_check(v, 121))
         return RAGE_ERROR("Mismatch at t=124");
     return RAGE_OK;
 }

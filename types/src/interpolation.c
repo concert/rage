@@ -238,9 +238,11 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
             view->value.value[i] = end->value[i];
         }
     } else if (end == NULL) {
-        view->value.valid_for = UINT32_MAX;
+        view->value.valid_for = duration = UINT32_MAX;
         for (i = 0; i < view->interpolator->interpolators.len; i++) {
-            view->value.value[i] = start->value[i];
+            view->interpolator->interpolators.items[i][RAGE_INTERPOLATION_CONST](
+                view->value.value + i, start->value + i, NULL,
+                view->pos - start->frame, duration);
         }
     } else {
         duration = end->frame - start->frame;
@@ -249,11 +251,6 @@ rage_InterpolatedValue const * rage_interpolated_view_value(
                 view->value.value + i, start->value + i, end->value + i,
                 view->pos - start->frame, duration);
         }
-        // FIXME: this is ugly because the interpolators set it to the how much of
-        // the duration remains, but because UINT32_MAX essentially means forever,
-        // this isn't what we want
-        if (duration == UINT32_MAX)
-            view->value.valid_for = duration;
     }
     // Take into account that timeseries might have changed in the future
     rage_FrameSeries * active_pts = atomic_load_explicit(
