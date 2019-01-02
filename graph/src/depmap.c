@@ -140,8 +140,9 @@ void rage_conn_terms_free(rage_ConnTerminals * ct) {
 
 rage_DepMap * rage_remove_connections_for(
         rage_DepMap * initial, rage_Harness * tgt) {
-    rage_DepMap * c, * prev_con = NULL;
-    for (c = initial; c != NULL; c = c->next) {
+    rage_DepMap * c, * next, * prev_con = NULL;
+    for (c = initial; c != NULL; c = next) {
+        next = c->next;
         if (c->src.harness == tgt || c->sink.harness == tgt) {
             if (prev_con) {
                 prev_con->next = c->next;
@@ -149,8 +150,9 @@ rage_DepMap * rage_remove_connections_for(
                 initial = c->next;
             }
             free(c);
+        } else {
+            prev_con = c;
         }
-        prev_con = c;
     }
     return initial;
 }
