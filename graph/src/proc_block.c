@@ -221,7 +221,7 @@ rage_MountResult rage_proc_block_mount(
 }
 
 void rage_proc_block_unmount(rage_Harness * harness) {
-    harness->pb->cons = rage_remove_connections_for(harness->pb->cons, harness);
+    rage_remove_connections_for(harness->pb->cons, harness);
     rage_RtBits const * old = rage_rt_crit_update_start(harness->pb->syncy);
     rage_RtBits * new = malloc(sizeof(rage_RtBits));
     *new = *old;
@@ -375,16 +375,13 @@ static rage_StepSet ** rage_step_deps(
     for (uint32_t i = 0; i < steps->len; i++) {
         deps[i] = rage_step_set_new();
     }
-    rage_DepMapIter * dmi = rage_depmap_iter(cons);
-    rage_ConnTerminal src, sink;
-    while (dmi) {
-        dmi = rage_depmap_iter_item(dmi, &src, &sink);
-        if (src.harness != NULL && sink.harness != NULL) {
-            rage_StepIdx const i = rage_step_for(steps, sink.harness);
-            rage_StepIdx const j = rage_step_for(steps, src.harness);
-            rage_StepSet * const extended_deps = rage_step_set_add(deps[i.idx], j.step);
-            rage_step_set_free(deps[i.idx]);
-            deps[i.idx] = extended_deps;
+    for (uint32_t i = 0; i < cons->len; i++) {
+        if (cons->items[i].src.harness != NULL && cons->items[i].sink.harness != NULL) {
+            rage_StepIdx const si = rage_step_for(steps, cons->items[i].sink.harness);
+            rage_StepIdx const sj = rage_step_for(steps, cons->items[i].src.harness);
+            rage_StepSet * const extended_deps = rage_step_set_add(deps[si.idx], sj.step);
+            rage_step_set_free(deps[si.idx]);
+            deps[si.idx] = extended_deps;
         }
     }
     return deps;
@@ -455,17 +452,14 @@ typedef struct rage_AssignedConnection {
 static rage_AssignedConnection * rage_cons_from(
         rage_DepMap const * cons, rage_Harness const * const tgt) {
     rage_AssignedConnection * cons_from = NULL;
-    rage_DepMapIter * dmi = rage_depmap_iter(cons);
-    rage_ConnTerminal src, sink;
-    while (dmi) {
-        dmi = rage_depmap_iter_item(dmi, &src, &sink);
-        if (src.harness == tgt) {
+    for (uint32_t i = 0; i < cons->len; i++) {
+        if (cons->items[i].src.harness == tgt) {
             bool create = true;
             rage_ConnTarget * new_tgt = malloc(sizeof(rage_ConnTarget));
-            new_tgt->tgt_harness = sink.harness;
-            new_tgt->tgt_idx = sink.idx;
+            new_tgt->tgt_harness = cons->items[i].sink.harness;
+            new_tgt->tgt_idx = cons->items[i].sink.idx;
             for (rage_AssignedConnection * c = cons_from; c != NULL; c = c->next) {
-                if (c->source_harness == tgt && c->source_idx == src.idx) {
+                if (c->source_harness == tgt && c->source_idx == cons->items[i].src.idx) {
                     new_tgt->next = c->con_tgt;
                     c->con_tgt = new_tgt;
                     create = false;
@@ -474,8 +468,8 @@ static rage_AssignedConnection * rage_cons_from(
             }
             if (create) {
                 rage_AssignedConnection * new_con = malloc(sizeof(rage_AssignedConnection));
-                new_con->source_harness = src.harness;
-                new_con->source_idx = src.idx;
+                new_con->source_harness = cons->items[i].src.harness;
+                new_con->source_idx = cons->items[i].src.idx;
                 new_tgt->next = NULL;
                 new_con->con_tgt = new_tgt;
                 new_con->next = cons_from;
@@ -651,10 +645,14 @@ rage_Error rage_proc_block_connect(
     if (RAGE_FAILED(edm)) {
         return RAGE_FAILURE_CAST(rage_Error, edm);
     }
+    rage_DepMap * initial_depmap = pb->cons;
     pb->cons = RAGE_SUCCESS_VALUE(edm);
     rage_Error err = rage_proc_block_recalculate_routing(pb);
     if (RAGE_FAILED(err)) {
-        pb->cons = rage_depmap_disconnect(pb->cons, in_term, out_term);
+        rage_depmap_free(pb->cons);
+        pb->cons = initial_depmap;
+    } else {
+        rage_depmap_free(initial_depmap);
     }
     return err;
 }
@@ -665,8 +663,14 @@ rage_Error rage_proc_block_disconnect(
         rage_Harness * sink, uint32_t sink_idx) {
     rage_ConnTerminal in_term = {.harness = source, .idx = source_idx};
     rage_ConnTerminal out_term = {.harness = sink, .idx = sink_idx};
-    pb->cons = rage_depmap_disconnect(pb->cons, in_term, out_term);
-    return rage_proc_block_recalculate_routing(pb);
+    rage_ExtDepMap edm = rage_depmap_disconnect(pb->cons, in_term, out_term);
+    if (RAGE_FAILED(edm)) {
+        return RAGE_FAILURE_CAST(rage_Error, edm);
+    } else {
+        rage_depmap_free(pb->cons);
+        pb->cons = RAGE_SUCCESS_VALUE(edm);
+        return rage_proc_block_recalculate_routing(pb);
+    }
 }
 
 rage_BackendConfig rage_proc_block_get_backend_config(rage_ProcBlock * pb) {
