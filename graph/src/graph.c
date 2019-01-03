@@ -91,22 +91,34 @@ static rage_Harness * rage_graph_get_harness(rage_GraphNode * n) {
     return (n == NULL) ? NULL : n->harness;
 }
 
+rage_ConTrans * rage_graph_con_trans_start(rage_Graph * g) {
+    return rage_proc_block_con_trans_start(g->pb);
+}
+
+void rage_graph_con_trans_commit(rage_ConTrans * ct) {
+    rage_proc_block_con_trans_commit(ct);
+}
+
+void rage_graph_con_trans_abort(rage_ConTrans * ct) {
+    rage_proc_block_con_trans_abort(ct);
+}
+
 rage_Error rage_graph_connect(
-        rage_Graph * g,
+        rage_ConTrans * ct,
         rage_GraphNode * source, uint32_t source_idx,
         rage_GraphNode * sink, uint32_t sink_idx) {
     return rage_proc_block_connect(
-        g->pb,
+        ct,
         rage_graph_get_harness(source), source_idx,
         rage_graph_get_harness(sink), sink_idx);
 }
 
 rage_Error rage_graph_disconnect(
-        rage_Graph * g,
+        rage_ConTrans * ct,
         rage_GraphNode * source, uint32_t source_idx,
         rage_GraphNode * sink, uint32_t sink_idx) {
     return rage_proc_block_disconnect(
-        g->pb,
+        ct,
         rage_graph_get_harness(source), source_idx,
         rage_graph_get_harness(sink), sink_idx);
 }

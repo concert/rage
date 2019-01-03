@@ -67,10 +67,11 @@ graph_inc = include_directories('graph/include')
 install_headers(
     'haskwrap/include/wrappers.h',
     'graph/include/graph.h', 'graph/include/loader.h',
-    'graph/include/binding_interface.h', 'types/include/atoms.h',
-    'types/include/element.h', 'types/include/ports.h',
-    'types/include/interpolation.h', 'types/include/chronology.h',
-    'types/include/transport_state.h', 'types/include/time_series.h',
+    'graph/include/binding_interface.h', 'graph/include/con_trans.h',
+    'types/include/atoms.h', 'types/include/element.h',
+    'types/include/ports.h', 'types/include/interpolation.h',
+    'types/include/chronology.h', 'types/include/transport_state.h',
+    'types/include/time_series.h',
     'langext/include/macros.h', 'langext/include/error.h',
     'langext/include/finaliser.h',
     subdir: 'rage')

@@ -14,16 +14,21 @@ typedef struct rage_ConnTerminals {
     struct rage_ConnTerminals * next;
 } rage_ConnTerminals;
 
-typedef struct rage_DepMap rage_DepMap;
+typedef struct rage_Connection {
+    rage_ConnTerminal src;
+    rage_ConnTerminal sink;
+} rage_Connection;
+
+typedef RAGE_ARRAY(rage_Connection) rage_DepMap;
 
 typedef RAGE_OR_ERROR(rage_DepMap *) rage_ExtDepMap;
 
 rage_DepMap * rage_depmap_new();
 void rage_depmap_free(rage_DepMap * dm);
 rage_ExtDepMap rage_depmap_connect(
-    rage_DepMap * dm, rage_ConnTerminal input, rage_ConnTerminal output);
-rage_DepMap * rage_depmap_disconnect(
-    rage_DepMap * dm, rage_ConnTerminal input, rage_ConnTerminal output);
+    rage_DepMap const * dm, rage_ConnTerminal input, rage_ConnTerminal output);
+rage_ExtDepMap rage_depmap_disconnect(
+    rage_DepMap const * dm, rage_ConnTerminal input, rage_ConnTerminal output);
 
 rage_MaybeConnTerminal rage_depmap_input_for(
     rage_DepMap const * dm, rage_ConnTerminal const output);
@@ -37,10 +42,6 @@ rage_ConnTerminals * rage_depmap_outputs(
 
 void rage_conn_terms_free(rage_ConnTerminals * ct);
 
-rage_DepMap * rage_remove_connections_for(
+// This is an in-place operation:
+void rage_remove_connections_for(
     rage_DepMap * initial, rage_Harness * tgt);
-
-typedef const struct rage_DepMap rage_DepMapIter;
-rage_DepMapIter * rage_depmap_iter(rage_DepMap const * dm);
-rage_DepMapIter * rage_depmap_iter_item(
-    rage_DepMapIter * dmi, rage_ConnTerminal * src, rage_ConnTerminal * sink);

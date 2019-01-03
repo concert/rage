@@ -221,7 +221,7 @@ rage_MountResult rage_proc_block_mount(
 }
 
 void rage_proc_block_unmount(rage_Harness * harness) {
-    harness->pb->cons = rage_remove_connections_for(harness->pb->cons, harness);
+    rage_remove_connections_for(harness->pb->cons, harness);
     rage_RtBits const * old = rage_rt_crit_update_start(harness->pb->syncy);
     rage_RtBits * new = malloc(sizeof(rage_RtBits));
     *new = *old;
@@ -375,16 +375,13 @@ static rage_StepSet ** rage_step_deps(
     for (uint32_t i = 0; i < steps->len; i++) {
         deps[i] = rage_step_set_new();
     }
-    rage_DepMapIter * dmi = rage_depmap_iter(cons);
-    rage_ConnTerminal src, sink;
-    while (dmi) {
-        dmi = rage_depmap_iter_item(dmi, &src, &sink);
-        if (src.harness != NULL && sink.harness != NULL) {
-            rage_StepIdx const i = rage_step_for(steps, sink.harness);
-            rage_StepIdx const j = rage_step_for(steps, src.harness);
-            rage_StepSet * const extended_deps = rage_step_set_add(deps[i.idx], j.step);
-            rage_step_set_free(deps[i.idx]);
-            deps[i.idx] = extended_deps;
+    for (uint32_t i = 0; i < cons->len; i++) {
+        if (cons->items[i].src.harness != NULL && cons->items[i].sink.harness != NULL) {
+            rage_StepIdx const si = rage_step_for(steps, cons->items[i].sink.harness);
+            rage_StepIdx const sj = rage_step_for(steps, cons->items[i].src.harness);
+            rage_StepSet * const extended_deps = rage_step_set_add(deps[si.idx], sj.step);
+            rage_step_set_free(deps[si.idx]);
+            deps[si.idx] = extended_deps;
         }
     }
     return deps;
@@ -455,17 +452,14 @@ typedef struct rage_AssignedConnection {
 static rage_AssignedConnection * rage_cons_from(
         rage_DepMap const * cons, rage_Harness const * const tgt) {
     rage_AssignedConnection * cons_from = NULL;
-    rage_DepMapIter * dmi = rage_depmap_iter(cons);
-    rage_ConnTerminal src, sink;
-    while (dmi) {
-        dmi = rage_depmap_iter_item(dmi, &src, &sink);
-        if (src.harness == tgt) {
+    for (uint32_t i = 0; i < cons->len; i++) {
+        if (cons->items[i].src.harness == tgt) {
             bool create = true;
             rage_ConnTarget * new_tgt = malloc(sizeof(rage_ConnTarget));
-            new_tgt->tgt_harness = sink.harness;
-            new_tgt->tgt_idx = sink.idx;
+            new_tgt->tgt_harness = cons->items[i].sink.harness;
+            new_tgt->tgt_idx = cons->items[i].sink.idx;
             for (rage_AssignedConnection * c = cons_from; c != NULL; c = c->next) {
-                if (c->source_harness == tgt && c->source_idx == src.idx) {
+                if (c->source_harness == tgt && c->source_idx == cons->items[i].src.idx) {
                     new_tgt->next = c->con_tgt;
                     c->con_tgt = new_tgt;
                     create = false;
@@ -474,8 +468,8 @@ static rage_AssignedConnection * rage_cons_from(
             }
             if (create) {
                 rage_AssignedConnection * new_con = malloc(sizeof(rage_AssignedConnection));
-                new_con->source_harness = src.harness;
-                new_con->source_idx = src.idx;
+                new_con->source_harness = cons->items[i].src.harness;
+                new_con->source_idx = cons->items[i].src.idx;
                 new_tgt->next = NULL;
                 new_con->con_tgt = new_tgt;
                 new_con->next = cons_from;
@@ -582,23 +576,39 @@ static void rage_pb_init_all_buffers(rage_ProcBlock const * pb, rage_RtBits * rt
     memcpy(&rt->all_buffers[pb->min_dynamic_buffer], buffer_info->buffers, buffer_info->n_buffers * sizeof(void *));
 }
 
-static rage_Error rage_proc_block_recalculate_routing(rage_ProcBlock * pb) {
-    rage_RtBits const * old_rt = rage_rt_crit_update_start(pb->syncy);
-    rage_OrderedProcSteps ops = rage_order_proc_steps(&old_rt->steps, pb->cons);
-    if (RAGE_FAILED(ops)) {
-        rage_rt_crit_update_abort(pb->syncy);
-        return RAGE_FAILURE_CAST(rage_Error, ops);
+struct rage_ConTrans {
+    rage_ProcBlock * pb;
+    rage_DepMap * cons;
+    rage_RtBits const * old_rt;
+    rage_ProcSteps steps;
+    uint32_t highest_assignment;
+    bool empty_trans;
+};
+
+rage_ConTrans * rage_proc_block_con_trans_start(rage_ProcBlock * pb) {
+    rage_ConTrans * ct = malloc(sizeof(rage_ConTrans));
+    ct->pb = pb;
+    ct->cons = pb->cons;
+    ct->old_rt = rage_rt_crit_update_start(pb->syncy);
+    ct->steps = ct->old_rt->steps;
+    ct->empty_trans = true;
+    return ct;
+}
+
+void rage_proc_block_con_trans_commit(rage_ConTrans * trans) {
+    if (trans->empty_trans) {
+        free(trans);
+        return;
     }
-    rage_ProcSteps os = RAGE_SUCCESS_VALUE(ops);
     rage_AssignedConnection * assigned_cons = NULL;
-    uint32_t highest_assignment = pb->min_dynamic_buffer - 1;
+    uint32_t highest_assignment = trans->pb->min_dynamic_buffer - 1;
     rage_ExternalOut * ext_outs = NULL;
-    for (uint32_t i = 0; i < os.len; i++) {
-        rage_AssignedConnection * step_cons = rage_cons_from(pb->cons, os.items[i].harness);
+    for (uint32_t i = 0; i < trans->steps.len; i++) {
+        rage_AssignedConnection * step_cons = rage_cons_from(trans->cons, trans->steps.items[i].harness);
         while (step_cons != NULL) {
             rage_AssignedConnection * const c = step_cons;
             step_cons = step_cons->next;
-            rage_ExternalOut * ext = rage_get_ext_outs(pb->be_ports.inputs.len + 2, c);
+            rage_ExternalOut * ext = rage_get_ext_outs(trans->pb->be_ports.inputs.len + 2, c);
             if (ext != NULL) {
                 c->assignment = ext->primary;
                 if (ext->len) {
@@ -609,64 +619,86 @@ static rage_Error rage_proc_block_recalculate_routing(rage_ProcBlock * pb) {
                 }
             } else {
                 c->assignment = rage_lowest_avail_assign(
-                    pb->min_dynamic_buffer, assigned_cons, &highest_assignment);
+                    trans->pb->min_dynamic_buffer, assigned_cons, &highest_assignment);
             }
             c->next = assigned_cons;
             assigned_cons = c;
-            os.items[i].out_buffer_allocs[c->source_idx] = c->assignment;
+            trans->steps.items[i].out_buffer_allocs[c->source_idx] = c->assignment;
             for (rage_ConnTarget * ct = c->con_tgt; ct != NULL; ct = ct->next) {
                 if (ct->tgt_harness == NULL) {  // External connection
                     continue;  // FIXME: should the external and internal connections be mixed up?
                 }
-                uint32_t const step_idx = rage_step_idx(&os, ct->tgt_harness);
-                os.items[step_idx].in_buffer_allocs[ct->tgt_idx] = c->assignment;
+                uint32_t const step_idx = rage_step_idx(&trans->steps, ct->tgt_harness);
+                trans->steps.items[step_idx].in_buffer_allocs[ct->tgt_idx] = c->assignment;
             }
         }
-        assigned_cons = rage_remove_cons_targetted(assigned_cons, os.items[i].harness);
+        assigned_cons = rage_remove_cons_targetted(assigned_cons, trans->steps.items[i].harness);
     }
-    rage_BufferAllocs * const old_allocs = pb->allocs;
-    pb->allocs = rage_buffer_allocs_alloc(
-        pb->allocs, highest_assignment - (pb->min_dynamic_buffer - 1));
+    rage_BufferAllocs * const old_allocs = trans->pb->allocs;
+    trans->pb->allocs = rage_buffer_allocs_alloc(
+        old_allocs, highest_assignment - (trans->pb->min_dynamic_buffer - 1));
     rage_RtBits * new_rt = malloc(sizeof(rage_RtBits));
-    new_rt->transp = old_rt->transp;
-    new_rt->steps = os;
+    new_rt->transp = trans->old_rt->transp;
+    new_rt->steps = trans->steps;
     new_rt->ext_outs = ext_outs;
-    rage_pb_init_all_buffers(pb, new_rt, highest_assignment);
-    rage_RtBits * replaced = rage_rt_crit_update_finish(pb->syncy, new_rt);
+    rage_pb_init_all_buffers(trans->pb, new_rt, highest_assignment);
+    rage_RtBits * replaced = rage_rt_crit_update_finish(trans->pb->syncy, new_rt);
     rage_buffer_allocs_free(old_allocs);
     free(replaced->steps.items);
     free(replaced->all_buffers);
     rage_ext_outs_free(replaced->ext_outs);
     free(replaced);
+    free(trans);
+}
+
+void rage_proc_block_con_trans_abort(rage_ConTrans * ct) {
+    if (!ct->empty_trans) {
+        free(ct->steps.items);
+        rage_depmap_free(ct->cons);
+    }
+    free(ct);
+}
+
+static rage_Error rage_proc_block_recalculate_routing(rage_ConTrans * trans, rage_DepMap * dm) {
+    rage_OrderedProcSteps ops = rage_order_proc_steps(&trans->steps, dm);
+    if (RAGE_FAILED(ops)) {
+        rage_depmap_free(dm);
+        return RAGE_FAILURE_CAST(rage_Error, ops);
+    }
+    if (!trans->empty_trans) {
+        free(trans->steps.items);
+        rage_depmap_free(trans->cons);
+    }
+    trans->empty_trans = false;
+    trans->steps = RAGE_SUCCESS_VALUE(ops);
+    trans->cons = dm;
     return RAGE_OK;
 }
 
 rage_Error rage_proc_block_connect(
-        rage_ProcBlock * pb,
+        rage_ConTrans * trans,
         rage_Harness * source, uint32_t source_idx,
         rage_Harness * sink, uint32_t sink_idx) {
     rage_ConnTerminal in_term = {.harness = source, .idx = source_idx};
     rage_ConnTerminal out_term = {.harness = sink, .idx = sink_idx};
-    rage_ExtDepMap edm = rage_depmap_connect(pb->cons, in_term, out_term);
+    rage_ExtDepMap edm = rage_depmap_connect(trans->cons, in_term, out_term);
     if (RAGE_FAILED(edm)) {
         return RAGE_FAILURE_CAST(rage_Error, edm);
     }
-    pb->cons = RAGE_SUCCESS_VALUE(edm);
-    rage_Error err = rage_proc_block_recalculate_routing(pb);
-    if (RAGE_FAILED(err)) {
-        pb->cons = rage_depmap_disconnect(pb->cons, in_term, out_term);
-    }
-    return err;
+    return rage_proc_block_recalculate_routing(trans, RAGE_SUCCESS_VALUE(edm));
 }
 
 rage_Error rage_proc_block_disconnect(
-        rage_ProcBlock * pb,
+        rage_ConTrans * trans,
         rage_Harness * source, uint32_t source_idx,
         rage_Harness * sink, uint32_t sink_idx) {
     rage_ConnTerminal in_term = {.harness = source, .idx = source_idx};
     rage_ConnTerminal out_term = {.harness = sink, .idx = sink_idx};
-    pb->cons = rage_depmap_disconnect(pb->cons, in_term, out_term);
-    return rage_proc_block_recalculate_routing(pb);
+    rage_ExtDepMap edm = rage_depmap_disconnect(trans->cons, in_term, out_term);
+    if (RAGE_FAILED(edm)) {
+        return RAGE_FAILURE_CAST(rage_Error, edm);
+    }
+    return rage_proc_block_recalculate_routing(trans, RAGE_SUCCESS_VALUE(edm));
 }
 
 rage_BackendConfig rage_proc_block_get_backend_config(rage_ProcBlock * pb) {
