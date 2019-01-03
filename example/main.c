@@ -156,14 +156,16 @@ int main() {
         bits.graph, bits.st_amp, &amp_ts);
     RAGE_ABORT_ON_FAILURE(new_node, 6);
     rage_GraphNode * anode = RAGE_SUCCESS_VALUE(new_node);
+    rage_ConTrans * ct = rage_graph_con_trans_start(bits.graph);
     for (uint32_t chan = 0; chan < 2; chan++) {
         rage_Error connect_result = rage_graph_connect(
-            bits.graph, pnode, chan, anode, chan);
+            ct, pnode, chan, anode, chan);
         RAGE_ABORT_ON_FAILURE(connect_result, 7 + chan);
         connect_result = rage_graph_connect(
-            bits.graph, anode, chan, NULL, chan);
+            ct, anode, chan, NULL, chan);
         RAGE_ABORT_ON_FAILURE(connect_result, 9 + chan);
     }
+    rage_graph_con_trans_commit(ct);
     printf("Node added\n");
     sleep(5);
     printf("Recording...\n");

@@ -29,12 +29,17 @@ rage_Finaliser * rage_harness_set_time_series(
 void rage_proc_block_set_transport_state(rage_ProcBlock * pb, rage_TransportState state);
 rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo target);
 
+typedef struct rage_ConTrans rage_ConTrans;
+
+rage_ConTrans * rage_proc_block_con_trans_start(rage_ProcBlock * pb);
+void rage_proc_block_con_trans_commit(rage_ConTrans * trans);
+void rage_proc_block_con_trans_abort(rage_ConTrans * trans);
 rage_Error rage_proc_block_connect(
-    rage_ProcBlock * pb,
+    rage_ConTrans * trans,
     rage_Harness * source, uint32_t source_idx,
     rage_Harness * sink, uint32_t sink_idx);
 rage_Error rage_proc_block_disconnect(
-    rage_ProcBlock * pb,
+    rage_ConTrans * trans,
     rage_Harness * source, uint32_t source_idx,
     rage_Harness * sink, uint32_t sink_idx);
 

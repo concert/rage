@@ -3,6 +3,7 @@
 #include "atoms.h"
 #include "loader.h"
 #include "binding_interface.h"
+#include "proc_block.h"
 
 typedef struct rage_Graph rage_Graph;
 typedef RAGE_OR_ERROR(rage_Graph *) rage_NewGraph;
@@ -24,11 +25,14 @@ rage_Finaliser * rage_graph_update_node(
         rage_TimeSeries const * const ts);
 void rage_graph_remove_node(rage_Graph * g, rage_GraphNode * n);
 
+rage_ConTrans * rage_graph_con_trans_start(rage_Graph * g);
+void rage_graph_con_trans_commit(rage_ConTrans * ct);
+void rage_graph_con_trans_abort(rage_ConTrans * ct);
 rage_Error rage_graph_connect(
-    rage_Graph * g,
+    rage_ConTrans * ct,
     rage_GraphNode * source, uint32_t source_idx,
     rage_GraphNode * sink, uint32_t sink_idx);
 rage_Error rage_graph_disconnect(
-    rage_Graph * g,
+    rage_ConTrans * ct,
     rage_GraphNode * source, uint32_t source_idx,
     rage_GraphNode * sink, uint32_t sink_idx);

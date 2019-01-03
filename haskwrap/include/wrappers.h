@@ -14,11 +14,11 @@ rage_NewGraphNode * rage_graph_add_node_hs(
     rage_TimeSeries const * ts);
 rage_Error * rage_graph_transport_seek_hs(rage_Graph * g, rage_Time const * t);
 rage_Error * rage_graph_connect_hs(
-    rage_Graph * g,
+    rage_ConTrans * g,
     rage_GraphNode * source, uint32_t source_idx,
     rage_GraphNode * sink, uint32_t sink_idx);
 rage_Error * rage_graph_disconnect_hs(
-    rage_Graph * g,
+    rage_ConTrans * g,
     rage_GraphNode * source, uint32_t source_idx,
     rage_GraphNode * sink, uint32_t sink_idx);
 

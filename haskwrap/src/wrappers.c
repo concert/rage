@@ -26,7 +26,7 @@ RAGE_HS_STRUCT_WRAPPER(
 RAGE_HS_STRUCT_WRAPPER(
     rage_Error,
     (
-        rage_Graph * g,
+        rage_ConTrans * g,
         rage_GraphNode * source, uint32_t source_idx,
         rage_GraphNode * sink, uint32_t sink_idx
     ),
@@ -35,7 +35,7 @@ RAGE_HS_STRUCT_WRAPPER(
 RAGE_HS_STRUCT_WRAPPER(
     rage_Error,
     (
-        rage_Graph * g,
+        rage_ConTrans * g,
         rage_GraphNode * source, uint32_t source_idx,
         rage_GraphNode * sink, uint32_t sink_idx
     ),
