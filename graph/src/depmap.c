@@ -30,7 +30,7 @@ rage_ExtDepMap rage_depmap_connect(
     } else {
         rage_DepMap * new_dm = malloc(sizeof(rage_DepMap));
         new_dm->len = dm->len + 1;
-        new_dm->items = calloc(sizeof(rage_Connection), new_dm->len);
+        new_dm->items = calloc(new_dm->len, sizeof(rage_Connection));
         memcpy(new_dm->items, dm->items, sizeof(rage_Connection) * dm->len);
         new_dm->items[dm->len].src = input;
         new_dm->items[dm->len].sink = output;
@@ -46,7 +46,7 @@ rage_ExtDepMap rage_depmap_disconnect(
                 rage_conn_terminal_eq(&dm->items[i].sink, &out)) {
             rage_DepMap * new_dm = malloc(sizeof(rage_DepMap));
             new_dm->len = dm->len - 1;
-            new_dm->items = calloc(sizeof(rage_Connection), new_dm->len);
+            new_dm->items = calloc(new_dm->len, sizeof(rage_Connection));
             memcpy(new_dm->items, dm->items, sizeof(rage_Connection) * i);
             memcpy(new_dm->items, &dm->items[i], sizeof(rage_Connection) * (new_dm->len - i));
             return RAGE_SUCCESS(rage_ExtDepMap, new_dm);
