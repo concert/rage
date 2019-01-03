@@ -3,6 +3,7 @@
 #include "loader.h"
 #include "time_series.h"
 #include "binding_interface.h"
+#include "con_trans.h"
 
 typedef struct rage_ProcBlock rage_ProcBlock;
 typedef struct rage_Harness rage_Harness;
@@ -28,8 +29,6 @@ rage_Finaliser * rage_harness_set_time_series(
 
 void rage_proc_block_set_transport_state(rage_ProcBlock * pb, rage_TransportState state);
 rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo target);
-
-typedef struct rage_ConTrans rage_ConTrans;
 
 rage_ConTrans * rage_proc_block_con_trans_start(rage_ProcBlock * pb);
 void rage_proc_block_con_trans_commit(rage_ConTrans * trans);

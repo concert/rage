@@ -3,7 +3,7 @@
 #include "atoms.h"
 #include "loader.h"
 #include "binding_interface.h"
-#include "proc_block.h"
+#include "con_trans.h"
 
 typedef struct rage_Graph rage_Graph;
 typedef RAGE_OR_ERROR(rage_Graph *) rage_NewGraph;
