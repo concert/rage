@@ -145,7 +145,7 @@ example = executable(
 
 # Haskell wrapper (because you can't return structs to GHC)
 
-hsw_sources = ['haskwrap/src/wrappers.c']
+hsw_sources = ['haskwrap/src/wrappers.c', 'haskwrap/src/refcounter.c']
 hsw_inc = include_directories('haskwrap/include/')
 hsw = library(
     'rage_hswrap',
@@ -153,3 +153,9 @@ hsw = library(
     include_directories: [graph_inc, types_inc, langext_inc, hsw_inc],
     link_with: [rage_graph],
     install: true)
+test_hsw = executable(
+    'test_haskwrap',
+    ['haskwrap/test/test_refcounter.c'],
+    include_directories: [langext_inc, hsw_inc],
+    link_with: [langext, hsw])
+test('haskwrap', test_hsw)
