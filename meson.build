@@ -114,6 +114,13 @@ amp = library(
     install_dir: element_install_dir,
     install: true)
 
+matrix_sources = ['elements/matrix/matrix.c']
+matrix = library(
+    'matrix', matrix_sources, include_directories: element_incs,
+    link_with: rage_types,
+    install_dir: element_install_dir,
+    install: true)
+
 sndfile = dependency('sndfile')
 
 persist_sources = ['elements/persistence/persistence.c']
