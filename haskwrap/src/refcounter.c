@@ -44,3 +44,7 @@ void rage_hs_decrement_ref(rage_hs_RefCount * ref) {
         free(ref);
     }
 }
+
+void * rage_hs_ref(rage_hs_RefCount const * rc) {
+    return rc->ref;
+}
