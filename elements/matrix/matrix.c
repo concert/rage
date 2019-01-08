@@ -3,19 +3,23 @@
 #include "element_impl.h"
 #include "interpolation.h"
 
-static rage_AtomDef const n_channels = {
-    .type = RAGE_ATOM_INT,
-    .name = "n_channels",
-    .constraints = {.i = {
-        .min = RAGE_JUST(1),
-        // Somewhat arbitrary, just to limit for name allocations' sake:
-        .max = RAGE_JUST(32)
-    }}
-};
+#define N_CHANNELS(max_n) {\
+    .type = RAGE_ATOM_INT,\
+    .name = "n_channels",\
+    .constraints = {.i = {\
+        .min = RAGE_JUST(1),\
+        .max = RAGE_JUST(max_n)\
+    }}\
+}
+
+static rage_AtomDef const n_in_channels = N_CHANNELS(2048);
+static rage_AtomDef const n_out_channels = N_CHANNELS(16);
 
 static rage_FieldDef const param_fields[] = {
-    {.name = "in_channels", .type = &n_channels},
-    {.name = "out_channels", .type = &n_channels}
+    // NB: limits are somewhat arbitrary, partly for name allocations' sake and
+    // partly for performance
+    {.name = "in_channels", .type = &n_in_channels},
+    {.name = "out_channels", .type = &n_out_channels}
 };
 
 rage_TupleDef const param_tup = {
