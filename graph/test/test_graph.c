@@ -1,5 +1,6 @@
 #include "error.h"
 #include "graph.h"
+#include "event.h"
 #include "graph_test_factories.h"
 
 static char * example_input_names[] = {
@@ -25,12 +26,16 @@ rage_TimePoint example_points[] = {
 };
 rage_TimeSeries example_series = {.len = 1, .items = example_points};
 
+static void queue_watcher(void * ctx, rage_Event * evt) {
+    rage_event_free(evt);
+}
+
 static rage_Error test_graph() {
     rage_NewGraph new_graph = rage_graph_new(example_ports, 44100);
     if (RAGE_FAILED(new_graph))
         return RAGE_FAILURE_CAST(rage_Error, new_graph);
     rage_Graph * graph = RAGE_SUCCESS_VALUE(new_graph);
-    rage_Error rv = rage_graph_start_processing(graph);
+    rage_Error rv = rage_graph_start_processing(graph, queue_watcher, NULL);
     if (!RAGE_FAILED(rv)) {
         rage_NewTestElem nte = new_test_elem("./libamp.so");
         if (RAGE_FAILED(nte)) {

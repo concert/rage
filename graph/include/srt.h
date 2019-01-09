@@ -3,13 +3,14 @@
 #include "countdown.h"
 #include "interpolation.h"
 #include "loader.h"
+#include "queue.h"
 
 typedef struct rage_SupportConvoy rage_SupportConvoy;
 typedef struct rage_SupportTruck rage_SupportTruck;
 
 rage_SupportConvoy * rage_support_convoy_new(
     uint32_t period_size, rage_Countdown * countdown,
-    rage_TransportState transp_state);
+    rage_TransportState transp_state, rage_Queue * evt_q);
 void rage_support_convoy_free(rage_SupportConvoy * convoy);
 
 rage_Error rage_support_convoy_start(rage_SupportConvoy * convoy);

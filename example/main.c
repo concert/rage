@@ -43,6 +43,10 @@ static rage_BackendPorts ext_ports = {
     .outputs = {.len = 2, .items = output_names}
 };
 
+static void event_watcher(void * ctx, rage_Event * evt) {
+    rage_event_free(evt);
+}
+
 #define RAGE_ABORT_ON_FAILURE(v, r) if (RAGE_FAILED(v)) { \
     printf(#v " failed: %s\n", RAGE_FAILURE_VALUE(v)); \
     free_bits(&bits); \
@@ -145,7 +149,7 @@ int main() {
         .items = amp_pts
     };
     printf("Starting graph...\n");
-    rage_Error en_st = rage_graph_start_processing(bits.graph);
+    rage_Error en_st = rage_graph_start_processing(bits.graph, event_watcher, NULL);
     RAGE_ABORT_ON_FAILURE(en_st, 4);
     printf("Adding node...\n");
     rage_NewGraphNode new_node = rage_graph_add_node(

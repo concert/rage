@@ -62,7 +62,7 @@ struct rage_ProcBlock {
 
 rage_ProcBlock * rage_proc_block_new(
         uint32_t sample_rate, uint32_t period_size,
-        rage_BackendPorts ports, rage_TransportState transp_state) {
+        rage_BackendPorts ports, rage_TransportState transp_state, rage_Queue * evt_q) {
     rage_Countdown * countdown = rage_countdown_new(0);
     rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
     pb->cons = rage_depmap_new();
@@ -71,7 +71,7 @@ rage_ProcBlock * rage_proc_block_new(
     pb->be_ports = ports;
     pb->min_dynamic_buffer = 2 + ports.inputs.len + ports.outputs.len;
     pb->rolling_countdown = countdown;
-    pb->convoy = rage_support_convoy_new(period_size, countdown, transp_state);
+    pb->convoy = rage_support_convoy_new(period_size, countdown, transp_state, evt_q);
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
     rtb->transp = transp_state;
     rtb->all_buffers = calloc(pb->min_dynamic_buffer, sizeof(void *));

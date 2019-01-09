@@ -4,14 +4,18 @@
 #include "loader.h"
 #include "binding_interface.h"
 #include "con_trans.h"
+#include "event.h"
+
+typedef void (*rage_EventCb)(void * ctx, rage_Event * evt);
 
 typedef struct rage_Graph rage_Graph;
 typedef RAGE_OR_ERROR(rage_Graph *) rage_NewGraph;
 rage_NewGraph rage_graph_new(rage_BackendPorts ports, uint32_t sample_rate);
 void rage_graph_free(rage_Graph * g);
 
-rage_Error rage_graph_start_processing(rage_Graph * g);
+rage_Error rage_graph_start_processing(rage_Graph * g, rage_EventCb evt_cb, void * cb_ctx);
 void rage_graph_stop_processing(rage_Graph * g);
+
 void rage_graph_set_transport_state(rage_Graph * g, rage_TransportState s);
 rage_Error rage_graph_transport_seek(rage_Graph * g, rage_Time const * target);
 
