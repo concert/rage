@@ -36,6 +36,9 @@ rage_Error rage_graph_start_processing(rage_Graph * g) {
     if (!RAGE_FAILED(err)) {
         err = rage_jack_backend_activate(g->jb);
     }
+    if (RAGE_FAILED(err)) {
+        rage_proc_block_stop(g->pb);
+    }
     return err;
 }
 
