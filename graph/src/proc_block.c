@@ -70,8 +70,8 @@ rage_ProcBlock * rage_proc_block_new(
     pb->period_size = period_size;
     pb->be_ports = ports;
     pb->min_dynamic_buffer = 2 + ports.inputs.len + ports.outputs.len;
-    pb->rolling_countdown = countdown;
-    pb->convoy = rage_support_convoy_new(period_size, countdown, transp_state, evt_q);
+    pb->convoy = rage_support_convoy_new(period_size, transp_state, evt_q);
+    pb->rolling_countdown = pb->convoy->get_countdown();
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
     rtb->transp = transp_state;
     rtb->all_buffers = calloc(pb->min_dynamic_buffer, sizeof(void *));

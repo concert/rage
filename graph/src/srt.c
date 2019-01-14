@@ -7,6 +7,7 @@
 #include "macros.h"
 #include "queue.h"
 #include "event.h"
+#include "countdown.h"
 
 struct rage_SupportTruck {
     rage_SupportConvoy * convoy;  // Not totally convinced by the backref
@@ -27,6 +28,7 @@ struct rage_SupportConvoy {
     uint32_t period_size;
     rage_FrameNo invalid_after;
     rage_Countdown * countdown;
+    sem_t throttler_sem;
     // mutex to prevent truck array freeing during iteration:
     pthread_mutex_t active;
     rage_Trucks * prep_trucks;
@@ -53,7 +55,9 @@ rage_SupportConvoy * rage_support_convoy_new(
     convoy->period_size = period_size;
     convoy->transport_state = transp_state;
     convoy->invalid_after = UINT64_MAX;
-    convoy->countdown = countdown;
+    sem_init(&convoy->throttler_sem, 0, 0);
+    convoy->countdown = rage_countdown_new(
+        0, (rage_CountdownAction) sem_post, &convoy->throttler_sem);
     // FIXME: can in theory fail
     pthread_mutex_init(&convoy->active, NULL);
     convoy->prep_trucks = rage_new_trucks();
@@ -201,7 +205,7 @@ static void * rage_support_convoy_worker(void * ptr) {
             convoy->triggered_tick = false;
         }
         pthread_mutex_unlock(&convoy->active);
-        rage_countdown_timed_wait(convoy->countdown, UINT32_MAX);
+        sem_wait(&convoy->throttler_sem);
         pthread_mutex_lock(&convoy->active);
         op_result = apply_to_trucks(convoy->clean_trucks, clean_truck);
         RAGE_BAIL_ON_FAIL(CleanFailed)
