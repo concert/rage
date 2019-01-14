@@ -46,12 +46,14 @@ typedef struct {
     void * ctx;
 } rage_EventCbInfo;
 
+rage_EventType * rage_EventGraphStopped = "stopped";
+
 static void * queue_puller(void * cbiv) {
     rage_EventCbInfo * cbi = cbiv;
     bool running = true;
     while (running) {
         rage_Event * evt = rage_queue_get_block(cbi->q);
-        running = evt->event != RAGE_EVENT_STOPPED;
+        running = rage_event_type(evt) != rage_EventGraphStopped;
         cbi->cb(cbi->ctx, evt);
     }
     free(cbi);
@@ -83,8 +85,8 @@ rage_Error rage_graph_start_processing(rage_Graph * g, rage_EventCb evt_cb, void
 void rage_graph_stop_processing(rage_Graph * g) {
     rage_jack_backend_deactivate(g->jb);
     rage_proc_block_stop(g->pb);
-    rage_Event * evt = malloc(sizeof(rage_Event));
-    evt->event = RAGE_EVENT_STOPPED;
+    rage_Event * evt = rage_event_new(
+        rage_EventGraphStopped, NULL, NULL, NULL);
     rage_queue_put_block(g->evt_q, rage_queue_item_new(evt));
     pthread_join(g->q_thread, NULL);
 }

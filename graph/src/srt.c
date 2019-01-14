@@ -154,6 +154,15 @@ static void account_for_rt_frames(rage_SupportConvoy * convoy, uint32_t const fr
     }
 }
 
+static char const * evt_str_msg(void * s) {
+    return s;
+}
+
+rage_EventType * rage_EventSrtClearFailed = "clear failed";
+rage_EventType * rage_EventSrtPrepFailed = "prep failed";
+rage_EventType * rage_EventSrtCleanFailed = "clean failed";
+rage_EventType * rage_EventSrtUnderrun = "SRT underrun";
+
 static void * rage_support_convoy_worker(void * ptr) {
     rage_SupportConvoy * convoy = ptr;
     rage_Error op_result;
@@ -163,20 +172,19 @@ static void * rage_support_convoy_worker(void * ptr) {
     pthread_mutex_lock(&convoy->active);
     #define RAGE_BAIL_ON_FAIL(evt_type) \
         if (RAGE_FAILED(op_result)) { \
-            rage_Event * evt = malloc(sizeof(rage_Event)); \
-            evt->event = evt_type; \
-            evt->msg = RAGE_FAILURE_VALUE(op_result); \
+            rage_Event * evt = rage_event_new( \
+                rage_EventSrt##evt_type, evt_str_msg, NULL, (void *) RAGE_FAILURE_VALUE(op_result)); \
             rage_queue_put_block(convoy->q, rage_queue_item_new(evt)); \
             break; \
         }
     while (convoy->running) {
         if (convoy->invalid_after != UINT64_MAX) {
              op_result = clear(convoy->prep_trucks, convoy->invalid_after);
-             RAGE_BAIL_ON_FAIL(RAGE_EVENT_CLEAR_FAILED)
+             RAGE_BAIL_ON_FAIL(ClearFailed)
              convoy->invalid_after = UINT64_MAX;
         }
         op_result = apply_to_trucks(convoy->prep_trucks, prep_truck);
-        RAGE_BAIL_ON_FAIL(RAGE_EVENT_PREP_FAILED)
+        RAGE_BAIL_ON_FAIL(PrepFailed)
         counts_waited = counts_to_wait - convoy->counts_skipped;
         assert(counts_waited >= 0);
         convoy->counts_skipped = 0;
@@ -184,8 +192,7 @@ static void * rage_support_convoy_worker(void * ptr) {
         min_frames_wait = n_frames_grace(convoy);
         counts_to_wait = min_frames_wait / convoy->period_size;
         if (0 > rage_countdown_add(convoy->countdown, counts_to_wait)) {
-            rage_Event * evt = malloc(sizeof(rage_Event));
-            evt->event = RAGE_EVENT_SRT_UNDERRUN;
+            rage_Event * evt = rage_event_new(rage_EventSrtUnderrun, NULL, NULL, NULL);
             rage_queue_put_block(convoy->q, rage_queue_item_new(evt));
             break;
         }
@@ -197,7 +204,7 @@ static void * rage_support_convoy_worker(void * ptr) {
         rage_countdown_timed_wait(convoy->countdown, UINT32_MAX);
         pthread_mutex_lock(&convoy->active);
         op_result = apply_to_trucks(convoy->clean_trucks, clean_truck);
-        RAGE_BAIL_ON_FAIL(RAGE_EVENT_CLEAN_FAILED)
+        RAGE_BAIL_ON_FAIL(CleanFailed)
     }
     #undef RAGE_BAIL_ON_FAIL
     pthread_mutex_unlock(&convoy->active);

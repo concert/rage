@@ -8,6 +8,8 @@
 
 typedef void (*rage_EventCb)(void * ctx, rage_Event * evt);
 
+extern rage_EventType * rage_EventGraphStopped;
+
 typedef struct rage_Graph rage_Graph;
 typedef RAGE_OR_ERROR(rage_Graph *) rage_NewGraph;
 rage_NewGraph rage_graph_new(rage_BackendPorts ports, uint32_t sample_rate);

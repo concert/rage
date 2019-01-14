@@ -4,6 +4,12 @@
 #include "interpolation.h"
 #include "loader.h"
 #include "queue.h"
+#include "event.h"
+
+extern rage_EventType * rage_EventSrtClearFailed;
+extern rage_EventType * rage_EventSrtPrepFailed;
+extern rage_EventType * rage_EventSrtCleanFailed;
+extern rage_EventType * rage_EventSrtUnderrun;
 
 typedef struct rage_SupportConvoy rage_SupportConvoy;
 typedef struct rage_SupportTruck rage_SupportTruck;
