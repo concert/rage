@@ -91,10 +91,6 @@ void rage_graph_stop_processing(rage_Graph * g) {
     pthread_join(g->q_thread, NULL);
 }
 
-rage_Event * rage_graph_await_event(rage_Graph * g) {
-    return rage_queue_get_block(g->evt_q);
-}
-
 void rage_graph_set_transport_state(rage_Graph * g, rage_TransportState s) {
     rage_proc_block_set_transport_state(g->pb, s);
 }
