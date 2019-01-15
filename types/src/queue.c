@@ -40,6 +40,10 @@ rage_QueueItem * rage_queue_item_new(void * data) {
     return i;
 }
 
+void rage_queue_item_free(rage_QueueItem * item) {
+    free(item);
+}
+
 static void do_put(rage_Queue * queue, rage_QueueItem * item) {
     if (queue->tail) {
         queue->tail->next = item;

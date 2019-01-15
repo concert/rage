@@ -90,7 +90,7 @@ static void frameseries_free(
     }
     points->len = 0;
     free(points->items);
-    free(points);
+    points->items = NULL;
 }
 
 static void init_frameseries_points(
@@ -256,6 +256,8 @@ void rage_interpolator_free(
         type, atomic_load_explicit(&state->points, memory_order_relaxed));
     free(state->interpolators.items);
     sem_destroy(&state->change_sem);
+    rage_event_free(state->event);
+    rage_queue_item_free(state->qi);
     free(state);
 }
 
