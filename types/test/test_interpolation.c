@@ -295,7 +295,7 @@ static rage_Error check_float_value(
     return RAGE_OK;
 }
 
-static rage_NewEvent change_float_ts_to(
+static rage_NewEventId change_float_ts_to(
         rage_Interpolator * interpolator, float f, uint32_t frame) {
     rage_Atom val = {.f = f};
     rage_TimePoint tps[] = {
@@ -318,7 +318,7 @@ static rage_Error immediate_change_checks(
     rage_InterpolatedValue const * obtained = rage_interpolated_view_value(iv);
     rage_Error rv = check_float_value(obtained, 0.0, UINT32_MAX);
     if (!RAGE_FAILED(rv)) {
-        rage_NewEvent const coe = change_float_ts_to(interpolator, 1.0, 0);
+        rage_NewEventId const coe = change_float_ts_to(interpolator, 1.0, 0);
         if (RAGE_FAILED(coe)) {
             rv = RAGE_FAILURE_CAST(rage_Error, coe);
         } else {
@@ -361,7 +361,7 @@ static rage_Error delayed_change_checks(
         if (RAGE_FAILED(rv))
             return rv;
     }
-    rage_NewEvent const coe = change_float_ts_to(interpolator, 1.0, 2);
+    rage_NewEventId const coe = change_float_ts_to(interpolator, 1.0, 2);
     if (RAGE_FAILED(coe)) {
         rv = RAGE_FAILURE_CAST(rage_Error, coe);
     } else {
@@ -412,7 +412,7 @@ static rage_Error change_during_interpolation_checks(
     };
     rage_Error rv = RAGE_OK;
     rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
-    rage_NewEvent const coe = rage_interpolator_change_timeseries(interpolator, &ts, 5);
+    rage_NewEventId const coe = rage_interpolator_change_timeseries(interpolator, &ts, 5);
     if (RAGE_FAILED(coe)) {
         rv = RAGE_FAILURE_CAST(rage_Error, coe);
     } else {

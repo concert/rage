@@ -242,7 +242,7 @@ void rage_proc_block_unmount(rage_Harness * harness) {
     free(old_rt);
 }
 
-rage_NewEvent rage_harness_set_time_series(
+rage_NewEventId rage_harness_set_time_series(
         rage_Harness * const harness,
         uint32_t const series_idx,
         rage_TimeSeries const * const new_controls) {
@@ -259,7 +259,7 @@ rage_NewEvent rage_harness_set_time_series(
     rage_InterpolatedView * first_rt_view = rage_interpolator_get_view(
         harness->interpolators[series_idx], 0);
     rage_FrameNo const change_at = rage_interpolated_view_get_pos(first_rt_view) + offset;
-    rage_NewEvent e = rage_interpolator_change_timeseries(
+    rage_NewEventId e = rage_interpolator_change_timeseries(
         harness->interpolators[series_idx], new_controls, change_at);
     if (!RAGE_FAILED(e)) {
         // Force an SRT tick when the transport is stopped:

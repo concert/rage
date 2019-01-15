@@ -326,12 +326,12 @@ void rage_interpolated_view_advance(
     rage_interpolated_view_seek(view, view->pos + frames);
 }
 
-rage_NewEvent rage_interpolator_change_timeseries(
+rage_NewEventId rage_interpolator_change_timeseries(
         rage_Interpolator * const state, rage_TimeSeries const * const ts,
         rage_FrameNo change_at) {
     rage_Error const val_err = validate_time_series(ts, rage_interpolation_limit(state->type));
     if (RAGE_FAILED(val_err)) {
-        return RAGE_FAILURE_CAST(rage_NewEvent, val_err);
+        return RAGE_FAILURE_CAST(rage_NewEventId, val_err);
     }
     rage_FrameSeriesChangedInfo * fsci = fsci_new(state, ts);
     sem_wait(&state->change_sem);
@@ -340,7 +340,7 @@ rage_NewEvent rage_interpolator_change_timeseries(
     state->qi = fsci->qi;
     state->valid_from = change_at;
     atomic_store_explicit(&state->points, &fsci->fs, memory_order_release);
-    return RAGE_SUCCESS(rage_NewEvent, eid);
+    return RAGE_SUCCESS(rage_NewEventId, eid);
 }
 
 rage_InterpolatedView * rage_interpolator_get_view(rage_Interpolator * state, uint8_t idx) {
