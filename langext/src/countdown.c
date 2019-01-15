@@ -26,7 +26,7 @@ void rage_countdown_free(rage_Countdown * c) {
 }
 
 int rage_countdown_add(rage_Countdown * c, int delta) {
-    int val = atomic_fetch_add(&c->counter, delta) + delta;
+    int const val = atomic_fetch_add(&c->counter, delta) + delta;
     if (val == 0) {
         c->action(c->args);
     }
