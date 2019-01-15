@@ -252,8 +252,6 @@ void rage_interpolator_free(
         rage_interpolatedview_destroy(&state->views.items[i]);
     }
     free(state->views.items);
-    frameseries_free(
-        type, atomic_load_explicit(&state->points, memory_order_relaxed));
     free(state->interpolators.items);
     sem_destroy(&state->change_sem);
     rage_event_free(state->event);
