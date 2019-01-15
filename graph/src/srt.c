@@ -224,7 +224,7 @@ static void * rage_support_convoy_worker(void * ptr) {
 static void unlock_and_await_tick(rage_SupportConvoy * convoy) {
     bool trigger = convoy->running;
     if (trigger) {
-        convoy->counts_skipped = sem_wait(&convoy->throttler_sem);
+        convoy->counts_skipped = rage_countdown_force_action(convoy->countdown);
         convoy->triggered_tick = true;
     }
     pthread_mutex_unlock(&convoy->active);
