@@ -5,10 +5,10 @@
 #include <errno.h>
 #include "queue.h"
 
-typedef struct rage_QueueItem {
+struct rage_QueueItem {
     struct rage_QueueItem * next;
     void * data;
-} rage_QueueItem;
+};
 
 struct rage_Queue {
     sem_t s;
