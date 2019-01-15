@@ -50,8 +50,8 @@ struct rage_ProcBlock {
     uint32_t sample_rate;
     uint32_t period_size;
     rage_BackendPorts be_ports;
-    rage_Countdown * rolling_countdown;
     rage_SupportConvoy * convoy;
+    rage_Countdown * rolling_countdown;
     rage_RtCrit * syncy;
     rage_DepMap * cons;
     rage_BufferAllocs * allocs;
@@ -63,7 +63,6 @@ struct rage_ProcBlock {
 rage_ProcBlock * rage_proc_block_new(
         uint32_t sample_rate, uint32_t period_size,
         rage_BackendPorts ports, rage_TransportState transp_state, rage_Queue * evt_q) {
-    rage_Countdown * countdown = rage_countdown_new(0);
     rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
     pb->cons = rage_depmap_new();
     pb->sample_rate = sample_rate;
@@ -71,7 +70,7 @@ rage_ProcBlock * rage_proc_block_new(
     pb->be_ports = ports;
     pb->min_dynamic_buffer = 2 + ports.inputs.len + ports.outputs.len;
     pb->convoy = rage_support_convoy_new(period_size, transp_state, evt_q);
-    pb->rolling_countdown = pb->convoy->get_countdown();
+    pb->rolling_countdown = rage_support_convoy_get_countdown(pb->convoy);
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
     rtb->transp = transp_state;
     rtb->all_buffers = calloc(pb->min_dynamic_buffer, sizeof(void *));
@@ -120,7 +119,6 @@ static void rage_ext_outs_free(rage_ExternalOut * ext) {
 }
 
 void rage_proc_block_free(rage_ProcBlock * pb) {
-    rage_countdown_free(pb->rolling_countdown);
     rage_support_convoy_free(pb->convoy);
     rage_RtBits * rtb = rage_rt_crit_free(pb->syncy);
     free(rtb->all_buffers);
@@ -244,7 +242,7 @@ void rage_proc_block_unmount(rage_Harness * harness) {
     free(old_rt);
 }
 
-rage_Finaliser * rage_harness_set_time_series(
+rage_NewEvent rage_harness_set_time_series(
         rage_Harness * const harness,
         uint32_t const series_idx,
         rage_TimeSeries const * const new_controls) {
@@ -261,12 +259,13 @@ rage_Finaliser * rage_harness_set_time_series(
     rage_InterpolatedView * first_rt_view = rage_interpolator_get_view(
         harness->interpolators[series_idx], 0);
     rage_FrameNo const change_at = rage_interpolated_view_get_pos(first_rt_view) + offset;
-    rage_Finaliser * f = rage_interpolator_change_timeseries(
+    rage_NewEvent e = rage_interpolator_change_timeseries(
         harness->interpolators[series_idx], new_controls, change_at);
-    // Force an SRT tick when the transport is stopped, might be better as a
-    // finaliser additional action:
-    rage_support_convoy_transport_state_changed(harness->pb->convoy, rtd->transp);
-    return f;
+    if (!RAGE_FAILED(e)) {
+        // Force an SRT tick when the transport is stopped:
+        rage_support_convoy_transport_state_changed(harness->pb->convoy, rtd->transp);
+    }
+    return e;
 }
 
 void rage_proc_block_set_transport_state(rage_ProcBlock * pb, rage_TransportState state) {

@@ -23,7 +23,7 @@ rage_MountResult rage_proc_block_mount(
     rage_TimeSeries const * controls);
 void rage_proc_block_unmount(rage_Harness * harness);
 
-rage_Finaliser * rage_harness_set_time_series(
+rage_NewEvent rage_harness_set_time_series(
     rage_Harness * const harness,
     uint32_t const series_idx,
     rage_TimeSeries const * const new_controls);

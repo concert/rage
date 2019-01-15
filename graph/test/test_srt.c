@@ -8,9 +8,8 @@ rage_Error test_srt() {
     if (RAGE_FAILED(nte))
         return RAGE_FAILURE_CAST(rage_Error, nte);
     rage_TestElem te = RAGE_SUCCESS_VALUE(nte);
-    rage_Countdown * countdown = rage_countdown_new(0);
     rage_SupportConvoy * convoy = rage_support_convoy_new(
-        1024, countdown, RAGE_TRANSPORT_STOPPED, NULL);
+        1024, RAGE_TRANSPORT_STOPPED, NULL);
     rage_SupportTruck * truck = rage_support_convoy_mount(convoy, te.elem, NULL, NULL);
     rage_Error err = rage_support_convoy_start(convoy);
     if (!RAGE_FAILED(err)) {
@@ -18,7 +17,6 @@ rage_Error test_srt() {
     }
     rage_support_convoy_unmount(truck);
     rage_support_convoy_free(convoy);
-    rage_countdown_free(countdown);
     free_test_elem(te);
     return err;
 }
@@ -108,12 +106,12 @@ static rage_Error test_srt_fake_elem() {
     rage_Element fake_elem = {
         .cet = &fake_concrete_type,
         .state = &fes};
-    rage_Countdown * countdown = rage_countdown_new(0);
     rage_SupportConvoy * convoy = rage_support_convoy_new(
-        1024, countdown, RAGE_TRANSPORT_STOPPED, NULL);
+        1024, RAGE_TRANSPORT_STOPPED, NULL);
+    rage_Countdown * countdown = rage_support_convoy_get_countdown(convoy);
     rage_Error err = rage_support_convoy_start(convoy);
     if (!RAGE_FAILED(err)) {
-        rage_InitialisedInterpolator ii = rage_interpolator_new(&empty_tupledef, &ts, 44100, 2);
+        rage_InitialisedInterpolator ii = rage_interpolator_new(&empty_tupledef, &ts, 44100, 2, NULL);
         if (RAGE_FAILED(ii)) {
             assertion_err = RAGE_FAILURE_CAST(rage_Error, ii);
         } else {
@@ -155,7 +153,6 @@ static rage_Error test_srt_fake_elem() {
     }
     err = rage_support_convoy_stop(convoy);
     rage_support_convoy_free(convoy);
-    rage_countdown_free(countdown);
     sem_destroy(&sync_sem);
     if (RAGE_FAILED(err)) {
         return err;

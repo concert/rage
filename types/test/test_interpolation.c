@@ -3,17 +3,17 @@
 
 static rage_InitialisedInterpolator interpolator_for(
         rage_TupleDef const * td, rage_TimePoint * points,
-        unsigned n_points, uint8_t n_views) {
+        unsigned n_points, uint8_t n_views, rage_Queue * q) {
     rage_TimeSeries ts = {
         .len = n_points,
         .items = points
     };
-    return rage_interpolator_new(td, &ts, 1, n_views);
+    return rage_interpolator_new(td, &ts, 1, n_views, q);
 }
 
 static rage_Error check_with_single_field_interpolator(
         rage_AtomDef const * atom_def, rage_TimePoint * points,
-        unsigned n_points, rage_Error (*checker)(rage_Interpolator *),
+        unsigned n_points, rage_Error (*checker)(rage_Interpolator *, rage_Queue *),
         uint8_t n_views) {
     rage_FieldDef fields[] = {
         {.name = "field", .type = atom_def}
@@ -24,13 +24,17 @@ static rage_Error check_with_single_field_interpolator(
         .len = 1,
         .items = fields
     };
+    rage_Queue * q = rage_queue_new();
     rage_InitialisedInterpolator ii = interpolator_for(
-        &td, points, n_points, n_views);
-    if (RAGE_FAILED(ii))
+        &td, points, n_points, n_views, q);
+    if (RAGE_FAILED(ii)) {
+        rage_queue_free(q);
         return RAGE_FAILURE_CAST(rage_Error, ii);
+    }
     rage_Interpolator * interpolator = RAGE_SUCCESS_VALUE(ii);
-    rage_Error err = checker(interpolator);
+    rage_Error err = checker(interpolator, q);
     rage_interpolator_free(&td, interpolator);
+    rage_queue_free(q);
     return err;
 }
 
@@ -48,7 +52,19 @@ static rage_Error check_with_single_field_interpolator(
 
 RAGE_EQUALITY_CHECK(float, f, "%f")
 
-static rage_Error float_checks(rage_Interpolator * interpolator) {
+#define RAGE_CHECK_EVENT_QUEUED \
+    if (!RAGE_FAILED(rv)) { \
+        rage_Event * evt = rage_queue_get_block(q); \
+        if (rage_event_type(evt) != rage_EventTimeSeriesChanged) { \
+            rv = RAGE_ERROR("Unexpected event type"); \
+        } else if (rage_event_id(evt) != change_id) { \
+            rv = RAGE_ERROR("Unexpected event id"); \
+        } \
+        rage_event_free(evt); \
+    }
+
+static rage_Error float_checks(
+        rage_Interpolator * interpolator, rage_Queue * q) {
     rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
     if (f_check(v, 0.0))
         return RAGE_ERROR("Mismatch at t=0");
@@ -98,7 +114,8 @@ static rage_Error interpolator_float_test() {
 
 RAGE_EQUALITY_CHECK(int, i, "%i")
 
-static rage_Error int_checks(rage_Interpolator * interpolator) {
+static rage_Error int_checks(
+        rage_Interpolator * interpolator, rage_Queue * q) {
     rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
     if (rage_interpolated_view_get_pos(v) != 0)
         return RAGE_ERROR("Not starting at the start");
@@ -136,7 +153,8 @@ static rage_Error interpolator_int_test() {
 
 RAGE_EQUALITY_CHECK(uint32_t, frame_no, "%u")
 
-static rage_Error time_checks(rage_Interpolator * interpolator) {
+static rage_Error time_checks(
+        rage_Interpolator * interpolator, rage_Queue * q) {
     rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
     if (frame_no_check(v, 0))
         return RAGE_ERROR("Mismatch at t=0");
@@ -186,7 +204,8 @@ static rage_Error interpolator_new_with_no_timepoints() {
     return RAGE_OK;
 }
 
-static rage_Error check_offset_first_timepoint(rage_Interpolator * interpolator) {
+static rage_Error check_offset_first_timepoint(
+        rage_Interpolator * interpolator, rage_Queue * q) {
     rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
     if (i_check(v, 3))
         return RAGE_ERROR("Bad value at t=0");
@@ -276,7 +295,7 @@ static rage_Error check_float_value(
     return RAGE_OK;
 }
 
-static rage_Finaliser * change_float_ts_to(
+static rage_NewEvent change_float_ts_to(
         rage_Interpolator * interpolator, float f, uint32_t frame) {
     rage_Atom val = {.f = f};
     rage_TimePoint tps[] = {
@@ -293,23 +312,29 @@ static rage_Finaliser * change_float_ts_to(
     return rage_interpolator_change_timeseries(interpolator, &ts, frame);
 }
 
-static rage_Error immediate_change_checks(rage_Interpolator * interpolator) {
+static rage_Error immediate_change_checks(
+        rage_Interpolator * interpolator, rage_Queue * q) {
     rage_InterpolatedView * iv = rage_interpolator_get_view(interpolator, 0);
     rage_InterpolatedValue const * obtained = rage_interpolated_view_value(iv);
     rage_Error rv = check_float_value(obtained, 0.0, UINT32_MAX);
     if (!RAGE_FAILED(rv)) {
-        rage_Finaliser * change_complete = change_float_ts_to(interpolator, 1.0, 0);
-        // FIXME: should reading the value trigger a seek?
-        rage_interpolated_view_advance(iv, 0);
-        obtained = rage_interpolated_view_value(iv);
-        rage_finaliser_wait(change_complete);
-        rv = check_float_value(obtained, 1.0, UINT32_MAX);
+        rage_NewEvent const coe = change_float_ts_to(interpolator, 1.0, 0);
+        if (RAGE_FAILED(coe)) {
+            rv = RAGE_FAILURE_CAST(rage_Error, coe);
+        } else {
+            rage_EventId const change_id = RAGE_SUCCESS_VALUE(coe);
+            // FIXME: should reading the value trigger a seek?
+            rage_interpolated_view_advance(iv, 0);
+            obtained = rage_interpolated_view_value(iv);
+            RAGE_CHECK_EVENT_QUEUED
+            rv = check_float_value(obtained, 1.0, UINT32_MAX);
+        }
     }
     return rv;
 }
 
 static rage_Error zero_float_start(
-        rage_Error (*checker)(rage_Interpolator *), uint8_t n_views) {
+        rage_Error (*checker)(rage_Interpolator *, rage_Queue *), uint8_t n_views) {
     rage_Atom val = {.f = 0};
     rage_TimePoint tps[] = {
         {
@@ -326,7 +351,8 @@ static rage_Error interpolator_immediate_change_test() {
     return zero_float_start(immediate_change_checks, 1);
 }
 
-static rage_Error delayed_change_checks(rage_Interpolator * interpolator) {
+static rage_Error delayed_change_checks(
+        rage_Interpolator * interpolator, rage_Queue * q) {
     rage_Error rv = RAGE_OK;
     for (uint8_t i = 0; i < 2; i++) {
         rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, i);
@@ -335,21 +361,26 @@ static rage_Error delayed_change_checks(rage_Interpolator * interpolator) {
         if (RAGE_FAILED(rv))
             return rv;
     }
-    rage_Finaliser * change_complete = change_float_ts_to(interpolator, 1.0, 2);
-    for (uint8_t i = 0; i < 2; i++) {
-        rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, i);
-        rage_interpolated_view_advance(v, 1);
-        rage_InterpolatedValue const * r = rage_interpolated_view_value(v);
-        rv = check_float_value(r, 0.0, 1);
-        if (RAGE_FAILED(rv))
-            break;
-        rage_interpolated_view_advance(v, 1);
-        r = rage_interpolated_view_value(v);
-        rv = check_float_value(r, 1.0, UINT32_MAX);
-        if (RAGE_FAILED(rv))
-            break;
+    rage_NewEvent const coe = change_float_ts_to(interpolator, 1.0, 2);
+    if (RAGE_FAILED(coe)) {
+        rv = RAGE_FAILURE_CAST(rage_Error, coe);
+    } else {
+        rage_EventId const change_id = RAGE_SUCCESS_VALUE(coe);
+        for (uint8_t i = 0; i < 2; i++) {
+            rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, i);
+            rage_interpolated_view_advance(v, 1);
+            rage_InterpolatedValue const * r = rage_interpolated_view_value(v);
+            rv = check_float_value(r, 0.0, 1);
+            if (RAGE_FAILED(rv))
+                break;
+            rage_interpolated_view_advance(v, 1);
+            r = rage_interpolated_view_value(v);
+            rv = check_float_value(r, 1.0, UINT32_MAX);
+            if (RAGE_FAILED(rv))
+                break;
+        }
+        RAGE_CHECK_EVENT_QUEUED
     }
-    rage_finaliser_wait(change_complete);
     return rv;
 }
 
@@ -357,7 +388,8 @@ static rage_Error interpolator_delayed_change_test() {
     return zero_float_start(delayed_change_checks, 2);
 }
 
-static rage_Error change_during_interpolation_checks(rage_Interpolator * interpolator) {
+static rage_Error change_during_interpolation_checks(
+        rage_Interpolator * interpolator, rage_Queue * q) {
     rage_Atom vals[] = {
         {.f = 20},
         {.f = 30}
@@ -378,26 +410,32 @@ static rage_Error change_during_interpolation_checks(rage_Interpolator * interpo
         .len = 2,
         .items = tps
     };
+    rage_Error rv = RAGE_OK;
     rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
-    rage_Finaliser * f = rage_interpolator_change_timeseries(interpolator, &ts, 5);
-    rage_InterpolatedValue const * r = rage_interpolated_view_value(v);
-    rage_Error rv = check_float_value(r, 0.0, 1);
-    if (!RAGE_FAILED(rv)) {
-        rage_interpolated_view_advance(v, 3);
-        r = rage_interpolated_view_value(v);
-        rv = check_float_value(r, 3.0, 1);
+    rage_NewEvent const coe = rage_interpolator_change_timeseries(interpolator, &ts, 5);
+    if (RAGE_FAILED(coe)) {
+        rv = RAGE_FAILURE_CAST(rage_Error, coe);
+    } else {
+        rage_EventId const change_id = RAGE_SUCCESS_VALUE(coe);
+        rage_InterpolatedValue const * r = rage_interpolated_view_value(v);
+        rv = check_float_value(r, 0.0, 1);
         if (!RAGE_FAILED(rv)) {
             rage_interpolated_view_advance(v, 3);
             r = rage_interpolated_view_value(v);
-            rv = check_float_value(r, 26.0, 1);
+            rv = check_float_value(r, 3.0, 1);
             if (!RAGE_FAILED(rv)) {
-                rage_interpolated_view_seek(v, 2);
+                rage_interpolated_view_advance(v, 3);
                 r = rage_interpolated_view_value(v);
-                rv = check_float_value(r, 22.0, 1);
+                rv = check_float_value(r, 26.0, 1);
+                if (!RAGE_FAILED(rv)) {
+                    rage_interpolated_view_seek(v, 2);
+                    r = rage_interpolated_view_value(v);
+                    rv = check_float_value(r, 22.0, 1);
+                }
             }
         }
+        RAGE_CHECK_EVENT_QUEUED
     }
-    rage_finaliser_wait(f);
     return rv;
 };
 

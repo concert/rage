@@ -86,7 +86,7 @@ void rage_graph_stop_processing(rage_Graph * g) {
     rage_jack_backend_deactivate(g->jb);
     rage_proc_block_stop(g->pb);
     rage_Event * evt = rage_event_new(
-        rage_EventGraphStopped, NULL, NULL, NULL);
+        rage_EventGraphStopped, NULL, NULL, NULL, NULL);
     rage_queue_put_block(g->evt_q, rage_queue_item_new(evt));
     pthread_join(g->q_thread, NULL);
 }
@@ -126,7 +126,7 @@ rage_NewGraphNode rage_graph_add_node(
     return RAGE_SUCCESS(rage_NewGraphNode, node);
 }
 
-rage_Finaliser * rage_graph_update_node(
+rage_NewEvent rage_graph_update_node(
         rage_GraphNode * n, uint32_t const series_idx,
         rage_TimeSeries const * const ts) {
     return rage_harness_set_time_series(n->harness, series_idx, ts);

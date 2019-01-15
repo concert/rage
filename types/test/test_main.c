@@ -4,6 +4,7 @@
 #include "test_ports.c"
 #include "test_test_factories.c"
 #include "test_chronology.c"
+#include "test_queue.c"
 
 TEST_MAIN(
     interpolator_float_test,
@@ -18,4 +19,5 @@ TEST_MAIN(
     interpolator_change_during_interpolation_test,
     test_ports,
     test_time_series_new,
-    test_time_after)
+    test_time_after,
+    test_queue)

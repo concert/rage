@@ -48,8 +48,8 @@ static rage_Trucks * rage_new_trucks() {
 }
 
 rage_SupportConvoy * rage_support_convoy_new(
-        uint32_t period_size, rage_Countdown * countdown,
-        rage_TransportState transp_state, rage_Queue * evt_q) {
+        uint32_t period_size, rage_TransportState transp_state,
+        rage_Queue * evt_q) {
     rage_SupportConvoy * convoy = malloc(sizeof(rage_SupportConvoy));
     convoy->running = false;
     convoy->period_size = period_size;
@@ -71,12 +71,18 @@ rage_SupportConvoy * rage_support_convoy_new(
 
 void rage_support_convoy_free(rage_SupportConvoy * convoy) {
     pthread_mutex_destroy(&convoy->active);
+    rage_countdown_free(convoy->countdown);
+    sem_destroy(&convoy->throttler_sem);
     assert(convoy->prep_trucks->len == 0);
     assert(convoy->clean_trucks->len == 0);
     assert(!convoy->running);
     RAGE_ARRAY_FREE(convoy->prep_trucks);
     RAGE_ARRAY_FREE(convoy->clean_trucks);
     free(convoy);
+}
+
+rage_Countdown * rage_support_convoy_get_countdown(rage_SupportConvoy const * convoy) {
+    return convoy->countdown;
 }
 
 static rage_Error prep_truck(rage_SupportTruck * truck) {
@@ -177,7 +183,7 @@ static void * rage_support_convoy_worker(void * ptr) {
     #define RAGE_BAIL_ON_FAIL(evt_type) \
         if (RAGE_FAILED(op_result)) { \
             rage_Event * evt = rage_event_new( \
-                rage_EventSrt##evt_type, evt_str_msg, NULL, (void *) RAGE_FAILURE_VALUE(op_result)); \
+                rage_EventSrt##evt_type, NULL, evt_str_msg, NULL, (void *) RAGE_FAILURE_VALUE(op_result)); \
             rage_queue_put_block(convoy->q, rage_queue_item_new(evt)); \
             break; \
         }
@@ -196,7 +202,7 @@ static void * rage_support_convoy_worker(void * ptr) {
         min_frames_wait = n_frames_grace(convoy);
         counts_to_wait = min_frames_wait / convoy->period_size;
         if (0 > rage_countdown_add(convoy->countdown, counts_to_wait)) {
-            rage_Event * evt = rage_event_new(rage_EventSrtUnderrun, NULL, NULL, NULL);
+            rage_Event * evt = rage_event_new(rage_EventSrtUnderrun, NULL, NULL, NULL, NULL);
             rage_queue_put_block(convoy->q, rage_queue_item_new(evt));
             break;
         }
@@ -218,7 +224,7 @@ static void * rage_support_convoy_worker(void * ptr) {
 static void unlock_and_await_tick(rage_SupportConvoy * convoy) {
     bool trigger = convoy->running;
     if (trigger) {
-        convoy->counts_skipped = rage_countdown_unblock_wait(convoy->countdown);
+        convoy->counts_skipped = sem_wait(&convoy->throttler_sem);
         convoy->triggered_tick = true;
     }
     pthread_mutex_unlock(&convoy->active);
@@ -246,7 +252,7 @@ rage_Error rage_support_convoy_stop(rage_SupportConvoy * convoy) {
     assert(convoy->running);
     pthread_mutex_lock(&convoy->active);
     convoy->running = false;
-    rage_countdown_unblock_wait(convoy->countdown);
+    rage_countdown_force_action(convoy->countdown);
     pthread_mutex_unlock(&convoy->active);
     if (pthread_join(convoy->worker_thread, NULL)) {
         return RAGE_ERROR("Failed to join worker thread");

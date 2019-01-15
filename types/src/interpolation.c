@@ -6,6 +6,7 @@
 
 #include "interpolation.h"
 #include "countdown.h"
+#include "queue.h"
 
 #define RAGE_INTERPOLATORS_N RAGE_INTERPOLATION_LINEAR + 1
 
@@ -34,6 +35,9 @@ struct rage_Interpolator {
     uint32_t sample_rate;
     RAGE_ARRAY(rage_AtomInterpolator *) interpolators;
     sem_t change_sem;
+    rage_Queue * q;
+    rage_Event * event;
+    rage_QueueItem * qi;
     rage_FrameSeries * _Atomic points;
     rage_FrameNo valid_from;
     RAGE_ARRAY(rage_InterpolatedView) views;
@@ -55,7 +59,6 @@ static void rage_interpolatedview_init(
 }
 
 static void rage_interpolatedview_destroy(rage_InterpolatedView * iv) {
-    rage_countdown_add(iv->points->c, -1);
     free(iv->value.value);
 }
 
@@ -79,22 +82,6 @@ static rage_Error validate_time_series(
     return RAGE_OK;
 }
 
-static rage_FrameSeries * as_frameseries(
-        rage_TupleDef const * const tuple_def, rage_TimeSeries const * points,
-        uint32_t const sample_rate, uint8_t const awaiting_completion) {
-    rage_FrameSeries * fs = malloc(sizeof(rage_FrameSeries));
-    fs->c = rage_countdown_new(awaiting_completion);
-    RAGE_ARRAY_INIT(fs, points->len, i) {
-        rage_TimePoint const * p = &points->items[i];
-        fs->items[i] = (rage_FramePoint) {
-            .frame = rage_time_to_frame(&p->time, sample_rate),
-            .value = rage_tuple_copy(tuple_def, p->value),
-            .mode = p->mode
-        };
-    }
-    return fs;
-}
-
 static void frameseries_free(
         rage_TupleDef const * const tuple_def, rage_FrameSeries * points) {
     rage_countdown_free(points->c);
@@ -104,6 +91,54 @@ static void frameseries_free(
     points->len = 0;
     free(points->items);
     free(points);
+}
+
+static void init_frameseries_points(
+        rage_FrameSeries * const fs, rage_TupleDef const * const tuple_def, rage_TimeSeries const * points,
+        uint32_t const sample_rate) {
+    RAGE_ARRAY_INIT(fs, points->len, i) {
+        rage_TimePoint const * p = &points->items[i];
+        fs->items[i] = (rage_FramePoint) {
+            .frame = rage_time_to_frame(&p->time, sample_rate),
+            .value = rage_tuple_copy(tuple_def, p->value),
+            .mode = p->mode
+        };
+    }
+}
+
+typedef struct {
+    rage_Queue * q;
+    rage_QueueItem * qi;
+    rage_Event * event;
+    rage_TupleDef const * tuple_def;
+    rage_FrameSeries fs;
+    sem_t * change_sem;
+} rage_FrameSeriesChangedInfo;
+
+static void frameseries_done_with(void * vp) {
+    rage_FrameSeriesChangedInfo * fsi = vp;
+    rage_queue_put_block(fsi->q, fsi->qi);
+}
+
+static void frameseries_change_event_free(void * fscv) {
+    rage_FrameSeriesChangedInfo * e = fscv;
+    frameseries_free(e->tuple_def, &e->fs);
+    free(e);
+}
+
+rage_EventType * rage_EventTimeSeriesChanged = "time series changed";
+
+static rage_FrameSeriesChangedInfo * fsci_new(rage_Interpolator * state, rage_TimeSeries const * const ts) {
+    rage_FrameSeriesChangedInfo * fsci = malloc(sizeof(rage_FrameSeriesChangedInfo));
+    fsci->change_sem = &state->change_sem;
+    fsci->q = state->q;
+    fsci->tuple_def = state->type;
+    init_frameseries_points(&fsci->fs, state->type, ts, state->sample_rate);
+    fsci->fs.c = rage_countdown_new(state->views.len, frameseries_done_with, fsci);
+    fsci->event = rage_event_new(
+        rage_EventTimeSeriesChanged, (void *) &fsci->fs, NULL, frameseries_change_event_free, fsci);
+    fsci->qi = rage_queue_item_new(fsci->event);
+    return fsci;
 }
 
 static uint32_t rage_const_interpolate_fwd(
@@ -173,7 +208,8 @@ rage_InterpolationMode rage_interpolation_limit(
 
 rage_InitialisedInterpolator rage_interpolator_new(
         rage_TupleDef const * const type, rage_TimeSeries const * points,
-        uint32_t const sample_rate, uint8_t const n_views) {
+        uint32_t const sample_rate, uint8_t const n_views,
+        rage_Queue * evt_queue) {
     rage_Error err = validate_time_series(points, rage_interpolation_limit(type));
     if (RAGE_FAILED(err)) {
         return RAGE_FAILURE_CAST(rage_InitialisedInterpolator, err);
@@ -182,7 +218,11 @@ rage_InitialisedInterpolator rage_interpolator_new(
     sem_init(&state->change_sem, 0, 1);
     state->type = type;
     state->sample_rate = sample_rate;
-    atomic_init(&state->points, as_frameseries(type, points, sample_rate, n_views));
+    state->q = evt_queue;
+    rage_FrameSeriesChangedInfo * fsci = fsci_new(state, points);
+    state->event = fsci->event;
+    state->qi = fsci->qi;
+    atomic_init(&state->points, &fsci->fs);
     RAGE_ARRAY_INIT(&state->interpolators, type->len, i) {
         rage_AtomDef const * atom_def = type->items[i].type;
         switch (atom_def->type) {
@@ -286,33 +326,21 @@ void rage_interpolated_view_advance(
     rage_interpolated_view_seek(view, view->pos + frames);
 }
 
-typedef struct {
-    sem_t * change_sem;
-    rage_TupleDef const * type;
-    rage_FrameSeries * fs;
-} rage_TimeSeriesChange;
-
-static void rage_finalise_timeseries_change(void * p) {
-    rage_TimeSeriesChange * tsc = p;
-    rage_countdown_timed_wait(tsc->fs->c, 1000); // FIXME: ERROR HANDLING!
-    sem_post(tsc->change_sem);
-    frameseries_free(tsc->type, tsc->fs);
-    free(tsc);
-}
-
-rage_Finaliser * rage_interpolator_change_timeseries(
+rage_NewEvent rage_interpolator_change_timeseries(
         rage_Interpolator * const state, rage_TimeSeries const * const ts,
         rage_FrameNo change_at) {
-    rage_FrameSeries * fs = as_frameseries(
-        state->type, ts, state->sample_rate, state->views.len);
-    rage_TimeSeriesChange * tsc = malloc(sizeof(rage_TimeSeriesChange));
-    tsc->change_sem = &state->change_sem;
-    tsc->type = state->type;
+    rage_Error const val_err = validate_time_series(ts, rage_interpolation_limit(state->type));
+    if (RAGE_FAILED(val_err)) {
+        return RAGE_FAILURE_CAST(rage_NewEvent, val_err);
+    }
+    rage_FrameSeriesChangedInfo * fsci = fsci_new(state, ts);
     sem_wait(&state->change_sem);
-    tsc->fs = atomic_load_explicit(&state->points, memory_order_relaxed);
+    rage_EventId const eid = rage_event_id(state->event);
+    state->event = fsci->event;
+    state->qi = fsci->qi;
     state->valid_from = change_at;
-    atomic_store_explicit(&state->points, fs, memory_order_release);
-    return rage_finaliser_new(rage_finalise_timeseries_change, (void *) tsc);
+    atomic_store_explicit(&state->points, &fsci->fs, memory_order_release);
+    return RAGE_SUCCESS(rage_NewEvent, eid);
 }
 
 rage_InterpolatedView * rage_interpolator_get_view(rage_Interpolator * state, uint8_t idx) {

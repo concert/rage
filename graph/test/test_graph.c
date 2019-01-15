@@ -1,3 +1,5 @@
+#include <semaphore.h>
+
 #include "error.h"
 #include "graph.h"
 #include "event.h"
@@ -27,6 +29,7 @@ rage_TimePoint example_points[] = {
 rage_TimeSeries example_series = {.len = 1, .items = example_points};
 
 static void queue_watcher(void * ctx, rage_Event * evt) {
+    sem_post((sem_t *) ctx);
     rage_event_free(evt);
 }
 
@@ -35,7 +38,9 @@ static rage_Error test_graph() {
     if (RAGE_FAILED(new_graph))
         return RAGE_FAILURE_CAST(rage_Error, new_graph);
     rage_Graph * graph = RAGE_SUCCESS_VALUE(new_graph);
-    rage_Error rv = rage_graph_start_processing(graph, queue_watcher, NULL);
+    sem_t evt_sem;
+    sem_init(&evt_sem, 0, 0);
+    rage_Error rv = rage_graph_start_processing(graph, queue_watcher, &evt_sem);
     if (!RAGE_FAILED(rv)) {
         rage_NewTestElem nte = new_test_elem("./libamp.so");
         if (RAGE_FAILED(nte)) {
@@ -49,8 +54,8 @@ static rage_Error test_graph() {
                 rage_GraphNode * n = RAGE_SUCCESS_VALUE(ngn);
                 rage_Time target = {.second = 12};
                 rv = rage_graph_transport_seek(graph, &target);
-                rage_Finaliser * f = rage_graph_update_node(n, 0, &example_series);
-                rage_finaliser_wait(f);
+                rage_graph_update_node(n, 0, &example_series);
+                sem_wait(&evt_sem);
                 rage_graph_set_transport_state(graph, RAGE_TRANSPORT_ROLLING);
                 rage_graph_remove_node(graph, n);
             }
@@ -58,6 +63,7 @@ static rage_Error test_graph() {
         }
         rage_graph_stop_processing(graph);
     }
+    sem_destroy(&evt_sem);
     rage_graph_free(graph);
     return rv;
 }

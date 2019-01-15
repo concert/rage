@@ -26,7 +26,7 @@ InterpolatorsForResult interpolators_for(
     for (uint32_t i = 0; i < n_controls; i++) {
         rage_InitialisedInterpolator ii = rage_interpolator_new(
             &control_spec->items[i], &control_values[i], sample_rate,
-            n_views);
+            n_views, NULL);
         if (RAGE_FAILED(ii)) {
             if (i) {
                 do {
