@@ -4,7 +4,6 @@
 #include "atoms.h"
 #include "error.h"
 #include "time_series.h"
-#include "finaliser.h"
 #include "event.h"
 #include "queue.h"
 

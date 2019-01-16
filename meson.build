@@ -8,7 +8,6 @@ langext_inc = include_directories('langext/include')
 
 langext_sources = [
     'langext/src/countdown.c',
-    'langext/src/finaliser.c',
     'langext/src/set.c',
     'langext/src/rtcrit.c'
 ]
@@ -75,7 +74,6 @@ install_headers(
     'types/include/chronology.h', 'types/include/transport_state.h',
     'types/include/time_series.h',
     'langext/include/macros.h', 'langext/include/error.h',
-    'langext/include/finaliser.h',
     subdir: 'rage')
 
 rage_graph = library(
