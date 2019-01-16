@@ -35,3 +35,4 @@ typedef RAGE_OR_ERROR(rage_hs_GraphNode *) rage_hs_NewGraphNode;
 rage_hs_NewGraphNode * rage_hs_graph_add_node(
     rage_hs_Graph * g, rage_hs_ConcreteElementType * cetp,
     rage_TimeSeries const * ts);
+void rage_hs_graph_remove_node(rage_hs_GraphNode * hgn);

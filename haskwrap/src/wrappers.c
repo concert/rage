@@ -55,7 +55,7 @@ typedef struct {
     rage_GraphNode * n;
 } rage_hs_GraphNodeWrapper;
 
-static void rage_hs_graph_remove_node(void * vp) {
+static void rage_hs_internal_graph_remove_node(void * vp) {
     rage_hs_GraphNodeWrapper * w = vp;
     rage_graph_remove_node(w->g, w->n);
     free(w);
@@ -93,10 +93,14 @@ rage_hs_NewGraphNode * rage_hs_graph_add_node(
         w->g = g;
         w->n = gn;
         rage_hs_RefCount * gnrc = rage_hs_count_ref(
-            rage_hs_graph_remove_node, w);
+            rage_hs_internal_graph_remove_node, w);
         rage_hs_depend_ref(gnrc, cetr);
         rage_hs_depend_ref(gnrc, gr);
         *rv = RAGE_SUCCESS(rage_hs_NewGraphNode, (rage_hs_GraphNode *) gnrc);
     }
     return rv;
+}
+
+void rage_hs_graph_remove_node(rage_hs_GraphNode * hgn) {
+    rage_hs_decrement_ref((rage_hs_RefCount *) hgn);
 }
