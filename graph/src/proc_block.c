@@ -50,6 +50,7 @@ struct rage_ProcBlock {
     uint32_t sample_rate;
     uint32_t period_size;
     rage_BackendPorts be_ports;
+    rage_Queue * evt_q;
     rage_SupportConvoy * convoy;
     rage_Countdown * rolling_countdown;
     rage_RtCrit * syncy;
@@ -69,6 +70,7 @@ rage_ProcBlock * rage_proc_block_new(
     pb->period_size = period_size;
     pb->be_ports = ports;
     pb->min_dynamic_buffer = 2 + ports.inputs.len + ports.outputs.len;
+    pb->evt_q = evt_q;
     pb->convoy = rage_support_convoy_new(period_size, transp_state, evt_q);
     pb->rolling_countdown = rage_support_convoy_get_countdown(pb->convoy);
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
@@ -190,7 +192,7 @@ rage_MountResult rage_proc_block_mount(
     uint8_t n_views = view_count_for_type(elem->cet->type);
     // FIXME: Error handling
     harness->interpolators = RAGE_SUCCESS_VALUE(interpolators_for(
-        pb->sample_rate, &elem->cet->controls, controls, n_views));
+        pb->sample_rate, pb->evt_q, &elem->cet->controls, controls, n_views));
     harness->views = rage_proc_block_initialise_views(elem->cet, harness);
     // FIXME: could be more efficient, and not add this if not required
     harness->truck = rage_support_convoy_mount(
