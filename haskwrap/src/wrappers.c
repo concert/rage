@@ -1,6 +1,8 @@
 #include "wrappers.h"
 #include "refcounter.h"
 #include "error.h"
+#include "graph.h"
+#include "loader.h"
 
 rage_hs_ElementKindLoadResult * rage_hs_element_loader_load(char * name) {
     rage_hs_ElementKindLoadResult * r = malloc(sizeof(rage_hs_ElementKindLoadResult));
@@ -8,7 +10,7 @@ rage_hs_ElementKindLoadResult * rage_hs_element_loader_load(char * name) {
     if (RAGE_FAILED(eklr)) {
         *r = RAGE_FAILURE_CAST(rage_hs_ElementKindLoadResult, eklr);
     } else {
-        rage_hs_RefCount * rc = rage_hs_count_ref((rage_hs_Deallocator) rage_element_loader_unload, RAGE_SUCCESS_VALUE(eklr));
+        rage_hs_RefCount * rc = RAGE_HS_COUNT_REF(rage_element_loader_unload, RAGE_SUCCESS_VALUE(eklr));
         *r = RAGE_SUCCESS(rage_hs_ElementKindLoadResult, (rage_hs_ElementKind *) rc);
     }
     return r;
@@ -29,9 +31,8 @@ rage_hs_ConcreteElementTypeResult * rage_hs_element_type_specialise(rage_hs_Elem
     if (RAGE_FAILED(cetr)) {
         *r = RAGE_FAILURE_CAST(rage_hs_ConcreteElementTypeResult, cetr);
     } else {
-        rage_hs_RefCount * cetrc = rage_hs_count_ref(
-            (rage_hs_Deallocator) rage_concrete_element_type_free,
-            RAGE_SUCCESS_VALUE(cetr));
+        rage_hs_RefCount * cetrc = RAGE_HS_COUNT_REF(
+            rage_concrete_element_type_free, RAGE_SUCCESS_VALUE(cetr));
         rage_hs_depend_ref(cetrc, krc);
         *r = RAGE_SUCCESS(
             rage_hs_ConcreteElementTypeResult,
@@ -60,11 +61,28 @@ static void rage_hs_graph_remove_node(void * vp) {
     free(w);
 }
 
+rage_hs_NewGraph * rage_hs_graph_new(
+        uint32_t sample_rate, rage_BackendDescriptions * inputs,
+        rage_BackendDescriptions * outputs) {
+    rage_BackendPorts p = {.inputs = *inputs, .outputs = *outputs};
+    rage_NewGraph const ng = rage_graph_new(p, sample_rate);
+    rage_hs_NewGraph * rv = malloc(sizeof(rage_hs_NewGraph));
+    if (RAGE_FAILED(ng)) {
+        *rv = RAGE_FAILURE_CAST(rage_hs_NewGraph, ng);
+    } else {
+        *rv = RAGE_SUCCESS(
+            rage_hs_NewGraph,
+            (rage_hs_Graph *) RAGE_HS_COUNT_REF(rage_graph_free, RAGE_SUCCESS_VALUE(ng)));
+    }
+    return rv;
+}
+
 rage_hs_NewGraphNode * rage_hs_graph_add_node(
-        rage_Graph * g, rage_hs_ConcreteElementType * cetp,
+        rage_hs_Graph * hsg, rage_hs_ConcreteElementType * cetp,
         rage_TimeSeries const * ts) {
-    rage_hs_RefCount * cetr = (rage_hs_RefCount *) cetp;
+    rage_hs_RefCount * cetr = (rage_hs_RefCount *) cetp, * gr = (rage_hs_RefCount *) hsg;
     rage_ConcreteElementType * cet = rage_hs_ref(cetr);
+    rage_Graph * g = rage_hs_ref(gr);
     rage_NewGraphNode const ngn = rage_graph_add_node(g, cet, ts);
     rage_hs_NewGraphNode * rv = malloc(sizeof(rage_hs_NewGraphNode));
     if (RAGE_FAILED(ngn)) {
@@ -77,64 +95,8 @@ rage_hs_NewGraphNode * rage_hs_graph_add_node(
         rage_hs_RefCount * gnrc = rage_hs_count_ref(
             rage_hs_graph_remove_node, w);
         rage_hs_depend_ref(gnrc, cetr);
+        rage_hs_depend_ref(gnrc, gr);
         *rv = RAGE_SUCCESS(rage_hs_NewGraphNode, (rage_hs_GraphNode *) gnrc);
     }
     return rv;
-}
-
-#define RAGE_HS_STRUCT_WRAPPER(t, params, wrapped, wargs) \
-    t * wrapped ## _hs params { \
-        t * p = malloc(sizeof(t)); \
-        *p = wrapped wargs; \
-        return p; \
-    }
-
-RAGE_HS_STRUCT_WRAPPER(
-    rage_ElementKindLoadResult, (char * name),
-    rage_element_loader_load, (name))
-
-RAGE_HS_STRUCT_WRAPPER(
-    rage_NewConcreteElementType, (rage_ElementKind * k, rage_Atom ** params),
-    rage_element_type_specialise, (k, params))
-
-RAGE_HS_STRUCT_WRAPPER(
-    rage_NewGraphNode, (rage_Graph * g, rage_ConcreteElementType * cet, rage_TimeSeries const * ts),
-    rage_graph_add_node, (g, cet, ts))
-
-RAGE_HS_STRUCT_WRAPPER(
-    rage_Error, (rage_Graph * g, rage_Time const * t),
-    rage_graph_transport_seek, (g, t))
-
-RAGE_HS_STRUCT_WRAPPER(
-    rage_Error,
-    (
-        rage_ConTrans * g,
-        rage_GraphNode * source, uint32_t source_idx,
-        rage_GraphNode * sink, uint32_t sink_idx
-    ),
-    rage_graph_connect, (g, source, source_idx, sink, sink_idx))
-
-RAGE_HS_STRUCT_WRAPPER(
-    rage_Error,
-    (
-        rage_ConTrans * g,
-        rage_GraphNode * source, uint32_t source_idx,
-        rage_GraphNode * sink, uint32_t sink_idx
-    ),
-    rage_graph_disconnect, (g, source, source_idx, sink, sink_idx))
-
-#undef RAGE_HS_STRUCT_WRAPPER
-
-rage_InstanceSpec * rage_cet_get_spec_hs(rage_ConcreteElementType * cet) {
-    return &cet->spec;
-}
-
-rage_NewGraph * rage_graph_new_hs(
-        uint32_t sample_rate, rage_BackendDescriptions * inputs,
-        rage_BackendDescriptions * outputs) {
-    rage_BackendPorts p = {.inputs = *inputs, .outputs = *outputs};
-    rage_NewGraph ng = rage_graph_new(p, sample_rate);
-    rage_NewGraph * ngp = malloc(sizeof(rage_NewGraph));
-    *ngp = ng;
-    return ngp;
 }
