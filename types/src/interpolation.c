@@ -35,11 +35,11 @@ struct rage_Interpolator {
     uint32_t sample_rate;
     RAGE_ARRAY(rage_AtomInterpolator *) interpolators;
     sem_t change_sem;
+    rage_FrameSeries * _Atomic points;
+    rage_FrameNo valid_from;
     rage_Queue * q;
     rage_Event * event;
     rage_QueueItem * qi;
-    rage_FrameSeries * _Atomic points;
-    rage_FrameNo valid_from;
     RAGE_ARRAY(rage_InterpolatedView) views;
 };
 
@@ -128,13 +128,15 @@ static void frameseries_change_event_free(void * fscv) {
 
 rage_EventType * rage_EventTimeSeriesChanged = "time series changed";
 
-static rage_FrameSeriesChangedInfo * fsci_new(rage_Interpolator * state, rage_TimeSeries const * const ts) {
+static rage_FrameSeriesChangedInfo * fsci_new(
+        rage_Interpolator * state, rage_TimeSeries const * const ts,
+        int const n_views) {
     rage_FrameSeriesChangedInfo * fsci = malloc(sizeof(rage_FrameSeriesChangedInfo));
     fsci->change_sem = &state->change_sem;
     fsci->q = state->q;
     fsci->tuple_def = state->type;
     init_frameseries_points(&fsci->fs, state->type, ts, state->sample_rate);
-    fsci->fs.c = rage_countdown_new(state->views.len, frameseries_done_with, fsci);
+    fsci->fs.c = rage_countdown_new(n_views, frameseries_done_with, fsci);
     fsci->event = rage_event_new(
         rage_EventTimeSeriesChanged, (void *) &fsci->fs, NULL, frameseries_change_event_free, fsci);
     fsci->qi = rage_queue_item_new(fsci->event);
@@ -215,14 +217,8 @@ rage_InitialisedInterpolator rage_interpolator_new(
         return RAGE_FAILURE_CAST(rage_InitialisedInterpolator, err);
     }
     rage_Interpolator * state = malloc(sizeof(rage_Interpolator));
-    sem_init(&state->change_sem, 0, 1);
     state->type = type;
     state->sample_rate = sample_rate;
-    state->q = evt_queue;
-    rage_FrameSeriesChangedInfo * fsci = fsci_new(state, points);
-    state->event = fsci->event;
-    state->qi = fsci->qi;
-    atomic_init(&state->points, &fsci->fs);
     RAGE_ARRAY_INIT(&state->interpolators, type->len, i) {
         rage_AtomDef const * atom_def = type->items[i].type;
         switch (atom_def->type) {
@@ -240,6 +236,12 @@ rage_InitialisedInterpolator rage_interpolator_new(
                 state->interpolators.items[i] = const_interpolators;
         }
     }
+    sem_init(&state->change_sem, 0, 1);
+    state->q = evt_queue;
+    rage_FrameSeriesChangedInfo * fsci = fsci_new(state, points, n_views);
+    state->event = fsci->event;
+    state->qi = fsci->qi;
+    atomic_init(&state->points, &fsci->fs);
     RAGE_ARRAY_INIT(&state->views, n_views, i) {
         rage_interpolatedview_init(state, &state->views.items[i]);
     }
@@ -333,7 +335,7 @@ rage_NewEventId rage_interpolator_change_timeseries(
     if (RAGE_FAILED(val_err)) {
         return RAGE_FAILURE_CAST(rage_NewEventId, val_err);
     }
-    rage_FrameSeriesChangedInfo * fsci = fsci_new(state, ts);
+    rage_FrameSeriesChangedInfo * fsci = fsci_new(state, ts, state->views.len);
     sem_wait(&state->change_sem);
     rage_EventId const eid = rage_event_id(state->event);
     state->event = fsci->event;
