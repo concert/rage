@@ -5,7 +5,7 @@ typedef struct rage_hs_RefCountList rage_hs_RefCountList;
 
 struct rage_hs_RefCount {
     unsigned count;
-    void * ref;
+    rage_hs_internal_RefCounted * ref;
     rage_hs_Deallocator dealloc;
     rage_hs_RefCountList * reqs;
 };
@@ -15,7 +15,8 @@ struct rage_hs_RefCountList {
     rage_hs_RefCount * rc;
 };
 
-rage_hs_RefCount * rage_hs_count_ref(rage_hs_Deallocator dealloc, void * ref) {
+rage_hs_RefCount * rage_hs_count_ref(
+        rage_hs_Deallocator dealloc, rage_hs_internal_RefCounted * ref) {
     rage_hs_RefCount * new_ref = malloc(sizeof(rage_hs_RefCount));
     new_ref->count = 1;
     new_ref->ref = ref;
@@ -45,6 +46,6 @@ void rage_hs_decrement_ref(rage_hs_RefCount * ref) {
     }
 }
 
-void * rage_hs_ref(rage_hs_RefCount const * rc) {
+rage_hs_internal_RefCounted * rage_hs_ref(rage_hs_RefCount const * rc) {
     return rc->ref;
 }
