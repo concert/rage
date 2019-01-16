@@ -1,7 +1,7 @@
-#include "countdown.h"
 #include <stdatomic.h>
 #include <stdlib.h>
 
+#include "countdown.h"
 
 struct rage_Countdown {
     _Atomic int counter;
