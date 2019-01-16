@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #include "wrappers.h"
 #include "refcounter.h"
 #include "error.h"
@@ -77,6 +79,7 @@ rage_hs_NewGraph * rage_hs_graph_new(
 typedef struct {
     rage_Graph * g;
     rage_GraphNode * n;
+    bool explicitly_removed;
 } rage_hs_GraphNodeWrapper;
 
 static void rage_hs_internal_graph_remove_node(rage_hs_GraphNodeWrapper * w) {
@@ -100,6 +103,7 @@ rage_hs_NewGraphNode * rage_hs_graph_add_node(
         rage_hs_GraphNodeWrapper * w = malloc(sizeof(rage_hs_GraphNodeWrapper));
         w->g = RAGE_HS_REF(grc);
         w->n = gn;
+        w->explicitly_removed = false;
         RAGE_HS_COUNT(gnrc, rage_hs_GraphNodeRc, rage_hs_internal_graph_remove_node, w)
         RAGE_HS_DEPEND_REF(gnrc, cetrc);
         RAGE_HS_DEPEND_REF(gnrc, grc);
@@ -108,9 +112,20 @@ rage_hs_NewGraphNode * rage_hs_graph_add_node(
     return rv;
 }
 
-// FIXME: This is problematic, this removal sometimes needs to occur
-// explicitly, but the free has to be done at an arbitrary time by the GC:
-void rage_hs_graph_remove_node(rage_hs_GraphNode * hgn) {
-    rage_hs_GraphNodeRc r = {.external = hgn};
-    RAGE_HS_DECREMENT_REF(r);
+void rage_hs_graph_node_free(rage_hs_GraphNode * gn) {
+    rage_hs_GraphNodeRc r = {.external = gn};
+    rage_hs_GraphNodeWrapper * w = RAGE_HS_REF(r);
+    if (!w->explicitly_removed) {
+        RAGE_HS_DECREMENT_REF(r);
+    }
+    free(w);
+}
+
+void rage_hs_graph_remove_node(rage_hs_GraphNode * gn) {
+    rage_hs_GraphNodeRc r = {.external = gn};
+    rage_hs_GraphNodeWrapper * w = RAGE_HS_REF(r);
+    if (!w->explicitly_removed) {
+        w->explicitly_removed = true;
+        RAGE_HS_DECREMENT_REF(r);
+    }
 }
