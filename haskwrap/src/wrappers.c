@@ -104,6 +104,8 @@ rage_hs_NewGraphNode * rage_hs_graph_add_node(
     return rv;
 }
 
+// FIXME: This is problematic, this removal sometimes needs to occur
+// explicitly, but the free has to be done at an arbitrary time by the GC:
 void rage_hs_graph_remove_node(rage_hs_GraphNode * hgn) {
     rage_hs_GraphNodeRc r = {.external = hgn};
     RAGE_HS_DECREMENT_REF(r);
