@@ -5,16 +5,23 @@ static void sub1(int * i) {
     (*i)--;
 }
 
+typedef struct ActuallyInt ActuallyInt;
+typedef RAGE_HS_COUNTABLE(int, ActuallyInt) RcInt;
+
 static rage_Error test_refcounter() {
     int a = 1, b = 1;
-    rage_hs_RefCount * ra = rage_hs_count_ref((rage_hs_Deallocator) sub1, &a);
-    rage_hs_RefCount * rb = rage_hs_count_ref((rage_hs_Deallocator) sub1, &b);
-    rage_hs_depend_ref(rb, ra);
-    rage_hs_decrement_ref(ra);
+    RAGE_HS_COUNT(ra, RcInt, sub1, &a);
+    int * i = RAGE_HS_REF(ra);
+    if (*i != a) {
+        return RAGE_ERROR("Did not initialise correctly");
+    }
+    RAGE_HS_COUNT(rb, RcInt, sub1, &b);
+    RAGE_HS_DEPEND_REF(rb, ra);
+    RAGE_HS_DECREMENT_REF(ra);
     if (a != 1 || b != 1) {
         return RAGE_ERROR("deallocator invoked early");
     }
-    rage_hs_decrement_ref(rb);
+    RAGE_HS_DECREMENT_REF(rb);
     if (a || b) {
         return RAGE_ERROR("deallocator not invoked");
     }
