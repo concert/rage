@@ -6,7 +6,7 @@ typedef void * rage_EventId;
 
 rage_Event * rage_event_new(
     rage_EventType * event,
-    void * event_id,
+    rage_EventId event_id,
     char const * (*msg)(void *),
     void (*free)(void *),
     void * state);

@@ -82,7 +82,7 @@ static rage_Error validate_time_series(
     return RAGE_OK;
 }
 
-static void frameseries_free(
+static void frameseries_destroy(
         rage_TupleDef const * const tuple_def, rage_FrameSeries * points) {
     rage_countdown_free(points->c);
     for (uint32_t i = 0; i < points->len; i++) {
@@ -94,8 +94,8 @@ static void frameseries_free(
 }
 
 static void init_frameseries_points(
-        rage_FrameSeries * const fs, rage_TupleDef const * const tuple_def, rage_TimeSeries const * points,
-        uint32_t const sample_rate) {
+        rage_FrameSeries * const fs, rage_TupleDef const * const tuple_def,
+        rage_TimeSeries const * const points, uint32_t const sample_rate) {
     RAGE_ARRAY_INIT(fs, points->len, i) {
         rage_TimePoint const * p = &points->items[i];
         fs->items[i] = (rage_FramePoint) {
@@ -120,9 +120,9 @@ static void frameseries_done_with(void * vp) {
     rage_queue_put_block(fsi->q, fsi->qi);
 }
 
-static void frameseries_change_event_free(void * fscv) {
-    rage_FrameSeriesChangedInfo * e = fscv;
-    frameseries_free(e->tuple_def, &e->fs);
+static void frameseries_change_event_free(void * vp) {
+    rage_FrameSeriesChangedInfo * e = vp;
+    frameseries_destroy(e->tuple_def, &e->fs);
     free(e);
 }
 
