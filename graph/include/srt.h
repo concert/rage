@@ -3,14 +3,23 @@
 #include "countdown.h"
 #include "interpolation.h"
 #include "loader.h"
+#include "queue.h"
+#include "event.h"
+
+extern rage_EventType * rage_EventSrtClearFailed;
+extern rage_EventType * rage_EventSrtPrepFailed;
+extern rage_EventType * rage_EventSrtCleanFailed;
+extern rage_EventType * rage_EventSrtUnderrun;
 
 typedef struct rage_SupportConvoy rage_SupportConvoy;
 typedef struct rage_SupportTruck rage_SupportTruck;
 
 rage_SupportConvoy * rage_support_convoy_new(
-    uint32_t period_size, rage_Countdown * countdown,
-    rage_TransportState transp_state);
+    uint32_t period_size, rage_TransportState transp_state,
+    rage_Queue * evt_q);
 void rage_support_convoy_free(rage_SupportConvoy * convoy);
+
+rage_Countdown * rage_support_convoy_get_countdown(rage_SupportConvoy const * convoy);
 
 rage_Error rage_support_convoy_start(rage_SupportConvoy * convoy);
 rage_Error rage_support_convoy_stop(rage_SupportConvoy * convoy);

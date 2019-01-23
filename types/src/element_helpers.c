@@ -12,7 +12,7 @@ uint8_t view_count_for_type(rage_ElementType const * const type) {
 }
 
 InterpolatorsForResult interpolators_for(
-        uint32_t sample_rate,
+        uint32_t sample_rate, rage_Queue * evt_q,
         rage_InstanceSpecControls const * control_spec,
         rage_TimeSeries const * const control_values, uint8_t const n_views) {
     uint32_t const n_controls = control_spec->len;
@@ -26,7 +26,7 @@ InterpolatorsForResult interpolators_for(
     for (uint32_t i = 0; i < n_controls; i++) {
         rage_InitialisedInterpolator ii = rage_interpolator_new(
             &control_spec->items[i], &control_values[i], sample_rate,
-            n_views);
+            n_views, evt_q);
         if (RAGE_FAILED(ii)) {
             if (i) {
                 do {

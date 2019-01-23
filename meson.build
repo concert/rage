@@ -8,7 +8,6 @@ langext_inc = include_directories('langext/include')
 
 langext_sources = [
     'langext/src/countdown.c',
-    'langext/src/finaliser.c',
     'langext/src/set.c',
     'langext/src/rtcrit.c'
 ]
@@ -38,7 +37,9 @@ sources = [
     'types/src/chronology.c',
     'types/src/test_factories.c',
     'types/src/atoms.c',
-    'types/src/element_helpers.c'
+    'types/src/element_helpers.c',
+    'types/src/event.c',
+    'types/src/queue.c'
 ]
 
 rage_types = library(
@@ -73,7 +74,6 @@ install_headers(
     'types/include/chronology.h', 'types/include/transport_state.h',
     'types/include/time_series.h',
     'langext/include/macros.h', 'langext/include/error.h',
-    'langext/include/finaliser.h',
     subdir: 'rage')
 
 rage_graph = library(
@@ -82,7 +82,7 @@ rage_graph = library(
         'graph/src/loader.c', 'graph/src/jack_bindings.c', 'graph/src/srt.c',
         'graph/src/proc_block.c', 'graph/src/graph.c', 'graph/src/buffer_pile.c',
         'graph/src/binding_interface.c', 'graph/src/depmap.c',
-        'graph/src/categorisation.c', 'graph/src/queue.c'
+        'graph/src/categorisation.c'
     ],
     include_directories: [graph_inc, types_inc, langext_inc],
     dependencies: [dyn_load, jack, sem],
