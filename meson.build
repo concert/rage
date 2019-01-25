@@ -1,6 +1,6 @@
 project('rage', 'c')
 
-add_global_arguments('-std=gnu11', '-Werror', '-fms-extensions', '-Wno-microsoft-anon-tag', language: 'c')
+add_project_arguments('-std=gnu11', '-Werror', '-fms-extensions', '-Wno-microsoft-anon-tag', language: 'c')
 
 # Language Extensions
 
