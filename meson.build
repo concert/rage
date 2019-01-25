@@ -17,14 +17,14 @@ sem = dependency('threads')
 langext = static_library(
     'rage_langext', langext_sources, include_directories: langext_inc,
     dependencies: [sem])
+langext_dep = declare_dependency(link_with: langext, include_directories: langext_inc)
 
 test_errors = executable(
-    'test_errors', 'langext/test/test_errors.c', include_directories: [langext_inc],
-    link_with: langext)
+    'test_errors', 'langext/test/test_errors.c', dependencies: [langext_dep])
 test('errors', test_errors)
 test_langext = executable(
     'test_langext', 'langext/test/main.c',
-    include_directories: [langext_inc], link_with: langext, dependencies: [sem])
+    dependencies: [langext_dep])
 test('langext', test_langext)
 
 # Types
@@ -45,14 +45,14 @@ sources = [
 rage_types = library(
     'rage_types',
     sources,
-    include_directories: [types_inc, langext_inc],
-    link_with: langext,
-    dependencies: [sem],
+    include_directories: [types_inc],
+    dependencies: [sem, langext_dep],
     install: true)
+types_dep = declare_dependency(link_with: rage_types, include_directories: types_inc)
 
 test_types = executable(
     'test_types', 'types/test/test_main.c',
-    include_directories: [types_inc, langext_inc], link_with: [rage_types, langext])
+    dependencies: [types_dep, langext_dep])
 test('types', test_types)
 
 # Graph
@@ -84,34 +84,33 @@ rage_graph = library(
         'graph/src/binding_interface.c', 'graph/src/depmap.c',
         'graph/src/categorisation.c'
     ],
-    include_directories: [graph_inc, types_inc, langext_inc],
-    dependencies: [dyn_load, jack, sem],
-    link_with: [langext, rage_types],
+    include_directories: [graph_inc],
+    dependencies: [dyn_load, jack, sem, types_dep, langext_dep],
     install: true)
+graph_dep = declare_dependency(link_with: rage_graph, include_directories: graph_inc)
 
 graph_test_factories = library(
     'rage_graph_test_factories',
     ['graph/src/graph_test_factories.c'],
-    include_directories: [graph_inc, types_inc, langext_inc],
-    link_with: [langext, rage_types, rage_graph])
+    dependencies: [graph_dep, types_dep, langext_dep])
+graph_test_factories_dep = declare_dependency(
+    link_with: graph_test_factories, include_directories: graph_inc)
 
 test_graph = executable(
     'test_graph', 'graph/test/main.c',
-    include_directories: [graph_inc, types_inc, langext_inc],
-    dependencies: [sem],
-    link_with: [langext, rage_types, rage_graph, graph_test_factories])
+    dependencies: [
+        sem, graph_dep, types_dep, langext_dep, graph_test_factories_dep])
 test('graph', test_graph)
 
 # Elements
 
-element_incs = [langext_inc, types_inc]
+element_deps = [types_dep, langext_dep]
 element_install_dir = join_paths(get_option('datadir'), 'rage', 'elements')
 
 amp_sources = ['elements/amp/amp.c']
 amp = library(
-    'amp', amp_sources, include_directories: element_incs,
-    link_with: rage_types,
-    install_dir: element_install_dir,
+    'amp', amp_sources,
+    dependencies: element_deps,
     install: true)
 
 sndfile = dependency('sndfile')
@@ -120,17 +119,14 @@ persist_sources = ['elements/persistence/persistence.c']
 persist = library(
     'persist',
     persist_sources,
-    include_directories: element_incs,
-    link_with: rage_types,
-    dependencies: [jack, sndfile],
+    dependencies: [jack, sndfile, element_deps],
     install_dir: element_install_dir,
     install: true)
 
 test_persist = executable(
     'test_persist',
     ['elements/persistence/test_persistence.c'],
-    include_directories: [langext_inc, types_inc, graph_inc],
-    link_with: [langext, rage_types, rage_graph, graph_test_factories])
+    dependencies: [graph_dep, graph_test_factories_dep, element_deps])
 test('persist', test_persist)
 
 # Example
@@ -139,9 +135,7 @@ example_sources = ['example/main.c']
 example = executable(
     'example',
     example_sources,
-    include_directories: [langext_inc, types_inc, graph_inc],
-    link_with: [langext, rage_types, rage_graph],
-    dependencies: [jack])
+    dependencies: [graph_dep, langext_dep, types_dep])
 
 # Haskell wrapper (because you can't return structs to GHC)
 
@@ -150,12 +144,13 @@ hsw_inc = include_directories('haskwrap/include/')
 hsw = library(
     'rage_hswrap',
     hsw_sources,
-    include_directories: [graph_inc, types_inc, langext_inc, hsw_inc],
-    link_with: [rage_graph],
+    include_directories: hsw_inc,
+    dependencies: [graph_dep, types_dep, langext_dep],
     install: true)
+rage_hsw_dep = declare_dependency(link_with: hsw, include_directories: hsw_inc)
+
 test_hsw = executable(
     'test_haskwrap',
     ['haskwrap/test/test_refcounter.c'],
-    include_directories: [langext_inc, hsw_inc],
-    link_with: [langext, hsw])
+    dependencies: [rage_hsw_dep, types_dep, langext_dep])
 test('haskwrap', test_hsw)
