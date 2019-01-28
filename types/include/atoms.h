@@ -57,11 +57,13 @@ typedef struct {
     rage_AtomDef const * type;
 } rage_FieldDef;
 
+typedef RAGE_ARRAY(rage_FieldDef const) rage_FieldDefs;
+
 typedef struct {
     char const * name;
     char const * description;
     rage_Atom const * default_value;
-    RAGE_ARRAY(rage_FieldDef const);
+    RAGE_EMBED_STRUCT(rage_FieldDefs, defs);
 } rage_TupleDef;
 
 rage_Atom * rage_tuple_copy(rage_TupleDef const * const td, rage_Atom const * const tup);

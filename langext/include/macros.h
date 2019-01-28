@@ -15,6 +15,16 @@ typedef enum {
 /*
  * Hakell inspired parameterised either type.
  */
+#ifdef RAGE_DISABLE_ANON_UNIONS
+#define RAGE_EITHER(a, b) \
+    struct { \
+        rage_EitherHalf half; \
+        union { \
+            a left; \
+            b right; \
+        } side; \
+    }
+#else
 #define RAGE_EITHER(a, b) \
     struct { \
         rage_EitherHalf half; \
@@ -23,6 +33,7 @@ typedef enum {
             b right; \
         }; \
     }
+#endif
 
 /*
  * Haskell inspired parameterised option type.
