@@ -4,16 +4,22 @@ static void fake_process() {
 }
 
 static rage_Error test_jack_bindings() {
-    char item_name[] = "port";
-    char * iptr = item_name;
-    rage_BackendDescriptions test_ports_def = {
+    char in_name[] = "in";
+    char * iptr = in_name;
+    rage_BackendDescriptions in_ports_def = {
         .len = 1,
         .items = &iptr
+    };
+    char out_name[] = "out";
+    char * optr = out_name;
+    rage_BackendDescriptions out_ports_def = {
+        .len = 1,
+        .items = &optr
     };
     rage_BackendConfig bc = {
         .sample_rate = 44100,
         .buffer_size = 1024,
-        .ports = {.inputs = test_ports_def, .outputs = test_ports_def},
+        .ports = {.inputs = in_ports_def, .outputs = out_ports_def},
         .process = fake_process,
         .data = NULL
     };
