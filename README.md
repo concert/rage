@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/concert/rage.svg?branch=master)](
     https://travis-ci.org/concert/rage)
+[![coverage report](https://gitlab.com/concert/rage/badges/master/coverage.svg)](
+    https://concert.gitlab.io/rage)
 
 RAGE provides an audio processing graph implementation tailored towards
 distributed audio workstations.
