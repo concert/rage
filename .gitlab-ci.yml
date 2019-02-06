@@ -1,0 +1,30 @@
+image: concertdaw/alpine-meson:v0.1.1
+
+build:
+  stage: test
+  before_script:
+    - meson build -Db_coverage=true
+  script:
+    - ninja -C build
+    - jackd -r -p 8 -d dummy -r 44100 &
+    - until jack_lsp; do sleep 0.1; done
+    - RAGE_ELEMENTS_PATH='.' meson test -C build --wrap=valgrind
+    - kill %1
+    - ninja -C build coverage-html
+  artifacts:
+    paths:
+      - build/meson-logs
+    expire_in: 10 days
+
+pages:
+  stage: deploy
+  dependencies:
+    - build
+  script:
+    mv build/meson-logs/coveragereport/ public/
+  artifacts:
+    paths:
+      - public
+    expire_in: 10 days
+  only:
+    - master
