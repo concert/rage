@@ -19,6 +19,10 @@ rage_Error test_set() {
         rage_int_set_free(s0);
         s0 = rage_int_set_add(s1, 4);
         rage_int_set_free(s1);
+        s1 = rage_int_set_add(s0, 4);
+        rage_int_set_free(s0);
+        s0 = rage_int_set_remove(s1, 99);
+        rage_int_set_free(s1);
         s1 = rage_int_set_add(s0, 5);
         if (!rage_int_set_contains(s1, 3)) {
             err = RAGE_ERROR("Lost an old value during add");
@@ -31,14 +35,17 @@ rage_Error test_set() {
                 err = RAGE_ERROR("Lost 3 removing 4");
             } else if (!rage_int_set_contains(s0, 5)) {
                 err = RAGE_ERROR("Lost 5 removing 4");
+            } else {
+                rage_IntSet * s2 = rage_int_set_subtract(s1, s0);
+                if (rage_int_set_contains(s2, 3) || rage_int_set_contains(s2, 5)) {
+                    err = RAGE_ERROR("Subtract contains common value");
+                } else if (!rage_int_set_contains(s2, 4)) {
+                    err = RAGE_ERROR("Subtract missing differing value");
+                } else if (!rage_int_set_is_weak_subset(s2, s1)) {
+                    err = RAGE_ERROR("Result of subtraction not subset");
+                }
+                rage_int_set_free(s2);
             }
-            rage_IntSet * s2 = rage_int_set_subtract(s1, s0);
-            if (rage_int_set_contains(s2, 3) || rage_int_set_contains(s2, 5)) {
-                err = RAGE_ERROR("Subtract contains common value");
-            } else if (!rage_int_set_contains(s2, 4)) {
-                err = RAGE_ERROR("Subtract missing differing value");
-            }
-            rage_int_set_free(s2);
         }
     }
     rage_int_set_free(s0);
