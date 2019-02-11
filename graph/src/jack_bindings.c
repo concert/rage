@@ -68,6 +68,12 @@ rage_NewJackBackend rage_jack_backend_new(rage_BackendConfig const conf) {
             JACK_DEFAULT_AUDIO_TYPE,
             JackPortIsInput,
             0);
+        if (be->input_ports.items[i] == NULL) {
+            be->output_ports.items = NULL;
+            rage_jack_backend_free(be);
+            return RAGE_FAILURE(
+                rage_NewJackBackend, "Failed to create input port");
+        }
     }
     RAGE_ARRAY_INIT(&be->output_ports, conf.ports.outputs.len, i) {
         be->output_ports.items[i] = jack_port_register(
@@ -76,6 +82,11 @@ rage_NewJackBackend rage_jack_backend_new(rage_BackendConfig const conf) {
             JACK_DEFAULT_AUDIO_TYPE,
             JackPortIsOutput,
             0);
+        if (be->output_ports.items[i] == NULL) {
+            rage_jack_backend_free(be);
+            return RAGE_FAILURE(
+                rage_NewJackBackend, "Failed to create output port");
+        }
     }
     be->backend.state = be;
     be->backend.get_buffers = rage_jack_backend_get_buffers;

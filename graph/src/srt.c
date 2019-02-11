@@ -1,10 +1,13 @@
-#include "srt.h"
-#include "macros.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
 #include <semaphore.h>
+#include "srt.h"
+#include "macros.h"
+#include "queue.h"
+#include "event.h"
+#include "countdown.h"
 
 struct rage_SupportTruck {
     rage_SupportConvoy * convoy;  // Not totally convinced by the backref
@@ -25,6 +28,7 @@ struct rage_SupportConvoy {
     uint32_t period_size;
     rage_FrameNo invalid_after;
     rage_Countdown * countdown;
+    sem_t throttler_sem;
     // mutex to prevent truck array freeing during iteration:
     pthread_mutex_t active;
     rage_Trucks * prep_trucks;
@@ -33,6 +37,7 @@ struct rage_SupportConvoy {
     bool triggered_tick;
     sem_t triggered_tick_sem;
     rage_TransportState transport_state;
+    rage_Queue * q;
 };
 
 static rage_Trucks * rage_new_trucks() {
@@ -43,14 +48,16 @@ static rage_Trucks * rage_new_trucks() {
 }
 
 rage_SupportConvoy * rage_support_convoy_new(
-        uint32_t period_size, rage_Countdown * countdown,
-        rage_TransportState transp_state) {
+        uint32_t period_size, rage_TransportState transp_state,
+        rage_Queue * evt_q) {
     rage_SupportConvoy * convoy = malloc(sizeof(rage_SupportConvoy));
     convoy->running = false;
     convoy->period_size = period_size;
     convoy->transport_state = transp_state;
     convoy->invalid_after = UINT64_MAX;
-    convoy->countdown = countdown;
+    sem_init(&convoy->throttler_sem, 0, 0);
+    convoy->countdown = rage_countdown_new(
+        0, (rage_CountdownAction) sem_post, &convoy->throttler_sem);
     // FIXME: can in theory fail
     pthread_mutex_init(&convoy->active, NULL);
     convoy->prep_trucks = rage_new_trucks();
@@ -58,17 +65,24 @@ rage_SupportConvoy * rage_support_convoy_new(
     convoy->counts_skipped = 0;
     convoy->triggered_tick = false;
     sem_init(&convoy->triggered_tick_sem, 0, 0);
+    convoy->q = evt_q;
     return convoy;
 }
 
 void rage_support_convoy_free(rage_SupportConvoy * convoy) {
     pthread_mutex_destroy(&convoy->active);
+    rage_countdown_free(convoy->countdown);
+    sem_destroy(&convoy->throttler_sem);
     assert(convoy->prep_trucks->len == 0);
     assert(convoy->clean_trucks->len == 0);
     assert(!convoy->running);
     RAGE_ARRAY_FREE(convoy->prep_trucks);
     RAGE_ARRAY_FREE(convoy->clean_trucks);
     free(convoy);
+}
+
+rage_Countdown * rage_support_convoy_get_countdown(rage_SupportConvoy const * convoy) {
+    return convoy->countdown;
 }
 
 static rage_Error prep_truck(rage_SupportTruck * truck) {
@@ -150,38 +164,46 @@ static void account_for_rt_frames(rage_SupportConvoy * convoy, uint32_t const fr
     }
 }
 
+static char const * evt_str_msg(void * s) {
+    return s;
+}
+
+rage_EventType * rage_EventSrtClearFailed = "clear failed";
+rage_EventType * rage_EventSrtPrepFailed = "prep failed";
+rage_EventType * rage_EventSrtCleanFailed = "clean failed";
+rage_EventType * rage_EventSrtUnderrun = "SRT underrun";
+
 static void * rage_support_convoy_worker(void * ptr) {
     rage_SupportConvoy * convoy = ptr;
-    char const * err = NULL;
     rage_Error op_result;
     uint32_t min_frames_wait;
     int64_t counts_waited;
     uint32_t counts_to_wait = 0;
     pthread_mutex_lock(&convoy->active);
-    #define RAGE_BAIL_ON_FAIL \
+    #define RAGE_BAIL_ON_FAIL(evt_type) \
         if (RAGE_FAILED(op_result)) { \
-            err = RAGE_FAILURE_VALUE(op_result); \
+            rage_Event * evt = rage_event_new( \
+                rage_EventSrt##evt_type, NULL, evt_str_msg, NULL, (void *) RAGE_FAILURE_VALUE(op_result)); \
+            rage_queue_put_block(convoy->q, rage_queue_item_new(evt)); \
             break; \
         }
     while (convoy->running) {
         if (convoy->invalid_after != UINT64_MAX) {
              op_result = clear(convoy->prep_trucks, convoy->invalid_after);
-             RAGE_BAIL_ON_FAIL
+             RAGE_BAIL_ON_FAIL(ClearFailed)
              convoy->invalid_after = UINT64_MAX;
         }
         op_result = apply_to_trucks(convoy->prep_trucks, prep_truck);
-        RAGE_BAIL_ON_FAIL
+        RAGE_BAIL_ON_FAIL(PrepFailed)
         counts_waited = counts_to_wait - convoy->counts_skipped;
-        if (counts_waited < 0) {
-            err = "SupportConvoy waited for negative counts?!?";
-            break;
-        }
+        assert(counts_waited >= 0);
         convoy->counts_skipped = 0;
         account_for_rt_frames(convoy, counts_waited * convoy->period_size);
         min_frames_wait = n_frames_grace(convoy);
         counts_to_wait = min_frames_wait / convoy->period_size;
         if (0 > rage_countdown_add(convoy->countdown, counts_to_wait)) {
-            err = "SupportConvoy failed to keep up";
+            rage_Event * evt = rage_event_new(rage_EventSrtUnderrun, NULL, NULL, NULL, NULL);
+            rage_queue_put_block(convoy->q, rage_queue_item_new(evt));
             break;
         }
         if (convoy->triggered_tick) {
@@ -189,20 +211,20 @@ static void * rage_support_convoy_worker(void * ptr) {
             convoy->triggered_tick = false;
         }
         pthread_mutex_unlock(&convoy->active);
-        rage_countdown_timed_wait(convoy->countdown, UINT32_MAX);
+        sem_wait(&convoy->throttler_sem);
         pthread_mutex_lock(&convoy->active);
         op_result = apply_to_trucks(convoy->clean_trucks, clean_truck);
-        RAGE_BAIL_ON_FAIL
+        RAGE_BAIL_ON_FAIL(CleanFailed)
     }
     #undef RAGE_BAIL_ON_FAIL
     pthread_mutex_unlock(&convoy->active);
-    return (void *) err;
+    return NULL;
 }
 
 static void unlock_and_await_tick(rage_SupportConvoy * convoy) {
     bool trigger = convoy->running;
     if (trigger) {
-        convoy->counts_skipped = rage_countdown_unblock_wait(convoy->countdown);
+        convoy->counts_skipped = rage_countdown_force_action(convoy->countdown);
         convoy->triggered_tick = true;
     }
     pthread_mutex_unlock(&convoy->active);
@@ -230,14 +252,10 @@ rage_Error rage_support_convoy_stop(rage_SupportConvoy * convoy) {
     assert(convoy->running);
     pthread_mutex_lock(&convoy->active);
     convoy->running = false;
-    rage_countdown_unblock_wait(convoy->countdown);
+    rage_countdown_force_action(convoy->countdown);
     pthread_mutex_unlock(&convoy->active);
-    char const * err;
-    if (pthread_join(convoy->worker_thread, (void **) &err)) {
+    if (pthread_join(convoy->worker_thread, NULL)) {
         return RAGE_ERROR("Failed to join worker thread");
-    }
-    if (err != NULL) {
-        return RAGE_ERROR(err);
     }
     return RAGE_OK;
 }

@@ -39,7 +39,7 @@ static rage_Interpolators new_interpolators(rage_Ports * ports, rage_InstanceSpe
     RAGE_ARRAY_INIT(&interpolators, spec.controls.len, i) {
         rage_TimeSeries ts = rage_time_series_new(&spec.controls.items[i]);
         rage_InitialisedInterpolator ii = rage_interpolator_new(
-            &spec.controls.items[i], &ts, 44100, 1);
+            &spec.controls.items[i], &ts, 44100, 1, NULL);
         rage_time_series_free(ts);
         if (RAGE_FAILED(ii)) {
             interpolators.len = i;
