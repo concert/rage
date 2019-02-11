@@ -111,6 +111,7 @@ amp_sources = ['elements/amp/amp.c']
 amp = library(
     'amp', amp_sources,
     dependencies: element_deps,
+    install_dir: element_install_dir,
     install: true)
 
 matrix_sources = ['elements/matrix/matrix.c']
