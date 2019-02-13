@@ -598,7 +598,7 @@ rage_ConTrans * rage_proc_block_con_trans_start(rage_ProcBlock * pb) {
 
 void rage_proc_block_con_trans_commit(rage_ConTrans * trans) {
     if (trans->empty_trans) {
-        free(trans);
+        rage_proc_block_con_trans_abort(trans);
         return;
     }
     rage_AssignedConnection * assigned_cons = NULL;
@@ -657,6 +657,7 @@ void rage_proc_block_con_trans_abort(rage_ConTrans * ct) {
         free(ct->steps.items);
         rage_depmap_free(ct->cons);
     }
+    rage_rt_crit_update_abort(ct->pb->syncy);
     free(ct);
 }
 
