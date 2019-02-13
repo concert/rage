@@ -66,7 +66,6 @@ graph_inc = include_directories('graph/include')
 
 # TODO: work out how to thin this down?
 install_headers(
-    'haskwrap/include/wrappers.h',
     'graph/include/graph.h', 'graph/include/loader.h',
     'graph/include/binding_interface.h', 'graph/include/con_trans.h',
     'types/include/atoms.h', 'types/include/element.h',
@@ -144,21 +143,3 @@ example = executable(
     'example',
     example_sources,
     dependencies: [graph_dep, langext_dep, types_dep])
-
-# Haskell wrapper (because you can't return structs to GHC)
-
-hsw_sources = ['haskwrap/src/wrappers.c', 'haskwrap/src/refcounter.c']
-hsw_inc = include_directories('haskwrap/include/')
-hsw = library(
-    'rage_hswrap',
-    hsw_sources,
-    include_directories: hsw_inc,
-    dependencies: [graph_dep, types_dep, langext_dep],
-    install: true)
-rage_hsw_dep = declare_dependency(link_with: hsw, include_directories: hsw_inc)
-
-test_hsw = executable(
-    'test_haskwrap',
-    ['haskwrap/test/test_refcounter.c'],
-    dependencies: [rage_hsw_dep, types_dep, langext_dep])
-test('haskwrap', test_hsw)
