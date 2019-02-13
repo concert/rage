@@ -1,6 +1,6 @@
 #include "depmap.h"
 
-rage_Error test_depmap() {
+static rage_Error test_depmap() {
     rage_Error rv = RAGE_OK;
     rage_Harness *a=(void*)0xA, *b=(void*)0xB;
     rage_ConnTerminal
