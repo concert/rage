@@ -247,7 +247,7 @@ void rage_proc_block_unmount(rage_Harness * harness) {
 rage_NewEventId rage_harness_set_time_series(
         rage_Harness * const harness,
         uint32_t const series_idx,
-        rage_TimeSeries const * const new_controls) {
+        rage_TimeSeries const new_controls) {
     rage_RtBits const * rtd = rage_rt_crit_freeze(harness->pb->syncy);
     rage_FrameNo offset;
     if (rtd->transp == RAGE_TRANSPORT_ROLLING) {

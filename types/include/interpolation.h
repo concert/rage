@@ -39,7 +39,7 @@ void rage_interpolator_free(
 void rage_interpolated_view_seek(
     rage_InterpolatedView * view, rage_FrameNo frame_no);
 rage_NewEventId rage_interpolator_change_timeseries(
-    rage_Interpolator * const state, rage_TimeSeries const * const ts,
+    rage_Interpolator * const state, rage_TimeSeries const ts,
     rage_FrameNo change_at);
 rage_InterpolatedView * rage_interpolator_get_view(rage_Interpolator * state, uint8_t idx);
 

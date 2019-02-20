@@ -309,7 +309,7 @@ static rage_NewEventId change_float_ts_to(
         .len = 1,
         .items = tps
     };
-    return rage_interpolator_change_timeseries(interpolator, &ts, frame);
+    return rage_interpolator_change_timeseries(interpolator, ts, frame);
 }
 
 static rage_Error immediate_change_checks(
@@ -412,7 +412,7 @@ static rage_Error change_during_interpolation_checks(
     };
     rage_Error rv = RAGE_OK;
     rage_InterpolatedView * v = rage_interpolator_get_view(interpolator, 0);
-    rage_NewEventId const coe = rage_interpolator_change_timeseries(interpolator, &ts, 5);
+    rage_NewEventId const coe = rage_interpolator_change_timeseries(interpolator, ts, 5);
     if (RAGE_FAILED(coe)) {
         rv = RAGE_FAILURE_CAST(rage_Error, coe);
     } else {

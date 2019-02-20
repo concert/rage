@@ -334,13 +334,13 @@ void rage_interpolated_view_advance(
 }
 
 rage_NewEventId rage_interpolator_change_timeseries(
-        rage_Interpolator * const state, rage_TimeSeries const * const ts,
+        rage_Interpolator * const state, rage_TimeSeries const ts,
         rage_FrameNo change_at) {
-    rage_Error const val_err = validate_time_series(ts, rage_interpolation_limit(state->type));
+    rage_Error const val_err = validate_time_series(&ts, rage_interpolation_limit(state->type));
     if (RAGE_FAILED(val_err)) {
         return RAGE_FAILURE_CAST(rage_NewEventId, val_err);
     }
-    rage_FrameSeriesChangedInfo * fsci = fsci_new(state, ts, state->views.len);
+    rage_FrameSeriesChangedInfo * fsci = fsci_new(state, &ts, state->views.len);
     sem_wait(&state->change_sem);
     rage_EventId const eid = rage_event_id(state->event);
     state->event = fsci->event;
