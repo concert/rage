@@ -26,7 +26,7 @@ void rage_proc_block_unmount(rage_Harness * harness);
 rage_NewEventId rage_harness_set_time_series(
     rage_Harness * const harness,
     uint32_t const series_idx,
-    rage_TimeSeries const * const new_controls);
+    rage_TimeSeries const new_controls);
 
 void rage_proc_block_set_transport_state(rage_ProcBlock * pb, rage_TransportState state);
 rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo target);

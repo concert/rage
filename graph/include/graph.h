@@ -28,7 +28,7 @@ rage_NewGraphNode rage_graph_add_node(
         rage_TimeSeries const * ts);
 rage_NewEventId rage_graph_update_node(
         rage_GraphNode * n, uint32_t const series_idx,
-        rage_TimeSeries const * const ts);
+        rage_TimeSeries const ts);
 void rage_graph_remove_node(rage_Graph * g, rage_GraphNode * n);
 
 rage_ConTrans * rage_graph_con_trans_start(rage_Graph * g);

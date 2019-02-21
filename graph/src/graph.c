@@ -124,7 +124,7 @@ rage_NewGraphNode rage_graph_add_node(
 
 rage_NewEventId rage_graph_update_node(
         rage_GraphNode * n, uint32_t const series_idx,
-        rage_TimeSeries const * const ts) {
+        rage_TimeSeries const ts) {
     return rage_harness_set_time_series(n->harness, series_idx, ts);
 }
 
