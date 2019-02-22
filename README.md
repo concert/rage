@@ -59,7 +59,7 @@ The preparation routine reports how many frames may be consumed before it needs
 to be called again (allowing for efficient, batched, interleaved scheduling).
 
 The buffer presented to both threads may be arbitrarily long in session time.
-For instance, a [file playing element](https://github.com/foolswood/rage/blob/master/elements/persistence/persistence.c)
+For instance, a [file playing element](https://gitlab.com/concert/rage/blob/master/elements/persistence/persistence.c)
 may know it doesn't need to play anything for ten minutes, but can buffer up the
 first second of audio it will need ten minutes from now and specify that it does
 not need to be run until that second of data is in use.
