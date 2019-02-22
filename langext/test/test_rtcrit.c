@@ -10,7 +10,7 @@ typedef struct {
     void * volatile process_data;
 } rage_NonBlockTestData;
 
-void * faux_rt_process(void * data) {
+static void * faux_rt_process(void * data) {
     rage_NonBlockTestData * td = data;
     bool first_iter = true;
     bool fire_on_change = true;
@@ -24,6 +24,15 @@ void * faux_rt_process(void * data) {
             fire_on_change = false;
         }
     }
+    return NULL;
+}
+
+static void * aborted_update(void * data) {
+    rage_NonBlockTestData * td = data;
+    if (rage_rt_crit_update_start(td->crit) != NULL) {
+        return "Background crit found non-null value";
+    }
+    rage_rt_crit_update_abort(td->crit);
     return NULL;
 }
 
@@ -45,12 +54,21 @@ rage_Error test_rtcrit() {
             err = RAGE_ERROR("Initial data not received by proc thread");
         } else {
             rage_rt_crit_update_start(td.crit);
+            pthread_t update_thread;
+            int bg_update_tcr = pthread_create(
+                &update_thread, NULL, aborted_update, &td);
             int * p = rage_rt_crit_update_finish(td.crit, NULL);
             sem_wait(&td.main_sem);
             if (p != &i) {
                 err = RAGE_ERROR("Unexpected old ptr val");
             } else if (td.process_data != NULL) {
                 err = RAGE_ERROR("Update failed");
+            } else if (!bg_update_tcr) {
+                char * errStr;
+                pthread_join(update_thread, (void**) &errStr);
+                if (errStr) {
+                    err = RAGE_ERROR(errStr);
+                }
             }
         }
         td.processing = false;
