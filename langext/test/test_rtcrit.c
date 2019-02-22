@@ -45,6 +45,8 @@ rage_Error test_rtcrit() {
             err = RAGE_ERROR("Initial data not received by proc thread");
         } else {
             rage_rt_crit_update_start(td.crit);
+            rage_rt_crit_update_abort(td.crit);
+            rage_rt_crit_update_start(td.crit);
             int * p = rage_rt_crit_update_finish(td.crit, NULL);
             sem_wait(&td.main_sem);
             if (p != &i) {
