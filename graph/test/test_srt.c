@@ -60,7 +60,7 @@ static rage_Error fake_elem_clear(
     return RAGE_OK;
 }
 
-static rage_ElementType fake_element_type = {
+static rage_ElementKind fake_element_type = {
     .prep = fake_elem_prep,
     .clean = fake_elem_clean,
     .clear = fake_elem_clear
@@ -68,7 +68,7 @@ static rage_ElementType fake_element_type = {
 
 static rage_TupleDef const empty_tupledef = {};
 
-static rage_ConcreteElementType fake_concrete_type = {
+static rage_ElementType fake_concrete_type = {
     .type = &fake_element_type,
     .spec = (rage_InstanceSpec) {.controls = {.len = 1, .items = &empty_tupledef}}
 };

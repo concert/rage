@@ -9,15 +9,15 @@ typedef struct {
     rage_ElementLoader * el;
     rage_LoadedElementKind * persist;
     rage_LoadedElementKind * amp;
-    rage_ConcreteElementType * st_persist;
-    rage_ConcreteElementType * st_amp;
+    rage_ElementType * st_persist;
+    rage_ElementType * st_amp;
 } example_Bits;
 
 static void free_bits(example_Bits * bits) {
     if (bits->st_persist)
-        rage_concrete_element_type_free(bits->st_persist);
+        rage_element_type_free(bits->st_persist);
     if (bits->st_amp)
-        rage_concrete_element_type_free(bits->st_amp);
+        rage_element_type_free(bits->st_amp);
     if (bits->persist)
         rage_element_loader_unload(bits->persist);
     if (bits->amp)
@@ -60,7 +60,7 @@ int main() {
     RAGE_ABORT_ON_FAILURE(new_graph, 1);
     bits.graph = RAGE_SUCCESS_VALUE(new_graph);
     bits.el = rage_element_loader_new(getenv("RAGE_ELEMENTS_PATH"));
-    //rage_ElementTypes element_type_names = rage_element_loader_list(el);
+    //rage_ElementKinds element_type_names = rage_element_loader_list(el);
     // FIXME: loading story is poor
     rage_LoadedElementKindLoadResult persist_ = rage_element_loader_load(
         "./build/libpersist.so");
@@ -75,11 +75,11 @@ int main() {
         {.i=2}
     };
     rage_Atom * stereop = stereo;
-    rage_NewConcreteElementType st_persist_ = rage_element_type_specialise(
+    rage_NewElementType st_persist_ = rage_element_kind_specialise(
         bits.persist, &stereop);
     RAGE_ABORT_ON_FAILURE(st_persist_, 3);
     bits.st_persist = RAGE_SUCCESS_VALUE(st_persist_);
-    rage_NewConcreteElementType st_amp_ = rage_element_type_specialise(
+    rage_NewElementType st_amp_ = rage_element_kind_specialise(
         bits.amp, &stereop);
     RAGE_ABORT_ON_FAILURE(st_amp_, 3);
     bits.st_amp = RAGE_SUCCESS_VALUE(st_amp_);

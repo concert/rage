@@ -73,7 +73,7 @@ static int is_plugin(const struct dirent * entry) {
 
 rage_Error test_loader() {
     rage_ElementLoader * el = rage_fussy_element_loader_new(getenv("RAGE_ELEMENTS_PATH"), is_plugin);
-    rage_ElementTypes * element_type_names = rage_element_loader_list(el);
+    rage_ElementKinds * element_type_names = rage_element_loader_list(el);
     rage_Error err = RAGE_OK;
     for (unsigned i=0; i<element_type_names->len; i++) {
         rage_LoadedElementKindLoadResult ek_ = rage_element_loader_load(
@@ -81,9 +81,9 @@ rage_Error test_loader() {
         if (!RAGE_FAILED(ek_)) {
             rage_LoadedElementKind * ek = RAGE_SUCCESS_VALUE(ek_);
             rage_Atom ** tups = generate_tuples(rage_element_kind_parameters(ek));
-            rage_NewConcreteElementType cet_ = rage_element_type_specialise(ek, tups);
+            rage_NewElementType cet_ = rage_element_kind_specialise(ek, tups);
             if (!RAGE_FAILED(cet_)) {
-                rage_ConcreteElementType * cet = RAGE_SUCCESS_VALUE(cet_);
+                rage_ElementType * cet = RAGE_SUCCESS_VALUE(cet_);
                 if (cet->params == tups) {
                     err = RAGE_ERROR("Parameters not copied");
                 }
@@ -108,7 +108,7 @@ rage_Error test_loader() {
                 } else {
                     err = RAGE_AS_ERROR(elem_);
                 }
-                rage_concrete_element_type_free(cet);
+                rage_element_type_free(cet);
             } else {
                 err = RAGE_AS_ERROR(cet_);
             }
@@ -120,7 +120,7 @@ rage_Error test_loader() {
             break;
         }
     }
-    rage_element_types_free(element_type_names);
+    rage_element_kinds_free(element_type_names);
     rage_element_loader_free(el);
     return err;
 }

@@ -115,7 +115,7 @@ void elem_process(
     } while (remaining);
 }
 
-rage_ElementType const elem_info = {
+rage_ElementKind const elem_info = {
     .parameters = &init_params,
     .state_new = elem_new,
     .state_free = elem_free,

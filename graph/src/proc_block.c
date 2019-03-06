@@ -143,7 +143,7 @@ rage_Error rage_proc_block_stop(rage_ProcBlock * pb) {
 }
 
 static rage_ProcBlockViews rage_proc_block_initialise_views(
-        rage_ConcreteElementType * cet, rage_Harness * harness) {
+        rage_ElementType * cet, rage_Harness * harness) {
     rage_ProcBlockViews views;
     views.rt = calloc(
         cet->controls.len, sizeof(rage_InterpolatedView *));

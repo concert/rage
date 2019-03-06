@@ -1,4 +1,4 @@
 #pragma once
 #include "element.h"
 
-rage_ElementType const elem_info;
+rage_ElementKind const elem_info;

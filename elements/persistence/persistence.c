@@ -438,7 +438,7 @@ rage_Error elem_clear(rage_ElementState * data, rage_InterpolatedView ** control
     return RAGE_OK;
 }
 
-rage_ElementType const elem_info = {
+rage_ElementKind const elem_info = {
     .parameters = &init_params,
     .state_new = elem_new,
     .state_free = elem_free,

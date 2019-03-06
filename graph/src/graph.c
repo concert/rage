@@ -105,7 +105,7 @@ struct rage_GraphNode {
 };
 
 rage_NewGraphNode rage_graph_add_node(
-        rage_Graph * g, rage_ConcreteElementType * cet,
+        rage_Graph * g, rage_ElementType * cet,
         rage_TimeSeries const * ts) {
     rage_ElementNewResult new_elem = rage_element_new(cet, g->sample_rate);
     if (RAGE_FAILED(new_elem)) {

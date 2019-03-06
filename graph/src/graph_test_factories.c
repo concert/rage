@@ -20,7 +20,7 @@ void free_test_elem(rage_TestElem te) {
     if (te.elem != NULL)
         rage_element_free(te.elem);
     if (te.cet != NULL)
-        rage_concrete_element_type_free(te.cet);
+        rage_element_type_free(te.cet);
     if (te.kind != NULL)
         rage_element_loader_unload(te.kind);
     if (te.loader != NULL)
@@ -37,7 +37,7 @@ rage_NewTestElem new_test_elem(char const * elem_so) {
     }
     rv.kind = RAGE_SUCCESS_VALUE(ek_);
     rage_Atom ** tups = generate_tuples(rage_element_kind_parameters(rv.kind));
-    rage_NewConcreteElementType ncet = rage_element_type_specialise(
+    rage_NewElementType ncet = rage_element_kind_specialise(
         rv.kind, tups);
     free_tuples(rage_element_kind_parameters(rv.kind), tups);
     if (RAGE_FAILED(ncet)) {

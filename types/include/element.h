@@ -40,4 +40,4 @@ typedef struct {
     rage_ElementPrepare const prep;
     rage_ElementClear const clear;  // Required if prep provided
     rage_ElementClean const clean;
-} rage_ElementType;
+} rage_ElementKind;
