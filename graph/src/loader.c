@@ -9,7 +9,7 @@ struct rage_ElementLoader {
     rage_PluginFilter pf;
 };
 
-struct rage_ElementKind {
+struct rage_LoadedElementKind {
     void * dlhandle;
     rage_ElementType * type;
 };
@@ -82,14 +82,14 @@ void rage_element_types_free(rage_ElementTypes * t) {
     RAGE_ARRAY_FREE(t)
 }
 
-rage_ElementKindLoadResult rage_element_loader_load(char const * type_name) {
+rage_LoadedElementKindLoadResult rage_element_loader_load(char const * type_name) {
     void * handle = dlopen(type_name, RTLD_LAZY);
     if (handle == NULL)
-        return RAGE_FAILURE(rage_ElementKindLoadResult, dlerror());
+        return RAGE_FAILURE(rage_LoadedElementKindLoadResult, dlerror());
     rage_ElementType * type = dlsym(handle, "elem_info");
     #define RAGE_ETL_BAIL(msg) \
         dlclose(handle); \
-        return RAGE_FAILURE(rage_ElementKindLoadResult, msg);
+        return RAGE_FAILURE(rage_LoadedElementKindLoadResult, msg);
     if (type == NULL) {
         RAGE_ETL_BAIL("Missing entry point symbol: elem_info")
     }
@@ -108,18 +108,18 @@ rage_ElementKindLoadResult rage_element_loader_load(char const * type_name) {
         RAGE_ETL_BAIL("Prep provide but no clear")
     }
     #undef RAGE_ETL_BAIL
-    rage_ElementKind * kind = malloc(sizeof(rage_ElementKind));
+    rage_LoadedElementKind * kind = malloc(sizeof(rage_LoadedElementKind));
     kind->dlhandle = handle;
     kind->type = type;
-    return RAGE_SUCCESS(rage_ElementKindLoadResult, kind);
+    return RAGE_SUCCESS(rage_LoadedElementKindLoadResult, kind);
 }
 
-void rage_element_loader_unload(rage_ElementKind * ek) {
+void rage_element_loader_unload(rage_LoadedElementKind * ek) {
     dlclose(ek->dlhandle);
     free(ek);
 }
 
-rage_ParamDefList const * rage_element_kind_parameters(rage_ElementKind const * kind) {
+rage_ParamDefList const * rage_element_kind_parameters(rage_LoadedElementKind const * kind) {
     return kind->type->parameters;
 }
 
@@ -141,7 +141,7 @@ static void rage_params_free(rage_ParamDefList const * pds, rage_Atom ** params)
 }
 
 rage_NewConcreteElementType rage_element_type_specialise(
-        rage_ElementKind * kind, rage_Atom ** params) {
+        rage_LoadedElementKind * kind, rage_Atom ** params) {
     rage_NewInstanceSpec new_ports = kind->type->ports_get(params);
     if (RAGE_FAILED(new_ports))
         return RAGE_FAILURE_CAST(rage_NewConcreteElementType, new_ports);

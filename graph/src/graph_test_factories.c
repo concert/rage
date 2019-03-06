@@ -30,7 +30,7 @@ void free_test_elem(rage_TestElem te) {
 rage_NewTestElem new_test_elem(char const * elem_so) {
     rage_ElementLoader * el = rage_element_loader_new(getenv("RAGE_ELEMENTS_PATH"));
     rage_TestElem rv = {.loader=el, .elem_frame_size=256};
-    rage_ElementKindLoadResult ek_ = rage_element_loader_load(elem_so);
+    rage_LoadedElementKindLoadResult ek_ = rage_element_loader_load(elem_so);
     if (RAGE_FAILED(ek_)) {
         free_test_elem(rv);
         return RAGE_FAILURE_CAST(rage_NewTestElem, ek_);

@@ -76,10 +76,10 @@ rage_Error test_loader() {
     rage_ElementTypes * element_type_names = rage_element_loader_list(el);
     rage_Error err = RAGE_OK;
     for (unsigned i=0; i<element_type_names->len; i++) {
-        rage_ElementKindLoadResult ek_ = rage_element_loader_load(
+        rage_LoadedElementKindLoadResult ek_ = rage_element_loader_load(
             element_type_names->items[i]);
         if (!RAGE_FAILED(ek_)) {
-            rage_ElementKind * ek = RAGE_SUCCESS_VALUE(ek_);
+            rage_LoadedElementKind * ek = RAGE_SUCCESS_VALUE(ek_);
             rage_Atom ** tups = generate_tuples(rage_element_kind_parameters(ek));
             rage_NewConcreteElementType cet_ = rage_element_type_specialise(ek, tups);
             if (!RAGE_FAILED(cet_)) {

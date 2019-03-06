@@ -7,8 +7,8 @@
 typedef struct {
     rage_Graph * graph;
     rage_ElementLoader * el;
-    rage_ElementKind * persist;
-    rage_ElementKind * amp;
+    rage_LoadedElementKind * persist;
+    rage_LoadedElementKind * amp;
     rage_ConcreteElementType * st_persist;
     rage_ConcreteElementType * st_amp;
 } example_Bits;
@@ -62,11 +62,11 @@ int main() {
     bits.el = rage_element_loader_new(getenv("RAGE_ELEMENTS_PATH"));
     //rage_ElementTypes element_type_names = rage_element_loader_list(el);
     // FIXME: loading story is poor
-    rage_ElementKindLoadResult persist_ = rage_element_loader_load(
+    rage_LoadedElementKindLoadResult persist_ = rage_element_loader_load(
         "./build/libpersist.so");
     RAGE_ABORT_ON_FAILURE(persist_, 2);
     bits.persist = RAGE_SUCCESS_VALUE(persist_);
-    rage_ElementKindLoadResult amp_ = rage_element_loader_load(
+    rage_LoadedElementKindLoadResult amp_ = rage_element_loader_load(
         "./build/libamp.so");
     RAGE_ABORT_ON_FAILURE(amp_, 2);
     bits.amp = RAGE_SUCCESS_VALUE(amp_);
