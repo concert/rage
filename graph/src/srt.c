@@ -127,7 +127,7 @@ static rage_Error clear(rage_Trucks * trucks, rage_FrameNo invalid_after) {
         if (invalid_after < oldest_prep) {
             return RAGE_ERROR("Cannot clear that far back");
         }
-        for (uint32_t j = 0; j < truck->elem->cet->controls.len; j++) {
+        for (uint32_t j = 0; j < truck->elem->type->controls.len; j++) {
             rage_interpolated_view_seek(truck->prep_view[j], invalid_after);
         }
         rage_Error err = RAGE_ELEM_CLEAR(truck->elem, truck->prep_view, newest_prep - invalid_after);
@@ -147,7 +147,7 @@ static uint32_t n_frames_grace(rage_SupportConvoy * convoy) {
     }
     for (unsigned i = 0; i < convoy->clean_trucks->len; i++) {
         rage_SupportTruck const * const truck = convoy->clean_trucks->items[i];
-        int64_t frames_until_clean = truck->elem->cet->spec.max_uncleaned_frames - truck->frames_to_clean;
+        int64_t frames_until_clean = truck->elem->type->spec.max_uncleaned_frames - truck->frames_to_clean;
         min_frames_until_clean = RAGE_MIN(min_frames_until_clean, frames_until_clean);
     }
     return RAGE_MIN(min_prepared, min_frames_until_clean);
@@ -347,18 +347,18 @@ rage_Error rage_support_convoy_transport_seek(rage_SupportConvoy * convoy, rage_
     for (unsigned i = 0; i < convoy->prep_trucks->len; i++) {
         rage_SupportTruck * truck = convoy->prep_trucks->items[i];
         clear_from = rage_interpolated_view_get_pos(truck->prep_view[0]) - truck->frames_prepared;
-        seek_views_to(truck->prep_view, truck->elem->cet->controls.len, clear_from);
+        seek_views_to(truck->prep_view, truck->elem->type->controls.len, clear_from);
         // FIXME: When this fails end up in an awful mess
         err = RAGE_ELEM_CLEAR(truck->elem, truck->prep_view, truck->frames_prepared);
         if (RAGE_FAILED(err))
             break;
-        seek_views_to(truck->prep_view, truck->elem->cet->controls.len, target_frame);
+        seek_views_to(truck->prep_view, truck->elem->type->controls.len, target_frame);
         truck->frames_prepared = 0;
     }
     for (unsigned i = 0; i < convoy->clean_trucks->len; i++) {
         rage_SupportTruck * truck = convoy->clean_trucks->items[i];
         assert(truck->frames_to_clean <= 0);
-        seek_views_to(truck->clean_view, truck->elem->cet->controls.len, target_frame);
+        seek_views_to(truck->clean_view, truck->elem->type->controls.len, target_frame);
         truck->frames_to_clean = 0;
     }
     unlock_and_await_tick(convoy);

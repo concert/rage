@@ -60,7 +60,7 @@ static rage_Error fake_elem_clear(
     return RAGE_OK;
 }
 
-static rage_ElementKind fake_element_type = {
+static rage_ElementKind fake_kind = {
     .prep = fake_elem_prep,
     .clean = fake_elem_clean,
     .clear = fake_elem_clear
@@ -68,8 +68,8 @@ static rage_ElementKind fake_element_type = {
 
 static rage_TupleDef const empty_tupledef = {};
 
-static rage_ElementType fake_concrete_type = {
-    .type = &fake_element_type,
+static rage_ElementType fake_type = {
+    .kind = &fake_kind,
     .spec = (rage_InstanceSpec) {.controls = {.len = 1, .items = &empty_tupledef}}
 };
 
@@ -104,7 +104,7 @@ static rage_Error test_srt_fake_elem() {
     rage_TimeSeries ts = {.len = 1, .items = &tp};
     rage_InterpolatedView *prep_view, *clean_view;
     rage_Element fake_elem = {
-        .cet = &fake_concrete_type,
+        .type = &fake_type,
         .state = &fes};
     rage_SupportConvoy * convoy = rage_support_convoy_new(
         1024, RAGE_TRANSPORT_STOPPED, NULL);

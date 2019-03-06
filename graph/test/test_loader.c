@@ -81,36 +81,36 @@ rage_Error test_loader() {
         if (!RAGE_FAILED(ek_)) {
             rage_LoadedElementKind * ek = RAGE_SUCCESS_VALUE(ek_);
             rage_Atom ** tups = generate_tuples(rage_element_kind_parameters(ek));
-            rage_NewElementType cet_ = rage_element_kind_specialise(ek, tups);
-            if (!RAGE_FAILED(cet_)) {
-                rage_ElementType * cet = RAGE_SUCCESS_VALUE(cet_);
-                if (cet->params == tups) {
+            rage_NewElementType type_ = rage_element_kind_specialise(ek, tups);
+            if (!RAGE_FAILED(type_)) {
+                rage_ElementType * type = RAGE_SUCCESS_VALUE(type_);
+                if (type->params == tups) {
                     err = RAGE_ERROR("Parameters not copied");
                 }
                 free_tuples(rage_element_kind_parameters(ek), tups);
-                rage_ElementNewResult elem_ = rage_element_new(cet, 44100);
+                rage_ElementNewResult elem_ = rage_element_new(type, 44100);
                 if (!RAGE_FAILED(elem_)) {
                     rage_Element * elem = RAGE_SUCCESS_VALUE(elem_);
-                    rage_Ports ports = rage_ports_new(&cet->spec);
-                    new_stream_buffers(&ports, cet->spec);
-                    rage_Interpolators ii = new_interpolators(&ports, cet->spec);
+                    rage_Ports ports = rage_ports_new(&type->spec);
+                    new_stream_buffers(&ports, type->spec);
+                    rage_Interpolators ii = new_interpolators(&ports, type->spec);
                     if (!RAGE_FAILED(ii)) {
                         rage_InterpolatorArray interpolators = RAGE_SUCCESS_VALUE(ii);
                         rage_element_process(elem, RAGE_TRANSPORT_STOPPED, 256, &ports);
                         rage_element_process(elem, RAGE_TRANSPORT_ROLLING, 256, &ports);
-                        free_interpolators(interpolators, cet->spec);
+                        free_interpolators(interpolators, type->spec);
                     } else {
                         err = RAGE_AS_ERROR(ii);
                     }
-                    free_stream_buffers(&ports, cet->spec);
+                    free_stream_buffers(&ports, type->spec);
                     rage_ports_free(ports);
                     rage_element_free(elem);
                 } else {
                     err = RAGE_AS_ERROR(elem_);
                 }
-                rage_element_type_free(cet);
+                rage_element_type_free(type);
             } else {
-                err = RAGE_AS_ERROR(cet_);
+                err = RAGE_AS_ERROR(type_);
             }
             rage_element_loader_unload(ek);
         } else {

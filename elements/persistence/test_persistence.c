@@ -37,11 +37,11 @@ static rage_Error test_pause_silent() {
         return RAGE_FAILURE_CAST(rage_Error, nte);
     }
     rage_TestElem te = RAGE_SUCCESS_VALUE(nte);
-    rage_Ports ports = rage_ports_new(&te.cet->spec);
-    new_noisy_out_buffers(&ports, te.cet->spec.inputs.len, te.elem_frame_size);
+    rage_Ports ports = rage_ports_new(&te.type->spec);
+    new_noisy_out_buffers(&ports, te.type->spec.inputs.len, te.elem_frame_size);
     rage_element_process(te.elem, RAGE_TRANSPORT_STOPPED, te.elem_frame_size, &ports);
-    rage_Error rv = check_outs_silent(&ports, te.cet->spec.inputs.len, te.elem_frame_size);
-    free_out_buffers(&ports, te.cet->spec.inputs.len);
+    rage_Error rv = check_outs_silent(&ports, te.type->spec.inputs.len, te.elem_frame_size);
+    free_out_buffers(&ports, te.type->spec.inputs.len);
     rage_ports_free(ports);
     free_test_elem(te);
     return rv;
