@@ -19,6 +19,7 @@ typedef struct {
     rage_InstanceSpecStreams outputs;
     uint32_t max_uncleaned_frames;
     uint32_t max_period_size;
+    uint32_t n_periods_latency;
 } rage_InstanceSpec;
 
 // FIXME: typedeffed pointers

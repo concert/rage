@@ -129,7 +129,6 @@ void type_destroy(rage_ElementType * type) {
     }
     free((void *) type->spec.controls.items);
     free(type->type_state);
-    free(type);
 };
 
 rage_Error kind_specialise(
