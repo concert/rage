@@ -12,27 +12,52 @@
 #include "interpolation.h"
 #include "error.h"
 
+typedef enum {PLAY, REC} PersistanceMode;
+
+static rage_EnumOpt const mode_enum_opts[] = {
+    {.value = PLAY, .name = "Play"},
+    {.value = REC, .name = "Rec"}
+};
+
+static rage_AtomDef const mode_enum = {
+    .type = RAGE_ATOM_ENUM, .name = "mode",
+    .constraints = {.e = {.len = 2, .items = mode_enum_opts}}
+};
+
+static rage_FieldDef const mode_fields[] = {
+    {.name = "mode", .type = &mode_enum}
+};
+
 static rage_AtomDef const n_channels = {
     .type = RAGE_ATOM_INT,
     .name = "n_channels",
     .constraints = {.i = {.min = RAGE_JUST(1)}}
 };
 
-static rage_FieldDef const param_fields[] = {
+static rage_FieldDef const channels_fields[] = {
     {.name = "channels", .type = &n_channels}
 };
 
-rage_TupleDef const init_param = {
-    .name = "persistence",
-    .description = "Store/Replay Audio Streams",
-    .default_value = NULL,
-    .len = 1,
-    .items = param_fields
+rage_TupleDef const init_tups[] = {
+    {
+        .name = "n_channels",
+        .description = "Number of channels",
+        .default_value = NULL,
+        .len = 1,
+        .items = channels_fields
+    },
+    {
+        .name = "mode",
+        .description = "Source or sink",
+        .default_value = NULL,
+        .len = 1,
+        .items = mode_fields
+    }
 };
 
 rage_ParamDefList const init_params = {
-    .len = 1,
-    .items = &init_param
+    .len = 2,
+    .items = init_tups
 };
 
 static rage_AtomDef const path_atom = {
@@ -41,24 +66,10 @@ static rage_AtomDef const path_atom = {
 };
 
 static rage_AtomDef const time_atom = {
-    .type = RAGE_ATOM_TIME, .name = "Time"
-};
-
-typedef enum {IDLE, PLAY, REC} PersistanceMode;
-
-static rage_EnumOpt const mode_enum_opts[] = {
-    {.value = IDLE, .name = "Idle"},
-    {.value = PLAY, .name = "Play"},
-    {.value = REC, .name = "Rec"}
-};
-
-static rage_AtomDef const mode_enum = {
-    .type = RAGE_ATOM_ENUM, .name = "mode",
-    .constraints = {.e = {.len = 3, .items = mode_enum_opts}}
+    .type = RAGE_ATOM_TIME, .name = "time"
 };
 
 static rage_FieldDef const tst_fields[] = {
-    {.name = "mode", .type = &mode_enum},
     {.name = "file", .type = &path_atom},
     {.name = "offset", .type = &time_atom}
 };
@@ -67,7 +78,7 @@ static rage_TupleDef const tst_def = {
     .name = "audio_chunk",
     .description = "A section of audio from/to a file",
     .default_value = NULL,
-    .len = 3,
+    .len = 2,
     .items = tst_fields
 };
 
@@ -77,14 +88,12 @@ typedef struct {
     SNDFILE * sf;
     SF_INFO sf_info;
     char * open_path;
-    int open_mode;
 } sndfile_status;
 
 struct rage_ElementState {
     unsigned n_channels;
     uint32_t sample_rate;
-    jack_ringbuffer_t ** rec_buffs;
-    jack_ringbuffer_t ** play_buffs;
+    jack_ringbuffer_t ** buffs;
     char ** rb_vec;
     sndfile_status sndfile;
     float * interleaved_buffer;
@@ -113,12 +122,10 @@ rage_NewElementState elem_new(
     rage_ElementState * ad = malloc(sizeof(rage_ElementState));
     ad->n_channels = type_state->n_channels;
     ad->sample_rate = sample_rate;
-    ad->rec_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
-    ad->play_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
+    ad->buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
     for (uint32_t c = 0; c < ad->n_channels; c++) {
         // Snaps to the next power of 2 up - 1 byte in size
-        ad->rec_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float));
-        ad->play_buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float));
+        ad->buffs[c] = jack_ringbuffer_create(RAGE_PERSISTANCE_MAX_FRAMES * sizeof(float));
     }
     ad->rb_vec = calloc(2 * ad->n_channels, sizeof(float *));
     ad->interleaved_buffer = calloc(ad->n_channels * RAGE_PERSISTANCE_MAX_FRAMES, sizeof(float));
@@ -128,11 +135,9 @@ rage_NewElementState elem_new(
 
 void elem_free(rage_ElementState * ad) {
     for (uint32_t c = 0; c < ad->n_channels; c++) {
-        jack_ringbuffer_free(ad->rec_buffs[c]);
-        jack_ringbuffer_free(ad->play_buffs[c]);
+        jack_ringbuffer_free(ad->buffs[c]);
     }
-    free(ad->rec_buffs);
-    free(ad->play_buffs);
+    free(ad->buffs);
     free(ad->interleaved_buffer);
     free(ad->rb_vec);
     sndfile_status_destroy(&ad->sndfile);
@@ -148,7 +153,7 @@ static inline void zero_fill_outputs(
     }
 }
 
-void elem_process(
+static void play_process(
         rage_ElementState * data, rage_TransportState const transport_state,
         uint32_t period_size, rage_Ports const * ports) {
     rage_InterpolatedValue const * chunk;
@@ -165,26 +170,42 @@ void elem_process(
         step_frames = (remaining > chunk->valid_for) ?
             chunk->valid_for : remaining;
         chunk_size = step_frames * sizeof(float);
-        switch ((PersistanceMode) chunk->value[0].e) {
-            case PLAY:
-                for (c = 0; c < data->n_channels; c++) {
-                    jack_ringbuffer_read(
-                        data->play_buffs[c],
-                        (char *) &ports->outputs[c][frame_pos],
-                        chunk_size);
-                }
-                break;
-            case REC:
-                for (c = 0; c < data->n_channels; c++) {
-                    jack_ringbuffer_write(
-                        data->rec_buffs[c],
-                        (char *) &ports->inputs[c][frame_pos],
-                        chunk_size);
-                }
-            case IDLE:
-                zero_fill_outputs(
-                    data, ports, frame_pos, chunk_size);
-                break;
+        if (strcmp(chunk->value[0].s, "")) {
+            for (c = 0; c < data->n_channels; c++) {
+                jack_ringbuffer_read(
+                    data->buffs[c],
+                    (char *) &ports->outputs[c][frame_pos],
+                    chunk_size);
+            }
+        } else {
+            zero_fill_outputs(
+                data, ports, frame_pos, chunk_size);
+        }
+        remaining -= step_frames;
+        rage_interpolated_view_advance(ports->controls[0], step_frames);
+    }
+}
+
+static void rec_process(
+        rage_ElementState * data, rage_TransportState const transport_state,
+        uint32_t period_size, rage_Ports const * ports) {
+    rage_InterpolatedValue const * chunk;
+    uint32_t step_frames, remaining = period_size;
+    uint32_t c, frame_pos = 0;
+    size_t chunk_size;
+    while (remaining) {
+        chunk = rage_interpolated_view_value(ports->controls[0]);
+        frame_pos = period_size - remaining;
+        step_frames = (remaining > chunk->valid_for) ?
+            chunk->valid_for : remaining;
+        chunk_size = step_frames * sizeof(float);
+        if (strcmp(chunk->value[0].s, "")) {
+            for (c = 0; c < data->n_channels; c++) {
+                jack_ringbuffer_write(
+                    data->buffs[c],
+                    (char *) &ports->inputs[c][frame_pos],
+                    chunk_size);
+            }
         }
         remaining -= step_frames;
         rage_interpolated_view_advance(ports->controls[0], step_frames);
@@ -192,13 +213,12 @@ void elem_process(
 }
 
 static bool file_path_changed(sndfile_status * const s, char const * const path, int mode) {
-    if (s->open_path == NULL || strcmp(path, s->open_path) || mode != s->open_mode) {
+    if (s->open_path == NULL || strcmp(path, s->open_path)) {
         if (s->sf != NULL) {
             sf_close(s->sf);
         }
         free(s->open_path);
         s->open_path = strdup(path);
-        s->open_mode = mode;
         return true;
     }
     return false;
@@ -267,20 +287,19 @@ static void populate_slabs(
     }
 }
 
-rage_Error elem_prepare(rage_ElementState * data, rage_InterpolatedView ** controls) {
+static rage_Error play_prepare(rage_ElementState * data, rage_InterpolatedView ** controls) {
     size_t slabs[2];
     bool future_values = true;
     do {
         rage_InterpolatedValue const * chunk = rage_interpolated_view_value(controls[0]);
-        switch ((PersistanceMode) chunk->value[0].e) {
-            case PLAY:
+        if (strcmp(chunk->value[0].s, "")) {
                 populate_slabs(
                     slabs, data->n_channels, jack_ringbuffer_get_write_vector,
-                    data->rb_vec, data->play_buffs);
+                    data->rb_vec, data->buffs);
                 size_t const rb_space = (slabs[0] + slabs[1]) / sizeof(float);
                 size_t const to_read = (rb_space < chunk->valid_for) ? rb_space : chunk->valid_for;
                 rage_PreparedFrames const read_or_fail = read_prep_sndfile(
-                    data, chunk->value[1].s, chunk->value[2].frame_no, to_read, data->interleaved_buffer);
+                    data, chunk->value[0].s, chunk->value[1].frame_no, to_read, data->interleaved_buffer);
                 if (RAGE_FAILED(read_or_fail)) {
                     return RAGE_FAILURE_CAST(rage_Error, read_or_fail);
                 }
@@ -291,18 +310,15 @@ rage_Error elem_prepare(rage_ElementState * data, rage_InterpolatedView ** contr
                     (float **) &data->rb_vec[data->n_channels],
                     data->n_channels, slabs[1]);
                 for (uint32_t c = 0; c < data->n_channels; c++) {
-                    jack_ringbuffer_write_advance(data->play_buffs[c], read * sizeof(float));
+                    jack_ringbuffer_write_advance(data->buffs[c], read * sizeof(float));
                 }
                 rage_interpolated_view_advance(controls[0], read);
                 if (rb_space <= chunk->valid_for) {
                     return RAGE_OK;
                 }
-                break;
-            case IDLE:
-            case REC:
-                future_values = chunk->valid_for != UINT32_MAX;
-                rage_interpolated_view_advance(controls[0], chunk->valid_for);
-                break;
+        } else {
+            future_values = chunk->valid_for != UINT32_MAX;
+            rage_interpolated_view_advance(controls[0], chunk->valid_for);
         }
     } while (future_values);
     return RAGE_OK;
@@ -340,57 +356,7 @@ static rage_PreparedFrames write_buffer_to_file(
         s->sf, interleaved_buffer, to_write));
 }
 
-rage_Error elem_cleanup(rage_ElementState * data, rage_InterpolatedView ** controls) {
-    size_t slabs[2] = {};
-    bool future_values = true;
-    populate_slabs(
-        slabs, data->n_channels, jack_ringbuffer_get_read_vector,
-        data->rb_vec, data->rec_buffs);
-    rage_FrameNo interleaved_remaining = slabs[0] + slabs[1];
-    interleave(
-        data->interleaved_buffer, (float const**) data->rb_vec,
-        data->n_channels, slabs[0]);
-    interleave(
-        &data->interleaved_buffer[slabs[0] * data->n_channels],
-        (float const **) &data->rb_vec[data->n_channels],
-        data->n_channels, slabs[1]);
-    for (uint32_t c = 0; c < data->n_channels; c++) {
-        jack_ringbuffer_read_advance(data->rec_buffs[c], interleaved_remaining * sizeof(float));
-    }
-    do {
-        rage_InterpolatedValue const * chunk = rage_interpolated_view_value(controls[0]);
-        switch ((PersistanceMode) chunk->value[0].e) {
-            case IDLE:
-            case PLAY:
-                future_values = chunk->valid_for != UINT32_MAX;
-                rage_interpolated_view_advance(controls[0], chunk->valid_for);
-                break;
-            case REC: {
-                uint32_t const to_write = (interleaved_remaining < chunk->valid_for) ? interleaved_remaining : chunk->valid_for;
-                rage_PreparedFrames const written_frames = write_buffer_to_file(
-                    &data->sndfile, chunk->value[1].s,
-                    chunk->value[2].frame_no, to_write,
-                    data->interleaved_buffer, data->sample_rate,
-                    data->n_channels);
-                if (RAGE_FAILED(written_frames)) {
-                    return RAGE_FAILURE_CAST(rage_Error, written_frames);
-                }
-                uint32_t const written = RAGE_SUCCESS_VALUE(written_frames);
-                if (written < to_write) {
-                    return RAGE_ERROR("Unable to write all data to file");
-                }
-                interleaved_remaining -= written;
-                rage_interpolated_view_advance(controls[0], written);
-                if (!interleaved_remaining) {
-                    return RAGE_OK;
-                }
-                break;}
-        }
-    } while (future_values);
-    return RAGE_OK;
-}
-
-rage_Error elem_clear(rage_ElementState * data, rage_InterpolatedView ** controls, rage_FrameNo to_present) {
+static rage_Error play_clear(rage_ElementState * data, rage_InterpolatedView ** controls, rage_FrameNo to_present) {
     // Controls are initialised at the start of the section to clear
     // to_present is the number of frames between that start point and the position after the last write
     // ! Do NOT look at the read pointer, it will be moving during this.
@@ -401,20 +367,63 @@ rage_Error elem_clear(rage_ElementState * data, rage_InterpolatedView ** control
     while (to_present) {
         chunk = rage_interpolated_view_value(controls[0]);
         consumed = (to_present < chunk->valid_for) ? to_present : chunk->valid_for;
-        switch ((PersistanceMode) chunk->value[0].e) {
-            case PLAY:
-                to_erase += consumed;
-            case IDLE:
-            case REC:
-                to_present -= consumed;
+        if (strcmp(chunk->value[0].s, "")) {
+            to_erase += consumed;
         }
+        to_present -= consumed;
         rage_interpolated_view_advance(controls[0], consumed);
     }
     for (uint32_t i = 0; i < data->n_channels; i++) {
-        jack_ringbuffer_t * const rb = data->play_buffs[i];
+        jack_ringbuffer_t * const rb = data->buffs[i];
         // Roll back the write pointer
         jack_ringbuffer_write_advance(rb, -(to_erase * sizeof(float)));
     }
+    return RAGE_OK;
+}
+
+static rage_Error rec_cleanup(rage_ElementState * data, rage_InterpolatedView ** controls) {
+    size_t slabs[2] = {};
+    bool future_values = true;
+    populate_slabs(
+        slabs, data->n_channels, jack_ringbuffer_get_read_vector,
+        data->rb_vec, data->buffs);
+    rage_FrameNo interleaved_remaining = slabs[0] + slabs[1];
+    interleave(
+        data->interleaved_buffer, (float const**) data->rb_vec,
+        data->n_channels, slabs[0]);
+    interleave(
+        &data->interleaved_buffer[slabs[0] * data->n_channels],
+        (float const **) &data->rb_vec[data->n_channels],
+        data->n_channels, slabs[1]);
+    for (uint32_t c = 0; c < data->n_channels; c++) {
+        jack_ringbuffer_read_advance(data->buffs[c], interleaved_remaining * sizeof(float));
+    }
+    do {
+        rage_InterpolatedValue const * chunk = rage_interpolated_view_value(controls[0]);
+        if (strcmp(chunk->value[0].s, "")) {
+            uint32_t const to_write = (interleaved_remaining < chunk->valid_for) ? interleaved_remaining : chunk->valid_for;
+            rage_PreparedFrames const written_frames = write_buffer_to_file(
+                &data->sndfile, chunk->value[0].s,
+                chunk->value[1].frame_no, to_write,
+                data->interleaved_buffer, data->sample_rate,
+                data->n_channels);
+            if (RAGE_FAILED(written_frames)) {
+                return RAGE_FAILURE_CAST(rage_Error, written_frames);
+            }
+            uint32_t const written = RAGE_SUCCESS_VALUE(written_frames);
+            if (written < to_write) {
+                return RAGE_ERROR("Unable to write all data to file");
+            }
+            interleaved_remaining -= written;
+            rage_interpolated_view_advance(controls[0], written);
+            if (!interleaved_remaining) {
+                return RAGE_OK;
+            }
+        } else {
+            future_values = chunk->valid_for != UINT32_MAX;
+            rage_interpolated_view_advance(controls[0], chunk->valid_for);
+        }
+    } while (future_values);
     return RAGE_OK;
 }
 
@@ -426,6 +435,7 @@ void type_destroy(rage_ElementType * type) {
 
 rage_Error kind_specialise(rage_ElementType * type, rage_Atom ** params) {
     int const n_channels = params[0][0].i;
+    PersistanceMode const mode = params[1][0].e;
     type->type_destroy = type_destroy;
     type->spec.max_uncleaned_frames = RAGE_PERSISTANCE_MAX_FRAMES;
     type->spec.max_period_size = RAGE_PERSISTANCE_MAX_FRAMES / 2;
@@ -435,18 +445,25 @@ rage_Error kind_specialise(rage_ElementType * type, rage_Atom ** params) {
     for (unsigned i = 0; i < n_channels; i++) {
         stream_defs[i] = RAGE_STREAM_AUDIO;
     }
-    type->spec.inputs.len = n_channels;
-    type->spec.inputs.items = stream_defs;
-    type->spec.outputs.len = n_channels;
-    type->spec.outputs.items = stream_defs;
     type->state_new = elem_new;
-    type->process = elem_process;
     type->state_free = elem_free;
-    type->prep = elem_prepare;
-    type->clear = elem_clear;
-    type->clean = elem_cleanup;
     type->type_state = malloc(sizeof(rage_ElementTypeState));
     type->type_state->n_channels = n_channels;
+    switch (mode) {
+        case PLAY:
+            type->spec.outputs.len = n_channels;
+            type->spec.outputs.items = stream_defs;
+            type->process = play_process;
+            type->prep = play_prepare;
+            type->clear = play_clear;
+            break;
+        case REC:
+            type->spec.inputs.len = n_channels;
+            type->spec.inputs.items = stream_defs;
+            type->process = rec_process;
+            type->clean = rec_cleanup;
+            break;
+    }
     return RAGE_OK;
 }
 
