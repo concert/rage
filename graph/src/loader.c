@@ -9,9 +9,9 @@ struct rage_ElementLoader {
     rage_PluginFilter pf;
 };
 
-struct rage_ElementKind {
+struct rage_LoadedElementKind {
     void * dlhandle;
-    rage_ElementType * type;
+    rage_ElementKind * kind;
 };
 
 static char * join_path(char const * a, char const * b) {
@@ -56,8 +56,8 @@ void rage_element_loader_free(rage_ElementLoader * el) {
     free(el);
 }
 
-rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
-    rage_ElementTypes * elems = malloc(sizeof(rage_ElementTypes));
+rage_ElementKinds * rage_element_loader_list(rage_ElementLoader * el) {
+    rage_ElementKinds * elems = malloc(sizeof(rage_ElementKinds));
     elems->len = 0;
     elems->items = NULL;
     struct dirent ** entries;
@@ -75,108 +75,96 @@ rage_ElementTypes * rage_element_loader_list(rage_ElementLoader * el) {
     return elems;
 }
 
-void rage_element_types_free(rage_ElementTypes * t) {
+void rage_element_kinds_free(rage_ElementKinds * t) {
     for (uint32_t i = 0; i < t->len; i++) {
         free(t->items[i]);
     }
     RAGE_ARRAY_FREE(t)
 }
 
-rage_ElementKindLoadResult rage_element_loader_load(char const * type_name) {
-    void * handle = dlopen(type_name, RTLD_LAZY);
+rage_LoadedElementKindLoadResult rage_element_loader_load(char const * kind_name) {
+    void * handle = dlopen(kind_name, RTLD_LAZY);
     if (handle == NULL)
-        return RAGE_FAILURE(rage_ElementKindLoadResult, dlerror());
-    rage_ElementType * type = dlsym(handle, "elem_info");
+        return RAGE_FAILURE(rage_LoadedElementKindLoadResult, dlerror());
+    rage_ElementKind * kind = dlsym(handle, "kind");
     #define RAGE_ETL_BAIL(msg) \
         dlclose(handle); \
-        return RAGE_FAILURE(rage_ElementKindLoadResult, msg);
-    if (type == NULL) {
-        RAGE_ETL_BAIL("Missing entry point symbol: elem_info")
+        return RAGE_FAILURE(rage_LoadedElementKindLoadResult, msg);
+    if (kind == NULL) {
+        RAGE_ETL_BAIL("Missing entry point symbol: kind")
     }
     #define RAGE_ETL_MANDATORY_PARAM(struct_name) \
-        if (type->struct_name == NULL) {\
+        if (kind->struct_name == NULL) {\
             RAGE_ETL_BAIL("Missing mandatory member: " #struct_name) \
         }
     RAGE_ETL_MANDATORY_PARAM(parameters)
-    RAGE_ETL_MANDATORY_PARAM(state_new)
-    RAGE_ETL_MANDATORY_PARAM(state_free)
-    RAGE_ETL_MANDATORY_PARAM(ports_get)
-    RAGE_ETL_MANDATORY_PARAM(ports_free)
-    RAGE_ETL_MANDATORY_PARAM(process)
+    RAGE_ETL_MANDATORY_PARAM(specialise)
     #undef RAGE_ETL_MANDATORY_PARAM
-    if (type->prep != NULL && type->clear == NULL) {
-        RAGE_ETL_BAIL("Prep provide but no clear")
-    }
     #undef RAGE_ETL_BAIL
-    rage_ElementKind * kind = malloc(sizeof(rage_ElementKind));
-    kind->dlhandle = handle;
-    kind->type = type;
-    return RAGE_SUCCESS(rage_ElementKindLoadResult, kind);
+    rage_LoadedElementKind * loaded_kind = malloc(sizeof(rage_LoadedElementKind));
+    loaded_kind->dlhandle = handle;
+    loaded_kind->kind = kind;
+    return RAGE_SUCCESS(rage_LoadedElementKindLoadResult, loaded_kind);
 }
 
-void rage_element_loader_unload(rage_ElementKind * ek) {
+void rage_element_loader_unload(rage_LoadedElementKind * ek) {
     dlclose(ek->dlhandle);
     free(ek);
 }
 
-rage_ParamDefList const * rage_element_kind_parameters(rage_ElementKind const * kind) {
-    return kind->type->parameters;
+rage_ParamDefList const * rage_element_kind_parameters(rage_LoadedElementKind const * kind) {
+    return kind->kind->parameters;
 }
 
-// ConcreteElementType
+// ElementType
 
-static rage_Atom ** rage_params_copy(rage_ParamDefList const * pds, rage_Atom ** params) {
-    rage_Atom ** rp = calloc(pds->len, sizeof(rage_ParamDefList));
-    for (uint32_t i = 0; i < pds->len; i++) {
-        rp[i] = rage_tuple_copy(&pds->items[i], params[i]);
+rage_NewElementType rage_element_kind_specialise(
+        rage_LoadedElementKind * loaded_kind, rage_Atom ** params) {
+    rage_ElementType * type = calloc(1, sizeof(rage_ElementType));
+    rage_Error err = loaded_kind->kind->specialise(type, params);
+    if (RAGE_FAILED(err)) {
+        free(type);
+        return RAGE_FAILURE_CAST(rage_NewElementType, err);
     }
-    return rp;
-}
-
-static void rage_params_free(rage_ParamDefList const * pds, rage_Atom ** params) {
-    for (uint32_t i = 0; i < pds->len; i++) {
-        rage_tuple_free(&pds->items[i], params[i]);
+    if (type->type_destroy == NULL) {
+        free(type);
+        return RAGE_FAILURE(rage_NewElementType, "type_destroy uninitialised");
     }
-    free(params);
+    #define RAGE_EKS_BAIL_IF(condition) \
+        if (condition) { \
+            rage_element_type_free(type); \
+            return RAGE_FAILURE(rage_NewElementType, #condition); \
+        }
+    RAGE_EKS_BAIL_IF(type->state_new == NULL)
+    RAGE_EKS_BAIL_IF(type->process == NULL)
+    RAGE_EKS_BAIL_IF(type->state_free == NULL)
+    RAGE_EKS_BAIL_IF(type->spec.max_uncleaned_frames == 0)
+    RAGE_EKS_BAIL_IF(type->prep && !type->clear)
+    #undef RAGE_EKS_BAIL_IF
+    return RAGE_SUCCESS(rage_NewElementType, type);
 }
 
-rage_NewConcreteElementType rage_element_type_specialise(
-        rage_ElementKind * kind, rage_Atom ** params) {
-    rage_NewInstanceSpec new_ports = kind->type->ports_get(params);
-    if (RAGE_FAILED(new_ports))
-        return RAGE_FAILURE_CAST(rage_NewConcreteElementType, new_ports);
-    rage_InstanceSpec spec = RAGE_SUCCESS_VALUE(new_ports);
-    if (spec.max_uncleaned_frames == 0)
-        return RAGE_FAILURE(rage_NewConcreteElementType, "max_uncleaned_frames == 0");
-    rage_ConcreteElementType * cet = malloc(sizeof(rage_ConcreteElementType));
-    cet->type = kind->type;
-    cet->params = rage_params_copy(rage_element_kind_parameters(kind), params);
-    cet->spec = spec;
-    return RAGE_SUCCESS(rage_NewConcreteElementType, cet);
-}
-
-void rage_concrete_element_type_free(rage_ConcreteElementType * cet) {
-    cet->type->ports_free(cet->spec);
-    rage_params_free(cet->type->parameters, cet->params);
-    free(cet);
+void rage_element_type_free(rage_ElementType * et) {
+    et->type_destroy(et);
+    free(et);
 }
 
 // Element
 
 rage_ElementNewResult rage_element_new(
-        rage_ConcreteElementType * cet, uint32_t sample_rate) {
-    rage_NewElementState new_state = cet->type->state_new(
-        sample_rate, cet->params);
+        rage_ElementType * type, uint32_t sample_rate) {
+    rage_NewElementState new_state = type->state_new(
+        type->type_state, sample_rate);
     if (RAGE_FAILED(new_state))
         return RAGE_FAILURE_CAST(rage_ElementNewResult, new_state);
     rage_Element * const elem = malloc(sizeof(rage_Element));
-    elem->cet = cet;
+    elem->type = type;
     elem->state = RAGE_SUCCESS_VALUE(new_state);
     return RAGE_SUCCESS(rage_ElementNewResult, elem);
 }
 
 void rage_element_free(rage_Element * elem) {
-    elem->cet->type->state_free(elem->state);
+    elem->type->state_free(elem->state);
     free(elem);
 }
 
@@ -184,5 +172,5 @@ void rage_element_process(
         rage_Element const * const elem,
         rage_TransportState const transport_state, uint32_t period_size,
         rage_Ports const * ports) {
-    elem->cet->type->process(elem->state, transport_state, period_size, ports);
+    elem->type->process(elem->state, transport_state, period_size, ports);
 }

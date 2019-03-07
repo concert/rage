@@ -19,8 +19,8 @@ void free_tuples(rage_ParamDefList const * const pdl, rage_Atom ** as) {
 void free_test_elem(rage_TestElem te) {
     if (te.elem != NULL)
         rage_element_free(te.elem);
-    if (te.cet != NULL)
-        rage_concrete_element_type_free(te.cet);
+    if (te.type != NULL)
+        rage_element_type_free(te.type);
     if (te.kind != NULL)
         rage_element_loader_unload(te.kind);
     if (te.loader != NULL)
@@ -30,22 +30,22 @@ void free_test_elem(rage_TestElem te) {
 rage_NewTestElem new_test_elem(char const * elem_so) {
     rage_ElementLoader * el = rage_element_loader_new(getenv("RAGE_ELEMENTS_PATH"));
     rage_TestElem rv = {.loader=el, .elem_frame_size=256};
-    rage_ElementKindLoadResult ek_ = rage_element_loader_load(elem_so);
+    rage_LoadedElementKindLoadResult ek_ = rage_element_loader_load(elem_so);
     if (RAGE_FAILED(ek_)) {
         free_test_elem(rv);
         return RAGE_FAILURE_CAST(rage_NewTestElem, ek_);
     }
     rv.kind = RAGE_SUCCESS_VALUE(ek_);
     rage_Atom ** tups = generate_tuples(rage_element_kind_parameters(rv.kind));
-    rage_NewConcreteElementType ncet = rage_element_type_specialise(
+    rage_NewElementType ntype = rage_element_kind_specialise(
         rv.kind, tups);
     free_tuples(rage_element_kind_parameters(rv.kind), tups);
-    if (RAGE_FAILED(ncet)) {
+    if (RAGE_FAILED(ntype)) {
         free_test_elem(rv);
-        return RAGE_FAILURE_CAST(rage_NewTestElem, ncet);
+        return RAGE_FAILURE_CAST(rage_NewTestElem, ntype);
     }
-    rv.cet = RAGE_SUCCESS_VALUE(ncet);
-    rage_ElementNewResult elem_ = rage_element_new(rv.cet, 44100);
+    rv.type = RAGE_SUCCESS_VALUE(ntype);
+    rage_ElementNewResult elem_ = rage_element_new(rv.type, 44100);
     if (RAGE_FAILED(elem_)) {
         free_test_elem(rv);
         return RAGE_FAILURE_CAST(rage_NewTestElem, elem_);

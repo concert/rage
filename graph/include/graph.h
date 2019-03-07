@@ -24,7 +24,7 @@ rage_Error rage_graph_transport_seek(rage_Graph * g, rage_Time const * target);
 typedef struct rage_GraphNode rage_GraphNode;
 typedef RAGE_OR_ERROR(rage_GraphNode *) rage_NewGraphNode;
 rage_NewGraphNode rage_graph_add_node(
-        rage_Graph * g, rage_ConcreteElementType * cet,
+        rage_Graph * g, rage_ElementType * et,
         rage_TimeSeries const * ts);
 rage_NewEventId rage_graph_update_node(
         rage_GraphNode * n, uint32_t const series_idx,

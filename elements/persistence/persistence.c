@@ -73,29 +73,6 @@ static rage_TupleDef const tst_def = {
 
 #define RAGE_PERSISTANCE_MAX_FRAMES 4095
 
-rage_NewInstanceSpec elem_describe_ports(rage_Atom ** params) {
-    int const n_channels = params[0][0].i;
-    rage_InstanceSpec rval;
-    rval.max_uncleaned_frames = RAGE_PERSISTANCE_MAX_FRAMES;
-    rval.max_period_size = RAGE_PERSISTANCE_MAX_FRAMES / 2;
-    rval.controls.len = 1;
-    rval.controls.items = &tst_def;
-    rage_StreamDef * stream_defs = calloc(n_channels, sizeof(rage_StreamDef));
-    for (unsigned i = 0; i < n_channels; i++) {
-        stream_defs[i] = RAGE_STREAM_AUDIO;
-    }
-    rval.inputs.len = n_channels;
-    rval.inputs.items = stream_defs;
-    rval.outputs.len = n_channels;
-    rval.outputs.items = stream_defs;
-    return RAGE_SUCCESS(rage_NewInstanceSpec, rval);
-}
-
-void elem_free_port_description(rage_InstanceSpec pr) {
-    // FIXME: too const requiring cast?
-    free((void *) pr.inputs.items);
-}
-
 typedef struct {
     SNDFILE * sf;
     SF_INFO sf_info;
@@ -127,11 +104,14 @@ static void sndfile_status_destroy(sndfile_status * const s) {
     }
 }
 
+struct rage_ElementTypeState {
+    int n_channels;
+};
+
 rage_NewElementState elem_new(
-        uint32_t sample_rate, rage_Atom ** params) {
+        rage_ElementTypeState * type_state, uint32_t sample_rate) {
     rage_ElementState * ad = malloc(sizeof(rage_ElementState));
-    // Not sure I like way the indices tie up here
-    ad->n_channels = params[0][0].i;
+    ad->n_channels = type_state->n_channels;
     ad->sample_rate = sample_rate;
     ad->rec_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
     ad->play_buffs = calloc(ad->n_channels, sizeof(jack_ringbuffer_t *));
@@ -438,14 +418,39 @@ rage_Error elem_clear(rage_ElementState * data, rage_InterpolatedView ** control
     return RAGE_OK;
 }
 
-rage_ElementType const elem_info = {
+void type_destroy(rage_ElementType * type) {
+    free(type->type_state);
+    // FIXME: too const requiring cast?
+    free((void *) type->spec.inputs.items);
+}
+
+rage_Error kind_specialise(rage_ElementType * type, rage_Atom ** params) {
+    int const n_channels = params[0][0].i;
+    type->type_destroy = type_destroy;
+    type->spec.max_uncleaned_frames = RAGE_PERSISTANCE_MAX_FRAMES;
+    type->spec.max_period_size = RAGE_PERSISTANCE_MAX_FRAMES / 2;
+    type->spec.controls.len = 1;
+    type->spec.controls.items = &tst_def;
+    rage_StreamDef * stream_defs = calloc(n_channels, sizeof(rage_StreamDef));
+    for (unsigned i = 0; i < n_channels; i++) {
+        stream_defs[i] = RAGE_STREAM_AUDIO;
+    }
+    type->spec.inputs.len = n_channels;
+    type->spec.inputs.items = stream_defs;
+    type->spec.outputs.len = n_channels;
+    type->spec.outputs.items = stream_defs;
+    type->state_new = elem_new;
+    type->process = elem_process;
+    type->state_free = elem_free;
+    type->prep = elem_prepare;
+    type->clear = elem_clear;
+    type->clean = elem_cleanup;
+    type->type_state = malloc(sizeof(rage_ElementTypeState));
+    type->type_state->n_channels = n_channels;
+    return RAGE_OK;
+}
+
+rage_ElementKind const kind = {
     .parameters = &init_params,
-    .state_new = elem_new,
-    .state_free = elem_free,
-    .ports_get = elem_describe_ports,
-    .ports_free = elem_free_port_description,
-    .process = elem_process,
-    .prep = elem_prepare,
-    .clear = elem_clear,
-    .clean = elem_cleanup
+    .specialise = kind_specialise
 };

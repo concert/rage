@@ -47,7 +47,7 @@ static rage_Error test_graph() {
             rv = RAGE_FAILURE_CAST(rage_Error, nte);
         } else {
             rage_TestElem te = RAGE_SUCCESS_VALUE(nte);
-            rage_NewGraphNode ngn = rage_graph_add_node(graph, te.cet, &example_series);
+            rage_NewGraphNode ngn = rage_graph_add_node(graph, te.type, &example_series);
             if (RAGE_FAILED(ngn)) {
                 rv = RAGE_FAILURE_CAST(rage_Error, ngn);
             } else {

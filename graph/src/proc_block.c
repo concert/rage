@@ -92,8 +92,8 @@ static void rage_harness_free(rage_Harness * harness) {
     rage_support_convoy_unmount(harness->truck);
     free(harness->ports.inputs);
     free(harness->ports.outputs);
-    for (uint32_t i = 0; i < harness->elem->cet->spec.controls.len; i++) {
-        rage_interpolator_free(&harness->elem->cet->spec.controls.items[i], harness->interpolators[i]);
+    for (uint32_t i = 0; i < harness->elem->type->spec.controls.len; i++) {
+        rage_interpolator_free(&harness->elem->type->spec.controls.items[i], harness->interpolators[i]);
     }
     free(harness->interpolators);
     free(harness->views.prep);
@@ -143,23 +143,23 @@ rage_Error rage_proc_block_stop(rage_ProcBlock * pb) {
 }
 
 static rage_ProcBlockViews rage_proc_block_initialise_views(
-        rage_ConcreteElementType * cet, rage_Harness * harness) {
+        rage_ElementType * type, rage_Harness * harness) {
     rage_ProcBlockViews views;
     views.rt = calloc(
-        cet->controls.len, sizeof(rage_InterpolatedView *));
-    if (cet->type->prep == NULL) {
+        type->controls.len, sizeof(rage_InterpolatedView *));
+    if (type->prep == NULL) {
         views.prep = NULL;
     } else {
         views.prep = calloc(
-            cet->controls.len, sizeof(rage_InterpolatedView *));
+            type->controls.len, sizeof(rage_InterpolatedView *));
     }
-    if (cet->type->clean == NULL) {
+    if (type->clean == NULL) {
         views.clean = NULL;
     } else {
         views.clean = calloc(
-            cet->controls.len, sizeof(rage_InterpolatedView *));
+            type->controls.len, sizeof(rage_InterpolatedView *));
     }
-    for (uint32_t i = 0; i < cet->controls.len; i++) {
+    for (uint32_t i = 0; i < type->controls.len; i++) {
         uint8_t view_idx = 0;
         views.rt[i] = rage_interpolator_get_view(
             harness->interpolators[i], view_idx);
@@ -189,18 +189,18 @@ rage_MountResult rage_proc_block_mount(
     rage_Harness * harness = malloc(sizeof(rage_Harness));
     harness->pb = pb;
     harness->elem = elem;
-    uint8_t n_views = view_count_for_type(elem->cet->type);
+    uint8_t n_views = view_count_for_type(elem->type);
     // FIXME: Error handling
     harness->interpolators = RAGE_SUCCESS_VALUE(interpolators_for(
-        pb->sample_rate, pb->evt_q, &elem->cet->controls, controls, n_views));
-    harness->views = rage_proc_block_initialise_views(elem->cet, harness);
+        pb->sample_rate, pb->evt_q, &elem->type->controls, controls, n_views));
+    harness->views = rage_proc_block_initialise_views(elem->type, harness);
     // FIXME: could be more efficient, and not add this if not required
     harness->truck = rage_support_convoy_mount(
         pb->convoy, elem, harness->views.prep, harness->views.clean);
     harness->ports.controls = harness->views.rt;
     // FIXME: Should there be one of these per harness?
-    harness->ports.inputs = calloc(elem->cet->inputs.len, sizeof(void *));
-    harness->ports.outputs = calloc(elem->cet->outputs.len, sizeof(void *));
+    harness->ports.inputs = calloc(elem->type->inputs.len, sizeof(void *));
+    harness->ports.outputs = calloc(elem->type->outputs.len, sizeof(void *));
     rage_RtBits const * old = rage_rt_crit_update_start(harness->pb->syncy);
     rage_RtBits * new = malloc(sizeof(rage_RtBits));
     *new = *old;
@@ -209,8 +209,8 @@ rage_MountResult rage_proc_block_mount(
             new->steps.items[i] = old->steps.items[i];
         } else {
             rage_ProcStep * proc_step = &new->steps.items[i];
-            proc_step->in_buffer_allocs = calloc(elem->cet->inputs.len, sizeof(uint32_t));
-            proc_step->out_buffer_allocs = rage_alloc_int_array(elem->cet->outputs.len, 1);
+            proc_step->in_buffer_allocs = calloc(elem->type->inputs.len, sizeof(uint32_t));
+            proc_step->out_buffer_allocs = rage_alloc_int_array(elem->type->outputs.len, 1);
             proc_step->harness = harness;
         }
     }
@@ -293,7 +293,7 @@ rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo targ
         if (!RAGE_FAILED(e)) {
             for (uint32_t i = 0; i < rtd->steps.len; i++) {
                 uint32_t const n_controls =
-                    rtd->steps.items[i].harness->elem->cet->controls.len;
+                    rtd->steps.items[i].harness->elem->type->controls.len;
                 for (uint32_t j = 0; j < n_controls; j++) {
                     rage_interpolated_view_seek(rtd->steps.items[i].harness->ports.controls[j], target);
                 }
@@ -309,7 +309,7 @@ rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo targ
 static void pickup_new_timeseries(rage_ProcSteps * steps) {
     for (uint32_t i = 0; i < steps->len; i++) {
         rage_Harness * h = steps->items[i].harness;
-        for (uint32_t j = 0; j < h->elem->cet->spec.controls.len; j++) {
+        for (uint32_t j = 0; j < h->elem->type->spec.controls.len; j++) {
             rage_interpolated_view_advance(h->ports.controls[j], 0);
         }
     }
@@ -326,11 +326,11 @@ void rage_proc_block_process(
     }
     for (uint32_t i = 0; i < rtd->steps.len; i++) {
         rage_ProcStep * step = &rtd->steps.items[i];
-        for (uint32_t j = 0; j < step->harness->elem->cet->inputs.len; j++) {
+        for (uint32_t j = 0; j < step->harness->elem->type->inputs.len; j++) {
             step->harness->inputs[j] =
                 rtd->all_buffers[step->in_buffer_allocs[j]];
         }
-        for (uint32_t j = 0; j < step->harness->elem->cet->outputs.len; j++) {
+        for (uint32_t j = 0; j < step->harness->elem->type->outputs.len; j++) {
             step->harness->outputs[j] =
                 rtd->all_buffers[step->out_buffer_allocs[j]];
         }
@@ -410,11 +410,11 @@ static rage_OrderedProcSteps rage_order_proc_steps(
             if (rage_step_set_is_weak_subset(deps[i], resolved)) {
                 ordered_steps.items[resolved_idx] = steps->items[i];
                 ordered_steps.items[resolved_idx].in_buffer_allocs = calloc(
-                    steps->items[i].harness->elem->cet->inputs.len,
+                    steps->items[i].harness->elem->type->inputs.len,
                     sizeof(uint32_t));
                 ordered_steps.items[resolved_idx].out_buffer_allocs =
                     rage_alloc_int_array(
-                        steps->items[i].harness->elem->cet->outputs.len, 1);
+                        steps->items[i].harness->elem->type->outputs.len, 1);
                 rage_StepSet * const new_resolved = rage_step_set_add(
                     resolved, &steps->items[i]);
                 rage_step_set_free(resolved);

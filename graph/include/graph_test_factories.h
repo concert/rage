@@ -6,8 +6,8 @@ void free_tuples(rage_ParamDefList const * const pdl, rage_Atom ** as);
 
 typedef struct {
     rage_ElementLoader * loader;
-    rage_ElementKind * kind;
-    rage_ConcreteElementType * cet;
+    rage_LoadedElementKind * kind;
+    rage_ElementType * type;
     rage_Element * elem;
     uint32_t elem_frame_size;
 } rage_TestElem;
