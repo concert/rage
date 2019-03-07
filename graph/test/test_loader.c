@@ -84,9 +84,6 @@ rage_Error test_loader() {
             rage_NewElementType type_ = rage_element_kind_specialise(ek, tups);
             if (!RAGE_FAILED(type_)) {
                 rage_ElementType * type = RAGE_SUCCESS_VALUE(type_);
-                if (type->params == tups) {
-                    err = RAGE_ERROR("Parameters not copied");
-                }
                 free_tuples(rage_element_kind_parameters(ek), tups);
                 rage_ElementNewResult elem_ = rage_element_new(type, 44100);
                 if (!RAGE_FAILED(elem_)) {

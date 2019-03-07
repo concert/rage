@@ -60,17 +60,13 @@ static rage_Error fake_elem_clear(
     return RAGE_OK;
 }
 
-static rage_ElementKind fake_kind = {
-    .prep = fake_elem_prep,
-    .clean = fake_elem_clean,
-    .clear = fake_elem_clear
-};
-
 static rage_TupleDef const empty_tupledef = {};
 
 static rage_ElementType fake_type = {
-    .kind = &fake_kind,
-    .spec = (rage_InstanceSpec) {.controls = {.len = 1, .items = &empty_tupledef}}
+    .spec = (rage_InstanceSpec) {.controls = {.len = 1, .items = &empty_tupledef}},
+    .prep = fake_elem_prep,
+    .clean = fake_elem_clean,
+    .clear = fake_elem_clear
 };
 
 #define ERR_MSG_BUFF_SIZE 128

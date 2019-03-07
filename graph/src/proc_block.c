@@ -147,13 +147,13 @@ static rage_ProcBlockViews rage_proc_block_initialise_views(
     rage_ProcBlockViews views;
     views.rt = calloc(
         type->controls.len, sizeof(rage_InterpolatedView *));
-    if (type->kind->prep == NULL) {
+    if (type->prep == NULL) {
         views.prep = NULL;
     } else {
         views.prep = calloc(
             type->controls.len, sizeof(rage_InterpolatedView *));
     }
-    if (type->kind->clean == NULL) {
+    if (type->clean == NULL) {
         views.clean = NULL;
     } else {
         views.clean = calloc(
@@ -189,7 +189,7 @@ rage_MountResult rage_proc_block_mount(
     rage_Harness * harness = malloc(sizeof(rage_Harness));
     harness->pb = pb;
     harness->elem = elem;
-    uint8_t n_views = view_count_for_type(elem->type->kind);
+    uint8_t n_views = view_count_for_type(elem->type);
     // FIXME: Error handling
     harness->interpolators = RAGE_SUCCESS_VALUE(interpolators_for(
         pb->sample_rate, pb->evt_q, &elem->type->controls, controls, n_views));

@@ -60,61 +60,20 @@ static void gain_def(rage_TupleDef * const td, unsigned i, unsigned o) {
     td->items = gain_fields;
 };
 
-rage_NewInstanceSpec elem_describe_ports(rage_Atom ** params) {
-    int const num_in_channels = params[0][0].i;
-    int const num_out_channels = params[0][1].i;
-
-    rage_InstanceSpec spec;
-    spec.max_uncleaned_frames = UINT32_MAX;
-    spec.max_period_size = UINT32_MAX;
-    spec.controls.len = num_out_channels * num_in_channels;
-    rage_TupleDef * items = calloc(
-        num_out_channels * num_in_channels, sizeof(rage_TupleDef));
-    spec.controls.items = items;
-    for (unsigned o = 0; o < num_out_channels; o++) {
-        for (unsigned i = 0; i < num_in_channels; i++) {
-            gain_def(&items[(o * num_in_channels) + i], i, o);
-        }
-    }
-    int const num_streams = num_in_channels + num_out_channels;
-    rage_StreamDef * stream_defs = calloc(num_streams, sizeof(rage_StreamDef));
-    for (unsigned i = 0; i < num_streams; i++) {
-        stream_defs[i] = RAGE_STREAM_AUDIO;
-    }
-    spec.inputs.len = num_in_channels;
-    spec.inputs.items = stream_defs;
-    spec.outputs.len = num_out_channels;
-    spec.outputs.items = stream_defs + (
-        sizeof(rage_StreamDef) * num_in_channels);
-
-    return RAGE_SUCCESS(rage_NewInstanceSpec, spec);
-};
-
-void elem_free_port_description(rage_InstanceSpec spec) {
-    free((void *) spec.inputs.items);
-    for (unsigned i = 0; i < spec.controls.len; i++) {
-        free((void *) spec.controls.items[i].name);
-        free((void *) spec.controls.items[i].description);
-    }
-    free((void *) spec.controls.items);
-};
-
 struct rage_ElementState {
     unsigned num_in_channels;
     unsigned num_out_channels;
 };
 
-rage_NewElementState elem_new(uint32_t sample_rate, rage_Atom ** params) {
-    // NB: if we had pre-compiled optimisation for different numbers of common
-    // inputs and outputs of the mixer, we could make that decision here.
-    rage_ElementState * state = malloc(sizeof(rage_ElementState));
-    state->num_in_channels = params[0][0].i;
-    state->num_out_channels = params[0][1].i;
-    return RAGE_SUCCESS(rage_NewElementState, state);
+struct rage_ElementTypeState {
+    rage_ElementState;
+};
+
+rage_NewElementState state_new(rage_ElementTypeState * type_state, uint32_t sample_rate) {
+    return RAGE_SUCCESS(rage_NewElementState, (rage_ElementState *) type_state);
 }
 
-void elem_free(rage_ElementState * state) {
-    free(state);
+void state_free(rage_ElementState * state) {
 }
 
 void elem_process(
@@ -162,11 +121,57 @@ void elem_process(
     }
 }
 
-rage_ElementKind const elem_info = {
+void type_destroy(rage_ElementType * type) {
+    free((void *) type->spec.inputs.items);
+    for (unsigned i = 0; i < type->spec.controls.len; i++) {
+        free((void *) type->spec.controls.items[i].name);
+        free((void *) type->spec.controls.items[i].description);
+    }
+    free((void *) type->spec.controls.items);
+    free(type->type_state);
+    free(type);
+};
+
+rage_Error kind_specialise(
+        rage_ElementType * type, rage_Atom ** params) {
+    int const num_in_channels = params[0][0].i;
+    int const num_out_channels = params[0][1].i;
+
+    type->spec.max_uncleaned_frames = UINT32_MAX;
+    type->spec.max_period_size = UINT32_MAX;
+    type->spec.controls.len = num_out_channels * num_in_channels;
+    rage_TupleDef * items = calloc(
+        num_out_channels * num_in_channels, sizeof(rage_TupleDef));
+    type->spec.controls.items = items;
+    for (unsigned o = 0; o < num_out_channels; o++) {
+        for (unsigned i = 0; i < num_in_channels; i++) {
+            gain_def(&items[(o * num_in_channels) + i], i, o);
+        }
+    }
+    int const num_streams = num_in_channels + num_out_channels;
+    rage_StreamDef * stream_defs = calloc(num_streams, sizeof(rage_StreamDef));
+    for (unsigned i = 0; i < num_streams; i++) {
+        stream_defs[i] = RAGE_STREAM_AUDIO;
+    }
+    type->spec.inputs.len = num_in_channels;
+    type->spec.inputs.items = stream_defs;
+    type->spec.outputs.len = num_out_channels;
+    type->spec.outputs.items = stream_defs + (
+        sizeof(rage_StreamDef) * num_in_channels);
+    type->type_destroy = type_destroy;
+    type->state_new = state_new;
+    type->process = elem_process;
+    type->state_free = state_free;
+    type->prep = NULL;
+    type->clear = NULL;
+    type->clean = NULL;
+    type->type_state = malloc(sizeof(rage_ElementTypeState));
+    type->type_state->num_in_channels = num_in_channels;
+    type->type_state->num_out_channels = num_out_channels;
+    return RAGE_OK;
+};
+
+rage_ElementKind const kind = {
     .parameters = &init_params,
-    .state_new = elem_new,
-    .state_free = elem_free,
-    .ports_get = elem_describe_ports,
-    .ports_free = elem_free_port_description,
-    .process = elem_process
+    .specialise = kind_specialise
 };

@@ -11,12 +11,6 @@ typedef struct rage_LoadedElementKind rage_LoadedElementKind;
 
 // Am I exposing too much of the internals?
 typedef struct {
-    rage_ElementKind * kind;
-    rage_Atom ** params;
-    RAGE_EMBED_STRUCT(rage_InstanceSpec, spec);
-} rage_ElementType;
-
-typedef struct {
     rage_ElementType * type;
     rage_ElementState * state;
 } rage_Element;
@@ -55,6 +49,6 @@ void rage_element_process(
 
 
 // FIXME: better or worse?
-#define RAGE_ELEM_PREP(elem, controls) elem->type->kind->prep(elem->state, controls)
-#define RAGE_ELEM_CLEAN(elem, controls) elem->type->kind->clean(elem->state, controls)
-#define RAGE_ELEM_CLEAR(elem, ...) elem->type->kind->clear(elem->state, __VA_ARGS__)
+#define RAGE_ELEM_PREP(elem, controls) elem->type->prep(elem->state, controls)
+#define RAGE_ELEM_CLEAN(elem, controls) elem->type->clean(elem->state, controls)
+#define RAGE_ELEM_CLEAR(elem, ...) elem->type->clear(elem->state, __VA_ARGS__)
