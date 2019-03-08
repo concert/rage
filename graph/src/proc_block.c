@@ -17,8 +17,6 @@ typedef struct {
 
 struct rage_Harness {
     rage_Element * elem;
-    // FIXME: Don't actually need a ports per elem (but 1 of the largest size)?
-    RAGE_EMBED_STRUCT(rage_Ports, ports);
     rage_SupportTruck * truck;
     rage_Interpolator ** interpolators;
     rage_ProcBlockViews views;
@@ -41,6 +39,9 @@ typedef struct rage_ExternalOut {
 
 typedef struct {
     rage_TransportState transp;
+    uint32_t max_inputs;
+    uint32_t max_outputs;
+    RAGE_EMBED_STRUCT(rage_Ports, ports);
     void ** all_buffers;
     rage_ProcSteps steps;
     rage_ExternalOut * ext_outs;
@@ -75,6 +76,11 @@ rage_ProcBlock * rage_proc_block_new(
     pb->rolling_countdown = rage_support_convoy_get_countdown(pb->convoy);
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
     rtb->transp = transp_state;
+    rtb->max_inputs = 0;
+    rtb->max_outputs = 0;
+    rtb->controls = NULL;
+    rtb->inputs = NULL;
+    rtb->outputs = NULL;
     rtb->all_buffers = calloc(pb->min_dynamic_buffer, sizeof(void *));
     rtb->steps.len = 0;
     rtb->steps.items = NULL;
@@ -90,8 +96,6 @@ rage_ProcBlock * rage_proc_block_new(
 
 static void rage_harness_free(rage_Harness * harness) {
     rage_support_convoy_unmount(harness->truck);
-    free(harness->ports.inputs);
-    free(harness->ports.outputs);
     for (uint32_t i = 0; i < harness->elem->type->spec.controls.len; i++) {
         rage_interpolator_free(&harness->elem->type->spec.controls.items[i], harness->interpolators[i]);
     }
@@ -126,6 +130,8 @@ void rage_proc_block_free(rage_ProcBlock * pb) {
     free(rtb->all_buffers);
     rage_procsteps_free(&rtb->steps);
     rage_ext_outs_free(rtb->ext_outs);
+    free(rtb->inputs);
+    free(rtb->outputs);
     free(rtb);
     rage_buffer_allocs_free(pb->allocs);
     rage_depmap_free(pb->cons);
@@ -197,10 +203,6 @@ rage_MountResult rage_proc_block_mount(
     // FIXME: could be more efficient, and not add this if not required
     harness->truck = rage_support_convoy_mount(
         pb->convoy, elem, harness->views.prep, harness->views.clean);
-    harness->ports.controls = harness->views.rt;
-    // FIXME: Should there be one of these per harness?
-    harness->ports.inputs = calloc(elem->type->inputs.len, sizeof(void *));
-    harness->ports.outputs = calloc(elem->type->outputs.len, sizeof(void *));
     rage_RtBits const * old = rage_rt_crit_update_start(harness->pb->syncy);
     rage_RtBits * new = malloc(sizeof(rage_RtBits));
     *new = *old;
@@ -214,8 +216,22 @@ rage_MountResult rage_proc_block_mount(
             proc_step->harness = harness;
         }
     }
+    if (elem->type->inputs.len > old->max_inputs) {
+        new->ports.inputs = calloc(elem->type->inputs.len, sizeof(void *));
+        new->max_inputs = elem->type->inputs.len;
+    }
+    if (elem->type->outputs.len > old->max_outputs) {
+        new->ports.outputs = calloc(elem->type->outputs.len, sizeof(void *));
+        new->max_outputs = elem->type->outputs.len;
+    }
     rage_RtBits * rt_to_free = rage_rt_crit_update_finish(harness->pb->syncy, new);
     free(rt_to_free->steps.items);
+    if (rt_to_free->max_inputs < elem->type->inputs.len) {
+        free(rt_to_free->ports.inputs);
+    }
+    if (rt_to_free->max_outputs < elem->type->outputs.len) {
+        free(rt_to_free->ports.outputs);
+    }
     free(rt_to_free);
     return RAGE_SUCCESS(rage_MountResult, harness);
 }
@@ -235,6 +251,8 @@ void rage_proc_block_unmount(rage_Harness * harness) {
             new->steps.items[j] = old->steps.items[i];
         }
     }
+    // FIXME: Does not reduce ports allocation if oversize (although since it's
+    // only a few pointers maybe not worth reducing it)
     new->steps.len = old->steps.len - 1;
     rage_RtBits * old_rt = rage_rt_crit_update_finish(harness->pb->syncy, new);
     rage_harness_free(proc_step->harness);
@@ -295,7 +313,7 @@ rage_Error rage_proc_block_transport_seek(rage_ProcBlock * pb, rage_FrameNo targ
                 uint32_t const n_controls =
                     rtd->steps.items[i].harness->elem->type->controls.len;
                 for (uint32_t j = 0; j < n_controls; j++) {
-                    rage_interpolated_view_seek(rtd->steps.items[i].harness->ports.controls[j], target);
+                    rage_interpolated_view_seek(rtd->steps.items[i].harness->views.rt[j], target);
                 }
             }
         }
@@ -310,7 +328,7 @@ static void pickup_new_timeseries(rage_ProcSteps * steps) {
     for (uint32_t i = 0; i < steps->len; i++) {
         rage_Harness * h = steps->items[i].harness;
         for (uint32_t j = 0; j < h->elem->type->spec.controls.len; j++) {
-            rage_interpolated_view_advance(h->ports.controls[j], 0);
+            rage_interpolated_view_advance(h->views.rt[j], 0);
         }
     }
 }
@@ -327,15 +345,14 @@ void rage_proc_block_process(
     for (uint32_t i = 0; i < rtd->steps.len; i++) {
         rage_ProcStep * step = &rtd->steps.items[i];
         for (uint32_t j = 0; j < step->harness->elem->type->inputs.len; j++) {
-            step->harness->inputs[j] =
-                rtd->all_buffers[step->in_buffer_allocs[j]];
+            rtd->inputs[j] = rtd->all_buffers[step->in_buffer_allocs[j]];
         }
         for (uint32_t j = 0; j < step->harness->elem->type->outputs.len; j++) {
-            step->harness->outputs[j] =
-                rtd->all_buffers[step->out_buffer_allocs[j]];
+            rtd->outputs[j] = rtd->all_buffers[step->out_buffer_allocs[j]];
         }
+        rtd->ports.controls = step->harness->views.rt;
         rage_element_process(
-            step->harness->elem, rtd->transp, n_frames, &step->harness->ports);
+            step->harness->elem, rtd->transp, n_frames, &rtd->ports);
     }
     for (rage_ExternalOut * d = rtd->ext_outs; d != NULL; d = d->next) {
         for (uint32_t i = 0; i < d->len; i++) {
