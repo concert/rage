@@ -25,6 +25,8 @@ typedef RAGE_OR_ERROR(rage_DepMap *) rage_ExtDepMap;
 
 rage_DepMap * rage_depmap_new();
 void rage_depmap_free(rage_DepMap * dm);
+rage_DepMap * rage_depmap_copy(rage_DepMap const * dm);
+
 rage_ExtDepMap rage_depmap_connect(
     rage_DepMap const * dm, rage_ConnTerminal input, rage_ConnTerminal output);
 rage_ExtDepMap rage_depmap_disconnect(
@@ -44,4 +46,5 @@ void rage_conn_terms_free(rage_ConnTerminals * ct);
 
 // This is an in-place operation:
 void rage_remove_connections_for(
-    rage_DepMap * initial, rage_Harness * tgt);
+    rage_DepMap * initial, rage_Harness const * const tgt,
+    uint32_t const n_protected_ins, uint32_t const n_protected_outs);

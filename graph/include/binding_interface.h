@@ -7,8 +7,8 @@ typedef struct rage_BackendState rage_BackendState;
 typedef struct {
     rage_BackendState * state;
     void (*get_buffers)(
-        rage_BackendState * state, uint32_t n_frames,
-        void ** inputs, void ** outputs);
+        rage_BackendState * state, uint32_t ext_revision,
+        uint32_t n_frames, void ** inputs, void ** outputs);
 } rage_BackendInterface;
 
 typedef RAGE_ARRAY(char *) rage_BackendDescriptions;
@@ -27,5 +27,5 @@ typedef struct {
 } rage_BackendConfig;
 
 void rage_backend_get_buffers(
-    rage_BackendInterface const * b, uint32_t n_frames,
-    void ** inputs, void ** outputs);
+    rage_BackendInterface const * b, uint32_t revision,
+    uint32_t n_frames, void ** inputs, void ** outputs);
