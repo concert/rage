@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
-#include "macros.h"
+#include <macros.h>
+#include <error.h>
 
 typedef struct rage_BackendState rage_BackendState;
 
@@ -30,13 +31,18 @@ typedef rage_BackendHooks (*rage_BackendSetupProcess)(
     void * data,
     rage_ProcessCb process,
     rage_SetExternalsCb set_externals,
-    uint32_t * sample_rate,
     uint32_t * buffer_size);
 
 typedef struct {
     rage_BackendState * state;
     rage_BackendSetupProcess setup_process;
+    void (*unset_process)(rage_BackendState * state);
+    rage_Error (*activate)(rage_BackendState * state);
+    rage_Error (*deactivate)(rage_BackendState * state);
+    uint32_t const * sample_rate;
 } rage_BackendInterface;
+
+uint32_t rage_backend_get_sample_rate(rage_BackendInterface * bi);
 
 // FIXME: Should this be allowed to fail?
 rage_BackendHooks rage_backend_setup_process(
@@ -46,19 +52,9 @@ rage_BackendHooks rage_backend_setup_process(
     void (*set_externals)(
         void * data, uint32_t const ext_revision,
         uint32_t const n_ins, uint32_t const n_outs),
-    uint32_t * sample_rate,
     uint32_t * buffer_size);
+// FIXME: Should this be allowed to fail?
+void rage_backend_unset_process(rage_BackendInterface * bi);
 
-// FIXME: Rest of file looking increasingly strange and pointless:
-typedef RAGE_ARRAY(char *) rage_BackendDescriptions;
-
-typedef struct {
-    rage_BackendDescriptions inputs;
-    rage_BackendDescriptions outputs;
-} rage_BackendPorts;
-
-typedef struct {
-    uint32_t sample_rate;
-    uint32_t buffer_size;
-    rage_BackendPorts ports;
-} rage_BackendConfig;
+rage_Error rage_backend_activate(rage_BackendInterface * bi);
+rage_Error rage_backend_deactivate(rage_BackendInterface * bi);

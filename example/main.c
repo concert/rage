@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <unistd.h> // for sleep
-#include "error.h"
-#include "graph.h"
-#include "loader.h"
+
+#include <error.h>
+#include <graph.h>
+#include <loader.h>
+#include <jack_bindings.h>
 
 typedef struct {
+    rage_JackBackend * jb;
     rage_Graph * graph;
     rage_ElementLoader * el;
     rage_LoadedElementKind * persist;
@@ -26,6 +29,8 @@ static void free_bits(example_Bits * bits) {
         rage_element_loader_free(bits->el);
     if (bits->graph)
         rage_graph_free(bits->graph);
+    if (bits->jb)
+        rage_jack_backend_free(bits->jb);
 }
 
 static char * input_names[] = {
@@ -36,11 +41,6 @@ static char * input_names[] = {
 static char * output_names[] = {
     "o0",
     "o1"
-};
-
-static rage_BackendPorts ext_ports = {
-    .inputs = {.len = 2, .items = input_names},
-    .outputs = {.len = 2, .items = output_names}
 };
 
 static void event_watcher(void * ctx, rage_Event * evt) {
@@ -56,7 +56,14 @@ static void event_watcher(void * ctx, rage_Event * evt) {
 int main() {
     example_Bits bits = {};
     printf("Example started\n");
-    rage_NewGraph new_graph = rage_graph_new(ext_ports, 44100);
+    rage_NewJackBackend njb = rage_jack_backend_new(
+        44100, 1024,
+        (rage_PortNames) {.len = 2, .items = input_names},
+        (rage_PortNames) {.len = 2, .items = output_names});
+    RAGE_ABORT_ON_FAILURE(njb, -1);
+    bits.jb = RAGE_SUCCESS_VALUE(njb);
+    rage_NewGraph new_graph = rage_graph_new(
+        rage_jack_backend_get_interface(bits.jb));
     RAGE_ABORT_ON_FAILURE(new_graph, 1);
     bits.graph = RAGE_SUCCESS_VALUE(new_graph);
     bits.el = rage_element_loader_new(getenv("RAGE_ELEMENTS_PATH"));

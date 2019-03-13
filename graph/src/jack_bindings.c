@@ -3,6 +3,7 @@
 #include "macros.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 #include <jack/jack.h>
 #include <semaphore.h>
 #include <stdatomic.h>
@@ -23,7 +24,8 @@ struct rage_BackendState {
     rage_SetExternalsCb set_externals;
     void * data;
     rage_BackendInterface interface;
-    RAGE_EMBED_STRUCT(rage_BackendConfig, conf);
+    uint32_t sample_rate;
+    uint32_t buffer_size;
 };
 
 static void rage_jack_backend_get_buffers(
@@ -96,12 +98,10 @@ static rage_BackendHooks rage_jack_backend_setup_process(
         void * data,
         rage_ProcessCb process,
         rage_SetExternalsCb set_externals,
-        uint32_t * sample_rate,
         uint32_t * buffer_size) {
     bs->data = data;
     bs->process = process;
     bs->set_externals = set_externals;
-    *sample_rate = bs->sample_rate;
     *buffer_size = bs->buffer_size;
     return (rage_BackendHooks) {
         .tick_force_start = rage_jack_backend_tick_force_start,
@@ -111,26 +111,56 @@ static rage_BackendHooks rage_jack_backend_setup_process(
     };
 }
 
-rage_NewJackBackend rage_jack_backend_new(rage_BackendConfig const conf) {
+static void unset_process(rage_JackBackend * bs) {
+    assert(!bs->active);
+    bs->data = NULL;
+    bs->process = NULL;
+    bs->set_externals = NULL;
+}
+
+static rage_Error rage_jack_backend_activate(rage_JackBackend * jbe) {
+    if (jbe->process == NULL) {
+        return RAGE_ERROR("Process not set up");
+    }
+    if (jack_activate(jbe->jack_client)) {
+        return RAGE_ERROR("Failed to activate");
+    }
+    jbe->active = true;
+    jbe->set_externals(jbe->data, 0, jbe->input_ports.len, jbe->output_ports.len);
+    return RAGE_OK;
+}
+
+static rage_Error rage_jack_backend_deactivate(rage_JackBackend * jbe) {
+    if (jack_deactivate(jbe->jack_client)) {
+        return RAGE_ERROR("Failed to activate");
+    }
+    jbe->active = false;
+    return RAGE_OK;
+}
+
+rage_NewJackBackend rage_jack_backend_new(
+        uint32_t sample_rate, uint32_t buffer_size,
+        rage_PortNames inputs, rage_PortNames outputs) {
     jack_client_t * jc = jack_client_open("rage", JackNoStartServer, NULL);
     if (jc == NULL) {
         return RAGE_FAILURE(rage_NewJackBackend, "Unable to open jack client");
     }
-    if (jack_get_sample_rate(jc) != conf.sample_rate) {
+    if (jack_get_sample_rate(jc) != sample_rate) {
         jack_client_close(jc);  // FIXME: can fail?
         return RAGE_FAILURE(rage_NewJackBackend, "Mismatched sample rate");
     }
     rage_JackBackend * be = malloc(sizeof(rage_JackBackend));
     atomic_init(&be->period_count, 0);
     be->jack_client = jc;
-    be->conf = conf;
+    be->sample_rate = sample_rate;
+    be->buffer_size = buffer_size;
     jack_set_sample_rate_callback(jc, rage_values_eq, &be->sample_rate);  // FIXME: can fail
     jack_set_buffer_size_callback(jc, rage_values_eq, &be->buffer_size);  //  ^
     jack_set_process_callback(jc, rage_jack_process_cb, be);
-    RAGE_ARRAY_INIT(&be->input_ports, conf.ports.inputs.len, i) {
+    RAGE_ARRAY_INIT(&be->input_ports, inputs.len, i) {
         be->input_ports.items[i] = jack_port_register(
             jc,
-            conf.ports.inputs.items[i],
+            inputs.items[i],
             JACK_DEFAULT_AUDIO_TYPE,
             JackPortIsInput,
             0);
@@ -141,10 +171,10 @@ rage_NewJackBackend rage_jack_backend_new(rage_BackendConfig const conf) {
                 rage_NewJackBackend, "Failed to create input port");
         }
     }
-    RAGE_ARRAY_INIT(&be->output_ports, conf.ports.outputs.len, i) {
+    RAGE_ARRAY_INIT(&be->output_ports, outputs.len, i) {
         be->output_ports.items[i] = jack_port_register(
             jc,
-            conf.ports.outputs.items[i],
+            outputs.items[i],
             JACK_DEFAULT_AUDIO_TYPE,
             JackPortIsOutput,
             0);
@@ -156,6 +186,10 @@ rage_NewJackBackend rage_jack_backend_new(rage_BackendConfig const conf) {
     }
     be->interface.state = be;
     be->interface.setup_process = rage_jack_backend_setup_process;
+    be->interface.unset_process = unset_process;
+    be->interface.activate = rage_jack_backend_activate;
+    be->interface.deactivate = rage_jack_backend_deactivate;
+    be->interface.sample_rate = &be->sample_rate;
     be->active = false;
     be->forcing_ticks = false;
     be->process = NULL;
@@ -168,26 +202,6 @@ void rage_jack_backend_free(rage_JackBackend * jbe) {
     free(jbe->input_ports.items);
     free(jbe->output_ports.items);
     free(jbe);
-}
-
-rage_Error rage_jack_backend_activate(rage_JackBackend * jbe) {
-    if (jbe->process == NULL) {
-        return RAGE_ERROR("Process not set up");
-    }
-    if (jack_activate(jbe->jack_client)) {
-        return RAGE_ERROR("Failed to activate");
-    }
-    jbe->active = true;
-    jbe->set_externals(jbe->data, 0, jbe->input_ports.len, jbe->output_ports.len);
-    return RAGE_OK;
-}
-
-rage_Error rage_jack_backend_deactivate(rage_JackBackend * jbe) {
-    if (jack_deactivate(jbe->jack_client)) {
-        return RAGE_ERROR("Failed to activate");
-    }
-    jbe->active = false;
-    return RAGE_OK;
 }
 
 /*

@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "proc_block.h"
-#include "jack_bindings.h"
 #include "queue.h"
 #include "event.h"
 
@@ -11,32 +10,22 @@ struct rage_Graph {
     rage_Queue * evt_q;
     pthread_t q_thread;
     rage_ProcBlock * pb;
-    rage_JackBackend * jb;
+    rage_BackendInterface * bi;
 };
 
-rage_NewGraph rage_graph_new(rage_BackendPorts ports, uint32_t sample_rate) {
+rage_NewGraph rage_graph_new(rage_BackendInterface * bi) {
     rage_Queue * evt_q = rage_queue_new();
-    rage_NewJackBackend njb = rage_jack_backend_new((rage_BackendConfig) {
-        .sample_rate = sample_rate,
-        .buffer_size = 1024,
-        .ports = ports,
-    });
-    if (RAGE_FAILED(njb)) {
-        rage_queue_free(evt_q);
-        return RAGE_FAILURE_CAST(rage_NewGraph, njb);
-    }
     rage_Graph * g = malloc(sizeof(rage_Graph));
-    g->sample_rate = sample_rate;
-    g->jb = RAGE_SUCCESS_VALUE(njb);
-    g->pb = rage_proc_block_new(
-        RAGE_TRANSPORT_STOPPED, evt_q, rage_jack_backend_get_interface(g->jb));
+    g->sample_rate = rage_backend_get_sample_rate(bi);
+    g->bi = bi;
+    g->pb = rage_proc_block_new(RAGE_TRANSPORT_STOPPED, evt_q, bi);
     g->evt_q = evt_q;
     return RAGE_SUCCESS(rage_NewGraph, g);
 }
 
 void rage_graph_free(rage_Graph * g) {
+    rage_backend_unset_process(g->bi);
     rage_proc_block_free(g->pb);
-    rage_jack_backend_free(g->jb);
     rage_queue_free(g->evt_q);
     free(g);
 }
@@ -64,7 +53,7 @@ static void * queue_puller(void * cbiv) {
 rage_Error rage_graph_start_processing(rage_Graph * g, rage_EventCb evt_cb, void * cb_ctx) {
     rage_Error err = rage_proc_block_start(g->pb);
     if (!RAGE_FAILED(err)) {
-        err = rage_jack_backend_activate(g->jb);
+        err = rage_backend_activate(g->bi);
     }
     if (RAGE_FAILED(err)) {
         rage_proc_block_stop(g->pb);
@@ -76,7 +65,7 @@ rage_Error rage_graph_start_processing(rage_Graph * g, rage_EventCb evt_cb, void
         if (pthread_create(&g->q_thread, NULL, queue_puller, cbi)) {
             err = RAGE_ERROR("Failed to start queue thread");
             free(cbi);
-            rage_jack_backend_deactivate(g->jb);
+            rage_backend_deactivate(g->bi);
             rage_proc_block_stop(g->pb);
         }
     }
@@ -84,7 +73,7 @@ rage_Error rage_graph_start_processing(rage_Graph * g, rage_EventCb evt_cb, void
 }
 
 void rage_graph_stop_processing(rage_Graph * g) {
-    rage_jack_backend_deactivate(g->jb);
+    rage_backend_deactivate(g->bi);
     rage_proc_block_stop(g->pb);
     rage_Event * evt = rage_event_new(
         rage_EventGraphStopped, NULL, NULL, NULL, NULL);

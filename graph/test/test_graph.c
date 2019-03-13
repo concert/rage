@@ -13,11 +13,6 @@ static char * example_output_names[] = {
     "out0"
 };
 
-static rage_BackendPorts example_ports = {
-    .inputs = {.len = 1, .items = example_input_names},
-    .outputs = {.len = 1, .items = example_output_names}
-};
-
 rage_Atom half_vol[] = {{.f = 0.5}};
 rage_TimePoint example_points[] = {
     {
@@ -34,7 +29,16 @@ static void queue_watcher(void * ctx, rage_Event * evt) {
 }
 
 static rage_Error test_graph() {
-    rage_NewGraph new_graph = rage_graph_new(example_ports, 44100);
+    rage_NewJackBackend njb = rage_jack_backend_new(
+        44100, 1024,
+        (rage_PortNames) {.len = 1, .items = example_input_names},
+        (rage_PortNames) {.len = 1, .items = example_output_names});
+    if (RAGE_FAILED(njb)) {
+        return RAGE_FAILURE_CAST(rage_Error, njb);
+    }
+    rage_JackBackend * jb = RAGE_SUCCESS_VALUE(njb);
+    rage_NewGraph new_graph = rage_graph_new(
+        rage_jack_backend_get_interface(jb));
     if (RAGE_FAILED(new_graph))
         return RAGE_FAILURE_CAST(rage_Error, new_graph);
     rage_Graph * graph = RAGE_SUCCESS_VALUE(new_graph);
@@ -65,5 +69,6 @@ static rage_Error test_graph() {
     }
     sem_destroy(&evt_sem);
     rage_graph_free(graph);
+    rage_jack_backend_free(jb);
     return rv;
 }
