@@ -12,8 +12,6 @@ struct rage_Graph {
     pthread_t q_thread;
     rage_ProcBlock * pb;
     rage_JackBackend * jb;
-    // FIXME: Temporary to avoid interface changes right now:
-    rage_BackendPorts ports;
 };
 
 rage_NewGraph rage_graph_new(rage_BackendPorts ports, uint32_t sample_rate) {
@@ -37,7 +35,10 @@ rage_NewGraph rage_graph_new(rage_BackendPorts ports, uint32_t sample_rate) {
     g->pb = pb;
     g->jb = RAGE_SUCCESS_VALUE(njb);
     g->evt_q = evt_q;
-    g->ports = ports;
+    rage_proc_block_set_tick_forcer(
+        pb, rage_jack_backend_tick_force_start,
+        rage_jack_backend_tick_force_end, g->jb);
+    rage_proc_block_set_externals(g->pb, 0, ports.inputs.len, ports.outputs.len);
     return RAGE_SUCCESS(rage_NewGraph, g);
 }
 
@@ -76,7 +77,6 @@ rage_Error rage_graph_start_processing(rage_Graph * g, rage_EventCb evt_cb, void
     if (RAGE_FAILED(err)) {
         rage_proc_block_stop(g->pb);
     } else {
-        rage_proc_block_set_externals(g->pb, 0, g->ports.inputs.len, g->ports.outputs.len);
         rage_EventCbInfo * cbi = malloc(sizeof(rage_EventCbInfo));
         cbi->q = g->evt_q;
         cbi->cb = evt_cb;

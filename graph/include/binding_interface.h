@@ -29,3 +29,7 @@ typedef struct {
 void rage_backend_get_buffers(
     rage_BackendInterface const * b, uint32_t revision,
     uint32_t n_frames, void ** inputs, void ** outputs);
+
+typedef struct rage_TickForcing rage_TickForcing;
+typedef rage_TickForcing * (*rage_TickForceStart)(rage_BackendState * b);
+typedef void (*rage_TickForceEnd)(rage_TickForcing * tf);

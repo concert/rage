@@ -13,6 +13,8 @@ _Static_assert(ATOMIC_INT_LOCK_FREE, "Period counter atomic not lock free");
 
 struct rage_BackendState {
     jack_client_t * jack_client;
+    bool active;
+    volatile bool forcing_ticks;
     _Atomic unsigned period_count;
     rage_JackPorts input_ports;
     rage_JackPorts output_ports;
@@ -90,6 +92,8 @@ rage_NewJackBackend rage_jack_backend_new(rage_BackendConfig const conf) {
     }
     be->backend.state = be;
     be->backend.get_buffers = rage_jack_backend_get_buffers;
+    be->active = false;
+    be->forcing_ticks = false;
     return RAGE_SUCCESS(rage_NewJackBackend, be);
 }
 
@@ -104,6 +108,7 @@ rage_Error rage_jack_backend_activate(rage_JackBackend * jbe) {
     if (jack_activate(jbe->jack_client)) {
         return RAGE_ERROR("Failed to activate");
     }
+    jbe->active = true;
     return RAGE_OK;
 }
 
@@ -111,6 +116,7 @@ rage_Error rage_jack_backend_deactivate(rage_JackBackend * jbe) {
     if (jack_deactivate(jbe->jack_client)) {
         return RAGE_ERROR("Failed to activate");
     }
+    jbe->active = false;
     return RAGE_OK;
 }
 
@@ -123,4 +129,43 @@ rage_Time rage_jack_backend_nowish(rage_JackBackend * jbe) {
         .second = n_frames / jbe->sample_rate,
         .fraction = ((n_frames % jbe->sample_rate) * UINT32_MAX) / jbe->sample_rate
     };
+}
+
+#include <stdio.h>
+
+static void * forced_ticker(void * data) {
+    rage_JackBackend * jb = data;
+    while (jb->forcing_ticks) {
+        // Process 0 frames:
+        jb->process(&jb->backend, 0, jb->data);
+    }
+    return NULL;
+}
+
+struct rage_TickForcing {
+    rage_JackBackend * jb;
+    bool thread_started;
+    pthread_t thread_id;
+};
+
+// NOTE: Not safe to have multiple of these contexts concurrently at the
+// moment (or to call stop whilst in a context):
+rage_TickForcing * rage_jack_backend_tick_force_start(rage_JackBackend * jbe) {
+    rage_TickForcing * tf = malloc(sizeof(rage_TickForcing));
+    tf->jb = jbe;
+    tf->thread_started = !jbe->active;
+    if (tf->thread_started) {
+        jbe->forcing_ticks = true;
+        // FIXME: In theory can fail:
+        pthread_create(&tf->thread_id, NULL, forced_ticker, jbe);
+    }
+    return tf;
+}
+
+void rage_jack_backend_tick_force_end(rage_TickForcing * tf) {
+    tf->jb->forcing_ticks = false;
+    if (tf->thread_started) {
+        pthread_join(tf->thread_id, NULL);
+    }
+    free(tf);
 }

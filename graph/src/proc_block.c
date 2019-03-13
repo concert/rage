@@ -62,6 +62,9 @@ struct rage_ProcBlock {
     rage_BufferAllocs * allocs;
     void * silent_buffer;
     void * unrouted_buffer;
+    rage_TickForceStart tick_force_start;
+    rage_TickForceEnd tick_force_end;
+    rage_BackendState * backend_state;
 };
 
 struct rage_ConTrans {
@@ -102,6 +105,16 @@ rage_ProcBlock * rage_proc_block_new(
     pb->unrouted_buffer = calloc(period_size, sizeof(float));
     rtb->all_buffers[1] = pb->unrouted_buffer;
     return pb;
+}
+
+// FIXME: The existence of this function is an indication that the cross-wiring
+// between this and backend isn't right:
+void rage_proc_block_set_tick_forcer(
+        rage_ProcBlock * pb, rage_TickForceStart tick_force_start,
+        rage_TickForceEnd tick_force_end, rage_BackendState * backend_state) {
+    pb->tick_force_start = tick_force_start;
+    pb->tick_force_end = tick_force_end;
+    pb->backend_state = backend_state;
 }
 
 static uint32_t * rage_alloc_int_array(uint32_t n_ints, uint32_t value) {
@@ -423,7 +436,9 @@ void rage_proc_block_set_externals(
         pb->cons, &new_rt->steps, n_ins, new_rt->min_dynamic_buffer,
         &new_rt->ext_outs);
     rage_pb_init_all_buffers(pb, new_rt, highest_assignment);
+    rage_TickForcing * tf = pb->tick_force_start(pb->backend_state);
     rage_RtBits * replaced = rage_rt_crit_update_finish(pb->syncy, new_rt);
+    pb->tick_force_end(tf);
     free(replaced->all_buffers);
     rage_proc_steps_destroy(&replaced->steps);
     rage_ext_outs_free(replaced->ext_outs);

@@ -12,3 +12,6 @@ rage_Error rage_jack_backend_activate(rage_JackBackend * jbe);
 rage_Error rage_jack_backend_deactivate(rage_JackBackend * jbe);
 
 rage_Time rage_jack_backend_nowish(rage_JackBackend * jbe);
+
+rage_TickForcing * rage_jack_backend_tick_force_start(rage_JackBackend * jbe);
+void rage_jack_backend_tick_force_end(rage_TickForcing * tf);

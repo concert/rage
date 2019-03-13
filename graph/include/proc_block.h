@@ -48,3 +48,9 @@ void rage_proc_block_set_externals(
     uint32_t const n_ins, uint32_t const n_outs);
 void rage_proc_block_process(
     rage_BackendInterface const * b, uint32_t const n_frames, void * data);
+
+// FIXME: The existence of this function is an indication that the cross-wiring
+// between this and backend isn't right:
+void rage_proc_block_set_tick_forcer(
+    rage_ProcBlock * pb, rage_TickForceStart tick_force_start,
+    rage_TickForceEnd tick_force_end, rage_BackendState * backend_state);
