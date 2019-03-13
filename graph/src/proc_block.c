@@ -62,9 +62,7 @@ struct rage_ProcBlock {
     rage_BufferAllocs * allocs;
     void * silent_buffer;
     void * unrouted_buffer;
-    rage_TickForceStart tick_force_start;
-    rage_TickForceEnd tick_force_end;
-    rage_BackendState * backend_state;
+    rage_BackendHooks hooks;
 };
 
 struct rage_ConTrans {
@@ -73,49 +71,6 @@ struct rage_ConTrans {
     rage_RtBits const * old_rt;
     rage_ProcSteps steps;
 };
-
-rage_ProcBlock * rage_proc_block_new(
-        uint32_t sample_rate, uint32_t period_size,
-        rage_TransportState transp_state, rage_Queue * evt_q) {
-    rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
-    pb->cons = rage_depmap_new();
-    pb->sample_rate = sample_rate;
-    pb->period_size = period_size;
-    pb->evt_q = evt_q;
-    pb->convoy = rage_support_convoy_new(period_size, transp_state, evt_q);
-    pb->rolling_countdown = rage_support_convoy_get_countdown(pb->convoy);
-    rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
-    rtb->transp = transp_state;
-    rtb->max_inputs = 0;
-    rtb->max_outputs = 0;
-    rtb->n_ext_ins = 0;
-    rtb->n_ext_outs = 0;
-    rtb->min_dynamic_buffer = 2 + rtb->n_ext_ins + rtb->n_ext_ins;
-    rtb->controls = NULL;
-    rtb->inputs = NULL;
-    rtb->outputs = NULL;
-    rtb->all_buffers = calloc(rtb->min_dynamic_buffer, sizeof(void *));
-    rtb->steps.len = 0;
-    rtb->steps.items = NULL;
-    rtb->ext_outs = NULL;
-    pb->syncy = rage_rt_crit_new(rtb);
-    pb->allocs = rage_buffer_allocs_new(period_size * sizeof(float));
-    pb->silent_buffer = calloc(period_size, sizeof(float));
-    rtb->all_buffers[0] = pb->silent_buffer;
-    pb->unrouted_buffer = calloc(period_size, sizeof(float));
-    rtb->all_buffers[1] = pb->unrouted_buffer;
-    return pb;
-}
-
-// FIXME: The existence of this function is an indication that the cross-wiring
-// between this and backend isn't right:
-void rage_proc_block_set_tick_forcer(
-        rage_ProcBlock * pb, rage_TickForceStart tick_force_start,
-        rage_TickForceEnd tick_force_end, rage_BackendState * backend_state) {
-    pb->tick_force_start = tick_force_start;
-    pb->tick_force_end = tick_force_end;
-    pb->backend_state = backend_state;
-}
 
 static uint32_t * rage_alloc_int_array(uint32_t n_ints, uint32_t value) {
     uint32_t * a = malloc(n_ints * sizeof(uint32_t));
@@ -417,9 +372,10 @@ static uint32_t assign_buffers(
     return highest_assignment;
 }
 
-void rage_proc_block_set_externals(
-            rage_ProcBlock * pb, uint32_t const ext_revision,
+static void rage_proc_block_set_externals(
+            void * data, uint32_t const ext_revision,
             uint32_t const n_ins, uint32_t const n_outs) {
+    rage_ProcBlock * pb = data;
     rage_RtBits const * old_rt = rage_rt_crit_update_start(pb->syncy);
     rage_remove_connections_for(pb->cons, NULL, n_ins, n_outs);
     rage_RtBits * new_rt = malloc(sizeof(rage_RtBits));
@@ -436,9 +392,9 @@ void rage_proc_block_set_externals(
         pb->cons, &new_rt->steps, n_ins, new_rt->min_dynamic_buffer,
         &new_rt->ext_outs);
     rage_pb_init_all_buffers(pb, new_rt, highest_assignment);
-    rage_TickForcing * tf = pb->tick_force_start(pb->backend_state);
+    rage_TickForcing * tf = pb->hooks.tick_force_start(pb->hooks.b);
     rage_RtBits * replaced = rage_rt_crit_update_finish(pb->syncy, new_rt);
-    pb->tick_force_end(tf);
+    pb->hooks.tick_force_end(tf);
     free(replaced->all_buffers);
     rage_proc_steps_destroy(&replaced->steps);
     rage_ext_outs_free(replaced->ext_outs);
@@ -671,12 +627,11 @@ static void pickup_new_timeseries(rage_ProcSteps * steps) {
     }
 }
 
-void rage_proc_block_process(
-        rage_BackendInterface const * b, uint32_t const n_frames, void * data) {
+static void rage_proc_block_process(uint32_t const n_frames, void * data) {
     rage_ProcBlock * pb = data;
     rage_RtBits * rtd = rage_rt_crit_data_latest(pb->syncy);
-    rage_backend_get_buffers(
-        b, rtd->ext_revision, n_frames,
+    pb->hooks.get_buffers(
+        pb->hooks.b, rtd->ext_revision, n_frames,
         rtd->all_buffers + 2, rtd->all_buffers + rtd->n_ext_ins + 2);
     if (rtd->transp == RAGE_TRANSPORT_STOPPED) {
         pickup_new_timeseries(&rtd->steps);
@@ -784,4 +739,38 @@ rage_Error rage_proc_block_disconnect(
         return RAGE_FAILURE_CAST(rage_Error, edm);
     }
     return rage_proc_block_recalculate_routing(trans, RAGE_SUCCESS_VALUE(edm));
+}
+
+rage_ProcBlock * rage_proc_block_new(
+        rage_TransportState transp_state, rage_Queue * evt_q,
+        rage_BackendInterface * bi) {
+    rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
+    pb->cons = rage_depmap_new();
+    pb->hooks = rage_backend_setup_process(
+        bi, pb, rage_proc_block_process, rage_proc_block_set_externals,
+        &pb->sample_rate, &pb->period_size);
+    pb->evt_q = evt_q;
+    pb->convoy = rage_support_convoy_new(pb->period_size, transp_state, evt_q);
+    pb->rolling_countdown = rage_support_convoy_get_countdown(pb->convoy);
+    rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
+    rtb->transp = transp_state;
+    rtb->max_inputs = 0;
+    rtb->max_outputs = 0;
+    rtb->n_ext_ins = 0;
+    rtb->n_ext_outs = 0;
+    rtb->min_dynamic_buffer = 2 + rtb->n_ext_ins + rtb->n_ext_ins;
+    rtb->controls = NULL;
+    rtb->inputs = NULL;
+    rtb->outputs = NULL;
+    rtb->all_buffers = calloc(rtb->min_dynamic_buffer, sizeof(void *));
+    rtb->steps.len = 0;
+    rtb->steps.items = NULL;
+    rtb->ext_outs = NULL;
+    pb->syncy = rage_rt_crit_new(rtb);
+    pb->allocs = rage_buffer_allocs_new(pb->period_size * sizeof(float));
+    pb->silent_buffer = calloc(pb->period_size, sizeof(float));
+    rtb->all_buffers[0] = pb->silent_buffer;
+    pb->unrouted_buffer = calloc(pb->period_size, sizeof(float));
+    rtb->all_buffers[1] = pb->unrouted_buffer;
+    return pb;
 }

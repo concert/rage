@@ -16,29 +16,21 @@ struct rage_Graph {
 
 rage_NewGraph rage_graph_new(rage_BackendPorts ports, uint32_t sample_rate) {
     rage_Queue * evt_q = rage_queue_new();
-    rage_ProcBlock * pb = rage_proc_block_new(
-        sample_rate, 1024, RAGE_TRANSPORT_STOPPED, evt_q);
     rage_NewJackBackend njb = rage_jack_backend_new((rage_BackendConfig) {
         .sample_rate = sample_rate,
         .buffer_size = 1024,
         .ports = ports,
-        .process = rage_proc_block_process,
-        .data = pb
     });
     if (RAGE_FAILED(njb)) {
-        rage_proc_block_free(pb);
         rage_queue_free(evt_q);
         return RAGE_FAILURE_CAST(rage_NewGraph, njb);
     }
     rage_Graph * g = malloc(sizeof(rage_Graph));
     g->sample_rate = sample_rate;
-    g->pb = pb;
     g->jb = RAGE_SUCCESS_VALUE(njb);
+    g->pb = rage_proc_block_new(
+        RAGE_TRANSPORT_STOPPED, evt_q, rage_jack_backend_get_interface(g->jb));
     g->evt_q = evt_q;
-    rage_proc_block_set_tick_forcer(
-        pb, rage_jack_backend_tick_force_start,
-        rage_jack_backend_tick_force_end, g->jb);
-    rage_proc_block_set_externals(g->pb, 0, ports.inputs.len, ports.outputs.len);
     return RAGE_SUCCESS(rage_NewGraph, g);
 }
 

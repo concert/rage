@@ -11,8 +11,8 @@ typedef struct rage_Harness rage_Harness;
 typedef RAGE_OR_ERROR(rage_Harness *) rage_MountResult;
 
 rage_ProcBlock * rage_proc_block_new(
-    uint32_t sample_rate, uint32_t period_size,
-    rage_TransportState transp_state, rage_Queue * evt_q);
+    rage_TransportState transp_state, rage_Queue * evt_q,
+    rage_BackendInterface * bi);
 void rage_proc_block_free(rage_ProcBlock * pb);
 
 rage_Error rage_proc_block_start(rage_ProcBlock * pb);
@@ -42,15 +42,3 @@ rage_Error rage_proc_block_disconnect(
     rage_ConTrans * trans,
     rage_Harness * source, uint32_t source_idx,
     rage_Harness * sink, uint32_t sink_idx);
-
-void rage_proc_block_set_externals(
-    rage_ProcBlock * pb, uint32_t const ext_revision,
-    uint32_t const n_ins, uint32_t const n_outs);
-void rage_proc_block_process(
-    rage_BackendInterface const * b, uint32_t const n_frames, void * data);
-
-// FIXME: The existence of this function is an indication that the cross-wiring
-// between this and backend isn't right:
-void rage_proc_block_set_tick_forcer(
-    rage_ProcBlock * pb, rage_TickForceStart tick_force_start,
-    rage_TickForceEnd tick_force_end, rage_BackendState * backend_state);

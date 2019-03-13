@@ -1,7 +1,12 @@
 #include "binding_interface.h"
 
-void rage_backend_get_buffers(
-        rage_BackendInterface const * b, uint32_t ext_revision,
-        uint32_t n_frames, void ** inputs, void ** outputs) {
-    return b->get_buffers(b->state, ext_revision, n_frames, inputs, outputs);
+rage_BackendHooks rage_backend_setup_process(
+        rage_BackendInterface * bi,
+        void * data,
+        rage_ProcessCb process,
+        rage_SetExternalsCb set_externals,
+        uint32_t * sample_rate,
+        uint32_t * buffer_size) {
+    return bi->setup_process(
+        bi->state, data, process, set_externals, sample_rate, buffer_size);
 }
