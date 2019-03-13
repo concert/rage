@@ -12,7 +12,7 @@ extern rage_EventType * rage_EventGraphStopped;
 
 typedef struct rage_Graph rage_Graph;
 typedef RAGE_OR_ERROR(rage_Graph *) rage_NewGraph;
-rage_NewGraph rage_graph_new(rage_BackendPorts ports, uint32_t sample_rate);
+rage_NewGraph rage_graph_new(rage_BackendInterface * bi);
 void rage_graph_free(rage_Graph * g);
 
 rage_Error rage_graph_start_processing(rage_Graph * g, rage_EventCb evt_cb, void * cb_ctx);

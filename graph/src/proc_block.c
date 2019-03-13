@@ -746,9 +746,10 @@ rage_ProcBlock * rage_proc_block_new(
         rage_BackendInterface * bi) {
     rage_ProcBlock * pb = malloc(sizeof(rage_ProcBlock));
     pb->cons = rage_depmap_new();
+    pb->sample_rate = rage_backend_get_sample_rate(bi);
     pb->hooks = rage_backend_setup_process(
         bi, pb, rage_proc_block_process, rage_proc_block_set_externals,
-        &pb->sample_rate, &pb->period_size);
+        &pb->period_size);
     pb->evt_q = evt_q;
     pb->convoy = rage_support_convoy_new(pb->period_size, transp_state, evt_q);
     pb->rolling_countdown = rage_support_convoy_get_countdown(pb->convoy);
