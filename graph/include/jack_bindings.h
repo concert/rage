@@ -12,3 +12,5 @@ rage_Error rage_jack_backend_activate(rage_JackBackend * jbe);
 rage_Error rage_jack_backend_deactivate(rage_JackBackend * jbe);
 
 rage_Time rage_jack_backend_nowish(rage_JackBackend * jbe);
+
+rage_BackendInterface * rage_jack_backend_get_interface(rage_JackBackend * jbe);

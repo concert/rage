@@ -1,6 +1,6 @@
 #include "jack_bindings.h"
 
-static void fake_process() {
+static void noop() {
 }
 
 static rage_Error test_jack_bindings() {
@@ -20,13 +20,15 @@ static rage_Error test_jack_bindings() {
         .sample_rate = 44100,
         .buffer_size = 1024,
         .ports = {.inputs = in_ports_def, .outputs = out_ports_def},
-        .process = fake_process,
-        .data = NULL
     };
     rage_NewJackBackend ne = rage_jack_backend_new(bc);
     if (RAGE_FAILED(ne))
         return RAGE_FAILURE_CAST(rage_Error, ne);
     rage_JackBackend * e = RAGE_SUCCESS_VALUE(ne);
+    uint32_t sr, bs;
+    rage_backend_setup_process(
+        rage_jack_backend_get_interface(e),
+        NULL, noop, noop, &sr, &bs);
     rage_Error err = rage_jack_backend_activate(e);
     if (!RAGE_FAILED(err)) {
         err = rage_jack_backend_deactivate(e);
