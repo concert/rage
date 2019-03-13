@@ -6,6 +6,7 @@
 #include <jack/jack.h>
 #include <semaphore.h>
 #include <stdatomic.h>
+#include <sched.h>
 
 typedef RAGE_ARRAY(jack_port_t *) rage_JackPorts;
 
@@ -138,6 +139,9 @@ static void * forced_ticker(void * data) {
     while (jb->forcing_ticks) {
         // Process 0 frames:
         jb->process(&jb->backend, 0, jb->data);
+        // The intention of this is to unblock other threads, so give them a
+        // chance to run:
+        sched_yield();
     }
     return NULL;
 }
