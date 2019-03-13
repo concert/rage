@@ -16,6 +16,15 @@ void rage_depmap_free(rage_DepMap * dm) {
     RAGE_ARRAY_FREE(dm);
 }
 
+rage_DepMap * rage_depmap_copy(rage_DepMap const * dm) {
+    rage_DepMap * ddm = malloc(sizeof(rage_DepMap));
+    ddm->len = dm->len;
+    size_t const items_size = sizeof(rage_Connection) * dm->len;
+    ddm->items = malloc(items_size);
+    memcpy(ddm->items, dm->items, items_size);
+    return ddm;
+}
+
 rage_ExtDepMap rage_depmap_connect(
         rage_DepMap const * dm, rage_ConnTerminal input, rage_ConnTerminal output) {
     rage_MaybeConnTerminal mct = rage_depmap_input_for(dm, output);
@@ -133,10 +142,14 @@ void rage_conn_terms_free(rage_ConnTerminals * ct) {
 }
 
 void rage_remove_connections_for(
-        rage_DepMap * dm, rage_Harness * tgt) {
+        rage_DepMap * dm, rage_Harness const * const tgt,
+        uint32_t const n_protected_ins, uint32_t const n_protected_outs) {
     uint32_t n_matched = 0;
     for (uint32_t i = 0; i < dm->len; i++) {
-        if (dm->items[i].src.harness == tgt || dm->items[i].sink.harness == tgt) {
+        rage_Connection const * const c = &dm->items[i];
+        if (
+                (c->src.harness == tgt && c->src.idx >= n_protected_ins) ||
+                (c->sink.harness == tgt && c->sink.idx >= n_protected_outs)) {
             n_matched++;
         } else {
             dm->items[i - n_matched] = dm->items[i];

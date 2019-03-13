@@ -21,8 +21,8 @@ struct rage_BackendState {
 };
 
 void rage_jack_backend_get_buffers(
-        rage_BackendState * state, uint32_t n_frames,
-        void ** inputs, void ** outputs) {
+        rage_BackendState * state, uint32_t ext_revision,
+        uint32_t n_frames, void ** inputs, void ** outputs) {
     uint32_t i;
     for (i = 0; i < state->input_ports.len; i++) {
         inputs[i] = jack_port_get_buffer(state->input_ports.items[i], n_frames);
