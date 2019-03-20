@@ -7,7 +7,8 @@
 #include "test_buffer_pile.c"
 #include "test_categorisation.c"
 #include "test_depmap.c"
+#include "test_bulk_backend.c"
 
 TEST_MAIN(
     test_loader, test_jack_bindings, test_srt, test_srt_fake_elem, test_graph,
-    test_buffer_pile, test_categorise, test_depmap)
+    test_buffer_pile, test_categorise, test_depmap, test_bulk_backend)

@@ -81,7 +81,7 @@ rage_graph = library(
         'graph/src/loader.c', 'graph/src/jack_bindings.c', 'graph/src/srt.c',
         'graph/src/proc_block.c', 'graph/src/graph.c', 'graph/src/buffer_pile.c',
         'graph/src/binding_interface.c', 'graph/src/depmap.c',
-        'graph/src/categorisation.c'
+        'graph/src/categorisation.c', 'graph/src/bulk_backend.c'
     ],
     include_directories: [graph_inc],
     dependencies: [dyn_load, jack, sem, types_dep, langext_dep],
