@@ -1,6 +1,7 @@
 #include "bulk_backend.h"
 #include <pthread.h>
 #include <assert.h>
+#include <unistd.h>
 
 struct rage_BackendState {
     uint32_t period_size;
@@ -16,6 +17,9 @@ static void * proc_ticker(void * data) {
     rage_BulkBackend * b = data;
     while (b->n_activations) {
         b->process(b->period_size, b->data);
+        // FIXME: This is an horrific fudge to stave off having to rework the
+        // threading model in the very short term
+        usleep(10000);
     }
     return NULL;
 }
