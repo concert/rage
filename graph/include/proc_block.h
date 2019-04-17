@@ -42,3 +42,6 @@ rage_Error rage_proc_block_disconnect(
     rage_ConTrans * trans,
     rage_Harness * source, uint32_t source_idx,
     rage_Harness * sink, uint32_t sink_idx);
+
+uint32_t rage_harness_n_ins(rage_Harness * h);
+uint32_t rage_harness_n_outs(rage_Harness * h);
