@@ -106,14 +106,11 @@ static void rage_harness_free(rage_Harness * harness) {
     free(harness);
 }
 
-// FIXME: A lot like rage_proc_steps_destroy
 static void rage_procsteps_free(rage_ProcSteps * steps) {
     for (uint32_t i = 0; i < steps->len; i++) {
-        free(steps->items[i].in_buffer_allocs);
-        free(steps->items[i].out_buffer_allocs);
         rage_harness_free(steps->items[i].harness);
     }
-    free(steps->items);
+    rage_proc_steps_destroy(steps);
 }
 
 void rage_proc_block_free(rage_ProcBlock * pb) {
@@ -353,6 +350,7 @@ static void rage_proc_block_process(uint32_t const n_frames, void * data) {
         rage_countdown_add(pb->rolling_countdown, -1);
     }
 }
+
 rage_ConTrans * rage_proc_block_con_trans_start(rage_ProcBlock * pb) {
     rage_ConTrans * ct = malloc(sizeof(rage_ConTrans));
     ct->pb = pb;
