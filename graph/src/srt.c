@@ -19,8 +19,10 @@ struct rage_SupportTruck {
 };
 
 typedef RAGE_ARRAY(rage_SupportTruck *) rage_Trucks;
-static RAGE_POINTER_ARRAY_APPEND_FUNC_DEF(rage_Trucks, rage_SupportTruck, truck_append)
-static RAGE_POINTER_ARRAY_REMOVE_FUNC_DEF(rage_Trucks, rage_SupportTruck, truck_remove)
+static RAGE_POINTER_ARRAY_APPEND_FUNC_DEF(
+    rage_Trucks, rage_SupportTruck, truck_append)
+static RAGE_POINTER_ARRAY_REMOVE_FUNC_DEF(
+    rage_Trucks, rage_SupportTruck, truck_remove)
 
 struct rage_SupportConvoy {
     bool running;
@@ -81,25 +83,30 @@ void rage_support_convoy_free(rage_SupportConvoy * convoy) {
     free(convoy);
 }
 
-rage_Countdown * rage_support_convoy_get_countdown(rage_SupportConvoy const * convoy) {
+rage_Countdown * rage_support_convoy_get_countdown(
+        rage_SupportConvoy const * convoy) {
     return convoy->countdown;
 }
 
 static rage_Error prep_truck(rage_SupportTruck * truck) {
-    rage_FrameNo const prep_began = rage_interpolated_view_get_pos(truck->prep_view[0]);
+    rage_FrameNo const prep_began = rage_interpolated_view_get_pos(
+        truck->prep_view[0]);
     rage_Error rv = RAGE_ELEM_PREP(truck->elem, truck->prep_view);
     if (!RAGE_FAILED(rv)) {
-        rage_FrameNo const prep_ended = rage_interpolated_view_get_pos(truck->prep_view[0]);
+        rage_FrameNo const prep_ended = rage_interpolated_view_get_pos(
+            truck->prep_view[0]);
         truck->frames_prepared += prep_ended - prep_began;
     }
     return rv;
 }
 
 static rage_Error clean_truck(rage_SupportTruck * truck) {
-    rage_FrameNo const clean_began = rage_interpolated_view_get_pos(truck->clean_view[0]);
+    rage_FrameNo const clean_began = rage_interpolated_view_get_pos(
+        truck->clean_view[0]);
     rage_Error rv = RAGE_ELEM_CLEAN(truck->elem, truck->clean_view);
     if (!RAGE_FAILED(rv)) {
-        rage_FrameNo const clean_ended = rage_interpolated_view_get_pos(truck->clean_view[0]);
+        rage_FrameNo const clean_ended = rage_interpolated_view_get_pos(
+            truck->clean_view[0]);
         truck->frames_to_clean -= clean_ended - clean_began;
     }
     return rv;
@@ -130,7 +137,8 @@ static rage_Error clear(rage_Trucks * trucks, rage_FrameNo invalid_after) {
         for (uint32_t j = 0; j < truck->elem->type->controls.len; j++) {
             rage_interpolated_view_seek(truck->prep_view[j], invalid_after);
         }
-        rage_Error err = RAGE_ELEM_CLEAR(truck->elem, truck->prep_view, newest_prep - invalid_after);
+        rage_Error err = RAGE_ELEM_CLEAR(
+            truck->elem, truck->prep_view, newest_prep - invalid_after);
         if (RAGE_FAILED(err))
             return err;
         truck->frames_prepared = invalid_after - oldest_prep;
@@ -202,7 +210,8 @@ static void * rage_support_convoy_worker(void * ptr) {
         min_frames_wait = n_frames_grace(convoy);
         counts_to_wait = min_frames_wait / convoy->period_size;
         if (0 > rage_countdown_add(convoy->countdown, counts_to_wait)) {
-            rage_Event * evt = rage_event_new(rage_EventSrtUnderrun, NULL, NULL, NULL, NULL);
+            rage_Event * evt = rage_event_new(
+                rage_EventSrtUnderrun, NULL, NULL, NULL, NULL);
             rage_queue_put_block(convoy->q, rage_queue_item_new(evt));
             break;
         }

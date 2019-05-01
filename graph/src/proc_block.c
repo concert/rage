@@ -350,6 +350,7 @@ static void rage_proc_block_process(uint32_t const n_frames, void * data) {
         rage_countdown_add(pb->rolling_countdown, -1);
     }
 }
+
 rage_ConTrans * rage_proc_block_con_trans_start(rage_ProcBlock * pb) {
     rage_ConTrans * ct = malloc(sizeof(rage_ConTrans));
     ct->pb = pb;
