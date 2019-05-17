@@ -21,6 +21,13 @@ static rage_Error countdown_checks(rage_Countdown * c, int * i) {
     if (*i != 1) {
         return RAGE_ERROR("Double triggered");
     }
+    rage_countdown_add(c, 40);
+    if (rage_countdown_force_action(c) != 39) {
+        return RAGE_ERROR("Force returned unexpected value");
+    }
+    if (*i != 2) {
+        return RAGE_ERROR("Force didn't force");
+    }
     return RAGE_OK;
 }
 

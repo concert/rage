@@ -36,7 +36,7 @@ int rage_countdown_add(rage_Countdown * c, int delta) {
 
 int rage_countdown_force_action(rage_Countdown * c) {
     int val = atomic_exchange(&c->counter, 0);
-    if (val != 0) {
+    if (val > 0) {
         c->action(c->args);
     }
     return val;
