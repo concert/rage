@@ -17,6 +17,10 @@ static rage_Error countdown_checks(rage_Countdown * c, int * i) {
     if (*i != 1) {
         return RAGE_ERROR("Did not trigger action");
     }
+    rage_countdown_add(c, -1);
+    if (*i != 1) {
+        return RAGE_ERROR("Double triggered");
+    }
     return RAGE_OK;
 }
 

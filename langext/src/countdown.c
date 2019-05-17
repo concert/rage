@@ -26,11 +26,12 @@ void rage_countdown_free(rage_Countdown * c) {
 }
 
 int rage_countdown_add(rage_Countdown * c, int delta) {
-    int const val = atomic_fetch_add(&c->counter, delta) + delta;
-    if (val == 0) {
+    int const val_before = atomic_fetch_add(&c->counter, delta);
+    int const val_after = val_before + delta;
+    if (val_after <= 0 && val_before > 0) {
         c->action(c->args);
     }
-    return val;
+    return val_after;
 }
 
 int rage_countdown_force_action(rage_Countdown * c) {
