@@ -27,7 +27,6 @@ static RAGE_POINTER_ARRAY_REMOVE_FUNC_DEF(
 struct rage_SupportConvoy {
     bool running;
     pthread_t worker_thread;
-    uint32_t period_size;
     rage_FrameNo invalid_after;
     rage_Countdown * countdown;
     sem_t throttler_sem;
@@ -50,11 +49,9 @@ static rage_Trucks * rage_new_trucks() {
 }
 
 rage_SupportConvoy * rage_support_convoy_new(
-        uint32_t period_size, rage_TransportState transp_state,
-        rage_Queue * evt_q) {
+        rage_TransportState transp_state, rage_Queue * evt_q) {
     rage_SupportConvoy * convoy = malloc(sizeof(rage_SupportConvoy));
     convoy->running = false;
-    convoy->period_size = period_size;
     convoy->transport_state = transp_state;
     convoy->invalid_after = UINT64_MAX;
     sem_init(&convoy->throttler_sem, 0, 0);

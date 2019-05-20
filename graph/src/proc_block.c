@@ -443,7 +443,7 @@ rage_ProcBlock * rage_proc_block_new(
         bi, pb, rage_proc_block_process, rage_proc_block_set_externals,
         &pb->period_size);
     pb->evt_q = evt_q;
-    pb->convoy = rage_support_convoy_new(pb->period_size, transp_state, evt_q);
+    pb->convoy = rage_support_convoy_new(transp_state, evt_q);
     pb->rolling_countdown = rage_support_convoy_get_countdown(pb->convoy);
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
     rtb->transp = transp_state;
