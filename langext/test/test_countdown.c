@@ -28,6 +28,9 @@ static rage_Error countdown_checks(rage_Countdown * c, int * i) {
     if (*i != 2) {
         return RAGE_ERROR("Force didn't force");
     }
+    if (rage_countdown_max_delay(c) < 10000) {
+        return RAGE_ERROR("Max delay oddly small");
+    }
     return RAGE_OK;
 }
 
