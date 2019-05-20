@@ -23,8 +23,8 @@ static rage_Error test_bulk_backend() {
         goto cleanup;
     }
     sem_wait(&proc_sem);
-    rage_TickForcing * tf = h.tick_force_start(h.b);
-    h.tick_force_end(tf);
+    rage_Ticking * tk = h.tick_ensure_start(h.b);
+    h.tick_ensure_end(tk);
     h.get_buffers(h.b, 0, 312, NULL, NULL);
     err = i->deactivate(i->state);
     cleanup:

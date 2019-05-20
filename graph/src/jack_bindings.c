@@ -53,7 +53,7 @@ static int rage_jack_process_cb(jack_nframes_t n_frames, void * data) {
     return 0;
 }
 
-struct rage_TickForcing {
+struct rage_Ticking {
     rage_JackBackend * jb;
     bool thread_started;
     pthread_t thread_id;
@@ -73,8 +73,8 @@ static void * forced_ticker(void * data) {
 
 // NOTE: Not safe to have multiple of these contexts concurrently at the
 // moment (or to call stop whilst in a context):
-static rage_TickForcing * rage_jack_backend_tick_force_start(rage_JackBackend * jbe) {
-    rage_TickForcing * tf = malloc(sizeof(rage_TickForcing));
+static rage_Ticking * rage_jack_backend_tick_ensure_start(rage_JackBackend * jbe) {
+    rage_Ticking * tf = malloc(sizeof(rage_Ticking));
     tf->jb = jbe;
     tf->thread_started = !jbe->active;
     if (tf->thread_started) {
@@ -85,7 +85,7 @@ static rage_TickForcing * rage_jack_backend_tick_force_start(rage_JackBackend * 
     return tf;
 }
 
-static void rage_jack_backend_tick_force_end(rage_TickForcing * tf) {
+static void rage_jack_backend_tick_ensure_end(rage_Ticking * tf) {
     tf->jb->forcing_ticks = false;
     if (tf->thread_started) {
         pthread_join(tf->thread_id, NULL);
@@ -104,8 +104,8 @@ static rage_BackendHooks rage_jack_backend_setup_process(
     bs->set_externals = set_externals;
     *buffer_size = bs->buffer_size;
     return (rage_BackendHooks) {
-        .tick_force_start = rage_jack_backend_tick_force_start,
-        .tick_force_end = rage_jack_backend_tick_force_end,
+        .tick_ensure_start = rage_jack_backend_tick_ensure_start,
+        .tick_ensure_end = rage_jack_backend_tick_ensure_end,
         .get_buffers = rage_jack_backend_get_buffers,
         .b = bs
     };

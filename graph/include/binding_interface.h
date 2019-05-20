@@ -9,14 +9,13 @@ typedef void (*rage_BufferGet)(
     rage_BackendState * state, uint32_t ext_revision,
     uint32_t n_frames, void ** inputs, void ** outputs);
 
-// FIXME: Rename to ensure_tick or something?
-typedef struct rage_TickForcing rage_TickForcing;
-typedef rage_TickForcing * (*rage_TickForceStart)(rage_BackendState * b);
-typedef void (*rage_TickForceEnd)(rage_TickForcing * tf);
+typedef struct rage_Ticking rage_Ticking;
+typedef rage_Ticking * (*rage_TickEnsureStart)(rage_BackendState * b);
+typedef void (*rage_TickEnsureEnd)(rage_Ticking * tf);
 
 typedef struct {
-    rage_TickForceStart tick_force_start;
-    rage_TickForceEnd tick_force_end;
+    rage_TickEnsureStart tick_ensure_start;
+    rage_TickEnsureEnd tick_ensure_end;
     rage_BufferGet get_buffers;
     rage_BackendState * b;
 } rage_BackendHooks;
