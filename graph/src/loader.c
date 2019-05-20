@@ -86,10 +86,14 @@ rage_LoadedElementKindLoadResult rage_element_loader_load(char const * kind_name
     void * handle = dlopen(kind_name, RTLD_LAZY);
     if (handle == NULL)
         return RAGE_FAILURE(rage_LoadedElementKindLoadResult, dlerror());
-    rage_ElementKind * kind = dlsym(handle, "kind");
     #define RAGE_ETL_BAIL(msg) \
         dlclose(handle); \
         return RAGE_FAILURE(rage_LoadedElementKindLoadResult, msg);
+    uint64_t * interface_version = dlsym(handle, "rage_element_interface_version");
+    if (*interface_version != 0) {
+        RAGE_ETL_BAIL("Version of loader and plugin interface mismatch")
+    }
+    rage_ElementKind * kind = dlsym(handle, "kind");
     if (kind == NULL) {
         RAGE_ETL_BAIL("Missing entry point symbol: kind")
     }
