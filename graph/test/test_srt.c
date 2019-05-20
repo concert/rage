@@ -118,8 +118,8 @@ static rage_Error test_srt_fake_elem() {
                 convoy, &fake_elem, &prep_view, &clean_view);
             assertion_err = counter_checks(&sync_sem, &fes, 1, 1);
             if (!RAGE_FAILED(assertion_err)) {
-                rage_countdown_add(countdown, -1);
-                rage_countdown_add(countdown, -1);
+                rage_countdown_add(countdown, -1024);
+                rage_countdown_add(countdown, -1024);
                 assertion_err = counter_checks(&sync_sem, &fes, 2, 2);
                 if (!RAGE_FAILED(assertion_err)) {
                     if (fes.last_prep_from != 2048 || fes.last_clean_from != 2048) {

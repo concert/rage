@@ -1,5 +1,6 @@
 #include <stdatomic.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "countdown.h"
 
@@ -32,6 +33,11 @@ int rage_countdown_add(rage_Countdown * c, int delta) {
         c->action(c->args);
     }
     return val_after;
+}
+
+int rage_countdown_max_delay(rage_Countdown * c) {
+    atomic_store(&c->counter, INT_MAX);
+    return INT_MAX;
 }
 
 int rage_countdown_force_action(rage_Countdown * c) {

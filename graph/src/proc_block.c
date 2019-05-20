@@ -347,7 +347,7 @@ static void rage_proc_block_process(uint32_t const n_frames, void * data) {
         }
     }
     if (rtd->transp == RAGE_TRANSPORT_ROLLING) {
-        rage_countdown_add(pb->rolling_countdown, -1);
+        rage_countdown_add(pb->rolling_countdown, -n_frames);
     }
 }
 

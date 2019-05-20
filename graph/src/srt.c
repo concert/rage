@@ -35,7 +35,7 @@ struct rage_SupportConvoy {
     pthread_mutex_t active;
     rage_Trucks * prep_trucks;
     rage_Trucks * clean_trucks;
-    int counts_skipped;
+    int n_frames_skipped;
     bool triggered_tick;
     sem_t triggered_tick_sem;
     rage_TransportState transport_state;
@@ -64,7 +64,7 @@ rage_SupportConvoy * rage_support_convoy_new(
     pthread_mutex_init(&convoy->active, NULL);
     convoy->prep_trucks = rage_new_trucks();
     convoy->clean_trucks = rage_new_trucks();
-    convoy->counts_skipped = 0;
+    convoy->n_frames_skipped = 0;
     convoy->triggered_tick = false;
     sem_init(&convoy->triggered_tick_sem, 0, 0);
     convoy->q = evt_q;
@@ -184,9 +184,8 @@ rage_EventType * rage_EventSrtUnderrun = "SRT underrun";
 static void * rage_support_convoy_worker(void * ptr) {
     rage_SupportConvoy * convoy = ptr;
     rage_Error op_result;
-    uint32_t min_frames_wait;
-    int64_t counts_waited;
-    uint32_t counts_to_wait = 0;
+    uint32_t min_frames_wait = 0;
+    int64_t n_frames_waited;
     pthread_mutex_lock(&convoy->active);
     #define RAGE_BAIL_ON_FAIL(evt_type) \
         if (RAGE_FAILED(op_result)) { \
@@ -203,17 +202,20 @@ static void * rage_support_convoy_worker(void * ptr) {
         }
         op_result = apply_to_trucks(convoy->prep_trucks, prep_truck);
         RAGE_BAIL_ON_FAIL(PrepFailed)
-        counts_waited = counts_to_wait - convoy->counts_skipped;
-        assert(counts_waited >= 0);
-        convoy->counts_skipped = 0;
-        account_for_rt_frames(convoy, counts_waited * convoy->period_size);
+        n_frames_waited = min_frames_wait - convoy->n_frames_skipped;
+        assert(n_frames_waited >= 0);
+        convoy->n_frames_skipped = 0;
+        account_for_rt_frames(convoy, n_frames_waited);
         min_frames_wait = n_frames_grace(convoy);
-        counts_to_wait = min_frames_wait / convoy->period_size;
-        if (0 > rage_countdown_add(convoy->countdown, counts_to_wait)) {
-            rage_Event * evt = rage_event_new(
-                rage_EventSrtUnderrun, NULL, NULL, NULL, NULL);
-            rage_queue_put_block(convoy->q, rage_queue_item_new(evt));
-            break;
+        if (min_frames_wait == UINT32_MAX) {
+            min_frames_wait = rage_countdown_max_delay(convoy->countdown);
+        } else {
+            if (0 > rage_countdown_add(convoy->countdown, min_frames_wait)) {
+                rage_Event * evt = rage_event_new(
+                    rage_EventSrtUnderrun, NULL, NULL, NULL, NULL);
+                rage_queue_put_block(convoy->q, rage_queue_item_new(evt));
+                break;
+            }
         }
         if (convoy->triggered_tick) {
             sem_post(&convoy->triggered_tick_sem);
@@ -233,7 +235,7 @@ static void * rage_support_convoy_worker(void * ptr) {
 static void unlock_and_await_tick(rage_SupportConvoy * convoy) {
     bool trigger = convoy->running;
     if (trigger) {
-        convoy->counts_skipped = rage_countdown_force_action(convoy->countdown);
+        convoy->n_frames_skipped = rage_countdown_force_action(convoy->countdown);
         convoy->triggered_tick = true;
     }
     pthread_mutex_unlock(&convoy->active);
