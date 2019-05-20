@@ -29,6 +29,29 @@ test('langext', test_langext)
 
 # Types
 
+# FIXME: This may be a pain to maintain, largely because the distinction
+# between the purposes of headers are not explicit at present:
+elem_iface_headers = [
+    'types/include/element_impl.h',
+    'types/include/element.h',
+    'types/include/atoms.h',
+    'types/include/chronology.h',
+    'types/include/ports.h',
+    'types/include/time_series.h'
+]
+
+hash_gen = find_program('gen_hash_header.sh')
+elem_iface_hdr = custom_target(
+    'gen-hash-header',
+    input: elem_iface_headers,
+    output: 'elem_impl_hash.h',
+    command: [
+        hash_gen,
+        '@OUTPUT@',
+        'rage_element_interface_hash',
+        '@INPUT@'
+    ])
+
 types_inc = include_directories('types/include')
 
 sources = [
@@ -39,7 +62,8 @@ sources = [
     'types/src/atoms.c',
     'types/src/element_helpers.c',
     'types/src/event.c',
-    'types/src/queue.c'
+    'types/src/queue.c',
+    elem_iface_hdr
 ]
 
 rage_types = library(

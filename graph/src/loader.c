@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include "loader.h"
+#include "elem_impl_hash.h"
 
 struct rage_ElementLoader {
     char * elems_path;
@@ -89,8 +90,8 @@ rage_LoadedElementKindLoadResult rage_element_loader_load(char const * kind_name
     #define RAGE_ETL_BAIL(msg) \
         dlclose(handle); \
         return RAGE_FAILURE(rage_LoadedElementKindLoadResult, msg);
-    uint64_t * interface_version = dlsym(handle, "rage_element_interface_version");
-    if (*interface_version != 0) {
+    uint64_t * interface_version = dlsym(handle, "rage_element_interface_hash");
+    if (*interface_version != rage_element_interface_hash) {
         RAGE_ETL_BAIL("Version of loader and plugin interface mismatch")
     }
     rage_ElementKind * kind = dlsym(handle, "kind");
