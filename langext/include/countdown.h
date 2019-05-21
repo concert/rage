@@ -28,7 +28,7 @@ int rage_countdown_add(rage_Countdown * c, int delta);
 
 /*
  * Push the countdown to the maximum possible delay.
- * Returns the countdown value before this operation.
+ * Returns the countdown value after the operation.
  */
 int rage_countdown_max_delay(rage_Countdown * c);
 
