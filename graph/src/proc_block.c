@@ -347,7 +347,7 @@ static void rage_proc_block_process(uint32_t const n_frames, void * data) {
         }
     }
     if (rtd->transp == RAGE_TRANSPORT_ROLLING) {
-        rage_countdown_add(pb->rolling_countdown, -1);
+        rage_countdown_add(pb->rolling_countdown, -n_frames);
     }
 }
 
@@ -443,7 +443,7 @@ rage_ProcBlock * rage_proc_block_new(
         bi, pb, rage_proc_block_process, rage_proc_block_set_externals,
         &pb->period_size);
     pb->evt_q = evt_q;
-    pb->convoy = rage_support_convoy_new(pb->period_size, transp_state, evt_q);
+    pb->convoy = rage_support_convoy_new(transp_state, evt_q);
     pb->rolling_countdown = rage_support_convoy_get_countdown(pb->convoy);
     rage_RtBits * rtb = malloc(sizeof(rage_RtBits));
     rtb->transp = transp_state;

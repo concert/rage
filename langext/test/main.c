@@ -1,6 +1,6 @@
 #include "testing.h"
 #include "test_array.c"
-#include "test_synchronisation_primitives.c"
+#include "test_countdown.c"
 #include "test_set.c"
 #include "test_rtcrit.c"
 

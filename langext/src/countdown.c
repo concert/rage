@@ -1,5 +1,6 @@
 #include <stdatomic.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "countdown.h"
 
@@ -26,16 +27,22 @@ void rage_countdown_free(rage_Countdown * c) {
 }
 
 int rage_countdown_add(rage_Countdown * c, int delta) {
-    int const val = atomic_fetch_add(&c->counter, delta) + delta;
-    if (val == 0) {
+    int const val_before = atomic_fetch_add(&c->counter, delta);
+    int const val_after = val_before + delta;
+    if (val_after <= 0 && val_before > 0) {
         c->action(c->args);
     }
-    return val;
+    return val_after;
+}
+
+int rage_countdown_max_delay(rage_Countdown * c) {
+    atomic_store(&c->counter, INT_MAX);
+    return INT_MAX;
 }
 
 int rage_countdown_force_action(rage_Countdown * c) {
     int val = atomic_exchange(&c->counter, 0);
-    if (val != 0) {
+    if (val > 0) {
         c->action(c->args);
     }
     return val;

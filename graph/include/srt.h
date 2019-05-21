@@ -15,8 +15,7 @@ typedef struct rage_SupportConvoy rage_SupportConvoy;
 typedef struct rage_SupportTruck rage_SupportTruck;
 
 rage_SupportConvoy * rage_support_convoy_new(
-    uint32_t period_size, rage_TransportState transp_state,
-    rage_Queue * evt_q);
+    rage_TransportState transp_state, rage_Queue * evt_q);
 void rage_support_convoy_free(rage_SupportConvoy * convoy);
 
 rage_Countdown * rage_support_convoy_get_countdown(rage_SupportConvoy const * convoy);

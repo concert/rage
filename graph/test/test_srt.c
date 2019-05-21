@@ -9,8 +9,9 @@ rage_Error test_srt() {
         return RAGE_FAILURE_CAST(rage_Error, nte);
     rage_TestElem te = RAGE_SUCCESS_VALUE(nte);
     rage_SupportConvoy * convoy = rage_support_convoy_new(
-        1024, RAGE_TRANSPORT_STOPPED, NULL);
-    rage_SupportTruck * truck = rage_support_convoy_mount(convoy, te.elem, NULL, NULL);
+        RAGE_TRANSPORT_STOPPED, NULL);
+    rage_SupportTruck * truck = rage_support_convoy_mount(
+        convoy, te.elem, NULL, NULL);
     rage_Error err = rage_support_convoy_start(convoy);
     if (!RAGE_FAILED(err)) {
         err = rage_support_convoy_stop(convoy);
@@ -53,7 +54,8 @@ static rage_Error fake_elem_clean(
 }
 
 static rage_Error fake_elem_clear(
-        rage_ElementState * state, rage_InterpolatedView ** controls, rage_FrameNo to_present) {
+        rage_ElementState * state, rage_InterpolatedView ** controls,
+        rage_FrameNo to_present) {
     state->clear_counter++;
     state->last_clear_from = rage_interpolated_view_get_pos(controls[0]);
     rage_interpolated_view_advance(controls[0], 420);
@@ -63,7 +65,8 @@ static rage_Error fake_elem_clear(
 static rage_TupleDef const empty_tupledef = {};
 
 static rage_ElementType fake_type = {
-    .spec = (rage_InstanceSpec) {.controls = {.len = 1, .items = &empty_tupledef}},
+    .spec = (rage_InstanceSpec) {.controls = {
+        .len = 1, .items = &empty_tupledef}},
     .prep = fake_elem_prep,
     .clean = fake_elem_clean,
     .clear = fake_elem_clear
@@ -77,11 +80,15 @@ static rage_Error counter_checks(
         int expected_clean) {
     sem_wait(sync_sem);
     if (fes->prep_counter != expected_prep) {
-        snprintf(err_msg, ERR_MSG_BUFF_SIZE, "Unexpected prep count %u != %u", fes->prep_counter, expected_prep);
+        snprintf(
+            err_msg, ERR_MSG_BUFF_SIZE, "Unexpected prep count %u != %u",
+            fes->prep_counter, expected_prep);
         return RAGE_ERROR(err_msg);
     }
     if (fes->clean_counter != expected_clean) {
-        snprintf(err_msg, ERR_MSG_BUFF_SIZE, "Unexpected clean count %u != %u", fes->clean_counter, expected_clean);
+        snprintf(
+            err_msg, ERR_MSG_BUFF_SIZE, "Unexpected clean count %u != %u",
+            fes->clean_counter, expected_clean);
         return RAGE_ERROR(err_msg);
     }
     return RAGE_OK;
@@ -103,11 +110,12 @@ static rage_Error test_srt_fake_elem() {
         .type = &fake_type,
         .state = &fes};
     rage_SupportConvoy * convoy = rage_support_convoy_new(
-        1024, RAGE_TRANSPORT_STOPPED, NULL);
+        RAGE_TRANSPORT_STOPPED, NULL);
     rage_Countdown * countdown = rage_support_convoy_get_countdown(convoy);
     rage_Error err = rage_support_convoy_start(convoy);
     if (!RAGE_FAILED(err)) {
-        rage_InitialisedInterpolator ii = rage_interpolator_new(&empty_tupledef, &ts, 44100, 2, NULL);
+        rage_InitialisedInterpolator ii = rage_interpolator_new(
+            &empty_tupledef, &ts, 44100, 2, NULL);
         if (RAGE_FAILED(ii)) {
             assertion_err = RAGE_FAILURE_CAST(rage_Error, ii);
         } else {
@@ -118,8 +126,8 @@ static rage_Error test_srt_fake_elem() {
                 convoy, &fake_elem, &prep_view, &clean_view);
             assertion_err = counter_checks(&sync_sem, &fes, 1, 1);
             if (!RAGE_FAILED(assertion_err)) {
-                rage_countdown_add(countdown, -1);
-                rage_countdown_add(countdown, -1);
+                rage_countdown_add(countdown, -1024);
+                rage_countdown_add(countdown, -1024);
                 assertion_err = counter_checks(&sync_sem, &fes, 2, 2);
                 if (!RAGE_FAILED(assertion_err)) {
                     if (fes.last_prep_from != 2048 || fes.last_clean_from != 2048) {
