@@ -97,3 +97,13 @@ plugins into RAGE elements is planned for a future release.
   functions that should be RT safe are explicitly known and the parameters are
   introspectable and some sane output invariants can be chosen allowing some
   basic "it doesn't crash or pop" type tests can be generated.
+
+
+## Debian build/install
+
+```sh
+apt-get install libjack-jackd2-dev libsndfile1-dev ninja-build
+pip install meson
+meson setup build
+DESTDIR=fake_install ninja -C build install
+```
