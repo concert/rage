@@ -375,9 +375,9 @@ void rage_proc_block_con_trans_commit(rage_ConTrans * trans) {
     new_rt->ext_outs = ext_outs;
     rage_depmap_free(trans->pb->cons);
     trans->pb->cons = trans->cons;
-    rage_pb_init_all_buffers(trans->pb, new_rt, highest_assignment);
     trans->pb->allocs = rage_buffer_allocs_alloc(
         old_allocs, highest_assignment - (trans->old_rt->min_dynamic_buffer - 1));
+    rage_pb_init_all_buffers(trans->pb, new_rt, highest_assignment);
     rage_RtBits * replaced = rage_rt_crit_update_finish(trans->pb->syncy, new_rt);
     rage_buffer_allocs_free(old_allocs);
     rage_proc_steps_destroy(&replaced->steps);
