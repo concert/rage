@@ -136,7 +136,7 @@ int main() {
         {.f = 1.0}
     };
     rage_Atom half_vol[] = {
-        {.f = 0.1}
+        {.f = 0.5}
     };
     rage_TimePoint amp_pts[] = {
         {
