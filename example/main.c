@@ -81,9 +81,16 @@ int main() {
     rage_Atom stereo[] = {
         {.i=2}
     };
-    rage_Atom * stereop = stereo;
+    rage_Atom record[] = {
+        {.e=1}
+    };
+    rage_Atom * persist_args[] = {
+        stereo,
+        record
+    };
     rage_NewElementType st_persist_ = rage_element_kind_specialise(
-        bits.persist, &stereop);
+        bits.persist, persist_args);
+    rage_Atom * stereop = stereo;
     RAGE_ABORT_ON_FAILURE(st_persist_, 3);
     bits.st_persist = RAGE_SUCCESS_VALUE(st_persist_);
     rage_NewElementType st_amp_ = rage_element_kind_specialise(
@@ -92,17 +99,14 @@ int main() {
     bits.st_amp = RAGE_SUCCESS_VALUE(st_amp_);
     // Persist params
     rage_Atom preroll[] = {
-        {.e = 0},
         {.s = ""},
         {.t = (rage_Time) {}}
     };
     rage_Atom recbit[] = {
-        {.e = 2},
         {.s = "rechere.wav"},
         {.t = (rage_Time) {}}
     };
     rage_Atom terminus[] = {
-        {.e = 0},
         {.s = ""},
         {.t = (rage_Time) {}}
     };
