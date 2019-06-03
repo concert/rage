@@ -1,9 +1,6 @@
 #include <stdlib.h>
-// FIXME: these includes should be "systemy"
-// This header should probably have a hash of the interface files or something
-// dynamically embedded in it:
-#include "element_impl.h"
-#include "interpolation.h"
+#include <element_impl.h>
+#include <interpolation.h>
 
 static rage_AtomDef const n_channels = {
     .type = RAGE_ATOM_INT,

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "element_impl.h"
-#include "interpolation.h"
+#include <element_impl.h>
+#include <interpolation.h>
 
 #define N_CHANNELS(max_n) {\
     .type = RAGE_ATOM_INT,\

@@ -45,13 +45,13 @@ static rage_Error deactivate(rage_BulkBackend * b) {
     return RAGE_OK;
 }
 
-static rage_TickForcing * tick_force_start(rage_BulkBackend * b) {
+static rage_Ticking * tick_force_start(rage_BulkBackend * b) {
     // FIXME: Ignoring failures!
     activate(b);
-    return (rage_TickForcing *) b;
+    return (rage_Ticking *) b;
 }
 
-static void tick_force_end(rage_TickForcing * tf) {
+static void tick_force_end(rage_Ticking * tf) {
     // FIXME: Ignoring failures!
     deactivate((rage_BulkBackend *) tf);
 }
@@ -66,8 +66,8 @@ static rage_BackendHooks setup_process(
     be->data = data;
     *buffer_size = be->period_size;
     return (rage_BackendHooks) {
-        .tick_force_start = tick_force_start,
-        .tick_force_end = tick_force_end,
+        .tick_ensure_start = tick_force_start,
+        .tick_ensure_end = tick_force_end,
         .get_buffers = get_buffers,
         .b = be
     };

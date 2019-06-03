@@ -5,12 +5,9 @@
 #include <jack/ringbuffer.h>
 #include <sndfile.h>
 
-// FIXME: these includes should be "systemy"
-// This header should probably have a hash of the interface files or something
-// dynamically embedded in it:
-#include "element_impl.h"
-#include "interpolation.h"
-#include "error.h"
+#include <element_impl.h>
+#include <interpolation.h>
+#include <error.h>
 
 typedef enum {PLAY, REC} PersistanceMode;
 

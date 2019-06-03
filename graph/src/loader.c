@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include "loader.h"
+#include "elem_impl_hash.h"
 
 struct rage_ElementLoader {
     char * elems_path;
@@ -86,10 +87,16 @@ rage_LoadedElementKindLoadResult rage_element_loader_load(char const * kind_name
     void * handle = dlopen(kind_name, RTLD_LAZY);
     if (handle == NULL)
         return RAGE_FAILURE(rage_LoadedElementKindLoadResult, dlerror());
-    rage_ElementKind * kind = dlsym(handle, "kind");
     #define RAGE_ETL_BAIL(msg) \
         dlclose(handle); \
         return RAGE_FAILURE(rage_LoadedElementKindLoadResult, msg);
+    uint64_t * interface_version = dlsym(handle, "rage_element_interface_hash");
+    if (interface_version == NULL) {
+        RAGE_ETL_BAIL("No version information in plugin")
+    } else if (*interface_version != rage_element_interface_hash) {
+        RAGE_ETL_BAIL("Version of loader and plugin interface mismatch")
+    }
+    rage_ElementKind * kind = dlsym(handle, "kind");
     if (kind == NULL) {
         RAGE_ETL_BAIL("Missing entry point symbol: kind")
     }

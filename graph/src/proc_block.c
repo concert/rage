@@ -85,9 +85,9 @@ static void rage_proc_block_set_externals(
         pb->cons, &new_rt->steps, n_ins, new_rt->min_dynamic_buffer,
         &new_rt->ext_outs);
     rage_pb_init_all_buffers(pb, new_rt, highest_assignment);
-    rage_TickForcing * tf = pb->hooks.tick_force_start(pb->hooks.b);
+    rage_Ticking * tf = pb->hooks.tick_ensure_start(pb->hooks.b);
     rage_RtBits * replaced = rage_rt_crit_update_finish(pb->syncy, new_rt);
-    pb->hooks.tick_force_end(tf);
+    pb->hooks.tick_ensure_end(tf);
     free(replaced->all_buffers);
     rage_proc_steps_destroy(&replaced->steps);
     rage_ext_outs_free(replaced->ext_outs);
